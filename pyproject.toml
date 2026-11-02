@@ -1,0 +1,61 @@
+[build-system]
+requires = ["flit_core >=3.2,<4"]
+build-backend = "flit_core.buildapi"
+
+[project]
+name = "econ_corpus"
+version = "0.0.1"
+description = "Build and audit a corpus of U.S. newspaper opinion articles to study how economists communicate."
+authors = [
+  { name = "Juan Camilo Reyes" },
+]
+
+readme = "README.md"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    
+]
+dependencies = [
+    "pyarrow>=26.0.0",
+    "python-dotenv",
+]
+requires-python = ">=3.12"
+
+[tool.uv]
+default-groups = ["dev"]
+
+[dependency-groups]
+dev = [
+    "pre-commit>=4.7.0",
+    "pytest",
+    "ruff",
+]
+
+
+[tool.ruff]
+line-length = 99
+src = ["econ_corpus"]
+include = ["pyproject.toml", "econ_corpus/**/*.py", "tests/**/*.py"]
+
+[tool.ruff.lint]
+# Strictest mode: every rule, minus the ones that contradict each other or the formatter.
+select = ["ALL"]
+ignore = [
+    "D203",    # incompatible with D211
+    "D213",    # incompatible with D212
+    "COM812",  # conflicts with ruff format
+    "ISC001",  # conflicts with ruff format
+    "CPY001",  # no copyright header policy in this project
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = [
+    "S101",    # assert is how pytest tests work
+    "PLR2004", # magic numbers are the expected values in tests
+    "D103",    # test names are the documentation
+    "INP001",  # tests/ is not a package
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["econ_corpus"]
+force-sort-within-sections = true

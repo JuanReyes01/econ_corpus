@@ -1,0 +1,23 @@
+# Local hooks: they run the same commands as `make lint` and `make test`, through uv,
+# so the hook and the Makefile cannot drift apart.
+repos:
+  - repo: local
+    hooks:
+      - id: ruff-format
+        name: ruff format
+        entry: uv run ruff format --check
+        language: system
+        types: [python]
+        pass_filenames: false
+      - id: ruff-check
+        name: ruff check (all rules)
+        entry: uv run ruff check
+        language: system
+        types: [python]
+        pass_filenames: false
+      - id: pytest
+        name: pytest
+        entry: uv run pytest tests -q
+        language: system
+        types: [python]
+        pass_filenames: false
