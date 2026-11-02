@@ -46,6 +46,12 @@ datasheet:
 	uv run python -m econ_corpus.datasheet
 
 
+## Give every row of the raw table one exclusion reason (needs data/interim/records.parquet)
+.PHONY: exclusions
+exclusions:
+	uv run python -m econ_corpus.exclusions
+
+
 ## Run tests
 .PHONY: test
 test:
