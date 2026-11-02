@@ -32,6 +32,9 @@ QUERIED_DOC_TYPES = {"commentary", "editorial", "news"}
 # A section label containing one of these words is treated as an opinion section.
 OPINION_SECTION_WORDS = ("opinion", "editorial", "op-ed", "op/ed")
 
+# A document-type label containing one of these words is treated as an opinion label.
+OPINION_LABEL_WORDS = ("opinion", "editorial", "commentary", "op-ed", "op/ed", "letter", "column")
+
 
 def newspaper_family(publication_key: str | None) -> str | None:
     """Return the newspaper a publication key belongs to, 'Other', or None if missing."""
@@ -78,3 +81,8 @@ def num(count: int) -> str:
 def is_opinion_section(section: str | None) -> bool:
     """Tell whether a section label looks like an opinion or editorial section."""
     return section is not None and any(w in section.casefold() for w in OPINION_SECTION_WORDS)
+
+
+def is_opinion_label(label: str) -> bool:
+    """Tell whether a document-type label looks like an opinion label."""
+    return any(w in label.casefold() for w in OPINION_LABEL_WORDS)

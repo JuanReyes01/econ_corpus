@@ -9,6 +9,7 @@ live here: the tables themselves (tables), the prose (the template, in docs/) or
 decision about which records to keep (exclusions).
 """
 
+from collections import Counter, defaultdict
 import csv
 from pathlib import Path
 import re
@@ -79,7 +80,17 @@ def _label_facts(articles: Articles) -> dict[str, str]:
         for each in labels
     )
     english = sum(k == "english" for k in articles["language_key"])
+    opinion_doc = [any(map(summaries.is_opinion_label, each)) for each in labels]
+    opinion_sec = [summaries.is_opinion_section(sec) for sec in articles["section"]]
+    news_in_opinion = sum(
+        bool(each) and not doc and sec
+        for each, doc, sec in zip(labels, opinion_doc, opinion_sec, strict=True)
+    )
+    no_signal = sum(not doc and not sec for doc, sec in zip(opinion_doc, opinion_sec, strict=True))
     return {
+        "news_label_opinion_section_pct": summaries.pct(news_in_opinion, n),
+        "no_opinion_signal_n": summaries.num(no_signal),
+        "no_opinion_signal_pct": summaries.pct(no_signal, n),
         "n_doc_type_labels": summaries.num(len({d for d in articles["doc_type"] if d})),
         "n_outside_doc_types": summaries.num(outside),
         "outside_doc_types_pct": summaries.pct(outside, n),
@@ -116,9 +127,34 @@ def _publication_facts(articles: Articles) -> dict[str, str]:
     }
 
 
+def _peak_year_facts(articles: Articles) -> dict[str, str]:
+    """Return the year with the most repeated rows, and how many files its ids are spread over."""
+    rows: Counter = Counter()
+    files: defaultdict[int, defaultdict[int, set[str]]] = defaultdict(lambda: defaultdict(set))
+    for year, doc_id, source in zip(
+        articles["pub_year"], articles["doc_id"], articles["source_file"], strict=True
+    ):
+        if year and doc_id is not None:
+            rows[year] += 1
+            files[year][doc_id].add(source)
+    peak = max(rows, key=lambda y: rows[y] - len(files[y]))
+    spread = sum(len(f) >= 3 for f in files[peak].values())  # noqa: PLR2004
+    return {
+        "dup_peak_year": str(peak),
+        "dup_peak_rows": summaries.num(rows[peak]),
+        "dup_peak_unique": summaries.num(len(files[peak])),
+        "dup_peak_multi_file_pct": summaries.pct(spread, len(files[peak])),
+    }
+
+
 def facts(articles: Articles) -> dict[str, str]:
     """Return the headline numbers quoted in the prose of the datasheet."""
-    return _count_facts(articles) | _label_facts(articles) | _publication_facts(articles)
+    return (
+        _count_facts(articles)
+        | _label_facts(articles)
+        | _publication_facts(articles)
+        | _peak_year_facts(articles)
+    )
 
 
 def write_csv(rows: Table, path: Path) -> None:

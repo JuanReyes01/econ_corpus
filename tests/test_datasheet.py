@@ -67,6 +67,12 @@ def test_edition(key: str, expected: str) -> None:
     assert summaries.edition(key) == expected
 
 
+def test_is_opinion_label() -> None:
+    assert summaries.is_opinion_label("Op-Ed")
+    assert summaries.is_opinion_label("Letter To The Editor")
+    assert not summaries.is_opinion_label("NEWSPAPER")
+
+
 def test_split_labels_handles_multi_label_and_missing() -> None:
     assert summaries.split_labels("Commentary, Opinions") == ["Commentary", "Opinions"]
     assert summaries.split_labels(None) == []
@@ -317,6 +323,37 @@ def test_facts_report_opinion_sections_among_blog_labelled_records() -> None:
         {"source_type_key": PAPER, "section": "Opinion"},
     )
     assert datasheet.facts(articles)["blog_opinion_section_pct"] == "50.0%"
+
+
+def test_facts_find_the_year_inflated_by_repeated_downloads() -> None:
+    def row(year: int, doc_id: int, file_no: int) -> dict:
+        return {
+            "pub_year": year,
+            "doc_id": doc_id,
+            "source_file": f"ProQuestDocuments-2024-11-22_{file_no}.txt",
+        }
+
+    articles = make_articles(
+        row(2005, 1, 1), row(2005, 1, 2), row(2005, 1, 3), row(2005, 2, 1), row(2006, 3, 1)
+    )
+    facts = datasheet.facts(articles)
+    assert facts["dup_peak_year"] == "2005"
+    assert facts["dup_peak_rows"] == "4"
+    assert facts["dup_peak_unique"] == "2"
+    assert facts["dup_peak_multi_file_pct"] == "50.0%"
+
+
+def test_facts_count_news_labelled_records_by_opinion_signals() -> None:
+    articles = make_articles(
+        {"doc_type": "Commentary", "section": "Opinion"},
+        {"doc_type": "NEWSPAPER", "section": "Opinion"},
+        {"doc_type": "News", "section": "Sports"},
+        {"doc_type": None, "section": None},
+    )
+    facts = datasheet.facts(articles)
+    assert facts["news_label_opinion_section_pct"] == "25.0%"
+    assert facts["no_opinion_signal_n"] == "2"
+    assert facts["no_opinion_signal_pct"] == "50.0%"
 
 
 # --- template ----------------------------------------------------------------------
