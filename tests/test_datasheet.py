@@ -67,8 +67,63 @@ def test_edition(key: str, expected: str) -> None:
     assert summaries.edition(key) == expected
 
 
+@pytest.mark.parametrize(
+    "section",
+    [
+        "Letters to the Editor",
+        "Metro; Part-B; Op Ed Desk",
+        "Op- Ed",
+        "Viewpoints",
+        "Perspective",
+        "Commentary",
+        "EDITORIAL-OPINION",
+    ],
+)
+def test_opinion_sections_are_recognised_despite_spacing_and_wording(section: str) -> None:
+    assert summaries.is_opinion_section(section)
+
+
+@pytest.mark.parametrize("section", ["Sports", "Metro; Part-B; Metro Desk", "A", None])
+def test_other_sections_are_not_opinion(section: str | None) -> None:
+    assert not summaries.is_opinion_section(section)
+
+
+@pytest.mark.parametrize(
+    "title",
+    [
+        "REVIEW & OUTLOOK (Editorial): The Verity Mission",
+        "Opinion Today: How worried should you really be about inflation?",
+        "What Does Donald Trump Mean to You?:   [Op-Ed ]",
+        "Letters to the Editor: Pakistan Needs Democracy",
+        "Notable & Quotable",
+        "Board of Contributors: Education Reforms That Do and Don't Work",
+        "The Journal Editorial Report on FOX News Channel",
+        "Asides: Hillary's Buffalo Voters",
+        "REVIEW & OUT LOOK (Edi torial) -- Asides: Tax Freedom Day",
+    ],
+)
+def test_opinion_titles_are_recognised(title: str) -> None:
+    assert summaries.is_opinion_title(title)
+
+
+@pytest.mark.parametrize(
+    "title",
+    [
+        "World News: Unofficial Count Favors Jakarta Governor",
+        "American Opinion (A Special Report): A Quarterly Survey",
+        "US/WORLD NEWS IN BRIEF; POLL: OPINION OF UN DECLINES",
+        "Politics & Economics: Cairo's Litigious Cleric",
+        None,
+    ],
+)
+def test_other_titles_are_not_opinion(title: str | None) -> None:
+    assert not summaries.is_opinion_title(title)
+
+
 def test_is_opinion_label() -> None:
     assert summaries.is_opinion_label("Op-Ed")
+    assert summaries.is_opinion_label("Edi torial")
+    assert summaries.is_opinion_label("Op - Ed")
     assert summaries.is_opinion_label("Letter To The Editor")
     assert not summaries.is_opinion_label("NEWSPAPER")
 

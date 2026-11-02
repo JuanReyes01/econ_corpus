@@ -29,11 +29,25 @@ INTENDED_NEWSPAPERS = {
 # Document types the ProQuest query asked for (matched ignoring case).
 QUERIED_DOC_TYPES = {"commentary", "editorial", "news"}
 
-# A section label containing one of these words is treated as an opinion section.
-OPINION_SECTION_WORDS = ("opinion", "editorial", "op-ed", "op/ed")
+# A section label containing one of these words (spaces removed, so 'Op Ed' becomes 'oped')
+# is treated as an opinion section. Built from the most common sections of records that had
+# no other opinion signal.
+OPINION_SECTION_WORDS = (
+    "opinion", "editorial", "op-ed", "oped", "op/ed", "viewpoint", "perspective", "letter",
+    "commentary", "column",
+)  # fmt: skip
 
 # A document-type label containing one of these words is treated as an opinion label.
 OPINION_LABEL_WORDS = ("opinion", "editorial", "commentary", "op-ed", "op/ed", "letter", "column")
+
+# Titles (spaces removed, casefolded) that mark opinion-page items: the title starts with a
+# recurring opinion-page heading, or carries an opinion tag. Built from titles of records
+# that had no section, such as Wall Street Journal editorial-page items.
+OPINION_TITLE_STARTS = (
+    "review&outlook", "letterstotheeditor", "opiniontoday:", "opinion:", "viewpoint:",
+    "notable&quotable", "asides:", "boardofcontributors", "thejournaleditorialreport",
+)  # fmt: skip
+OPINION_TITLE_TAGS = ("(editorial)", "[op-ed", "[editorial", "[letter", "[commentary")
 
 
 def newspaper_family(publication_key: str | None) -> str | None:
@@ -80,9 +94,29 @@ def num(count: int) -> str:
 
 def is_opinion_section(section: str | None) -> bool:
     """Tell whether a section label looks like an opinion or editorial section."""
-    return section is not None and any(w in section.casefold() for w in OPINION_SECTION_WORDS)
+    if section is None:
+        return False
+    squeezed = re.sub(r"\s+", "", section).casefold()
+    return any(w in squeezed for w in OPINION_SECTION_WORDS)
 
 
 def is_opinion_label(label: str) -> bool:
     """Tell whether a document-type label looks like an opinion label."""
-    return any(w in label.casefold() for w in OPINION_LABEL_WORDS)
+    squeezed = re.sub(r"\s+", "", label).casefold()
+    return any(w in squeezed for w in OPINION_LABEL_WORDS)
+
+
+def file_order(source_file: str) -> tuple[str, int]:
+    """Return a sort key for export files: download date, then the numeric suffix."""
+    match = re.search(r"(\d{4}-\d{2}-\d{2})(?:_(\d+))?", source_file)
+    return (match[1], int(match[2] or 0)) if match else ("", 0)
+
+
+def is_opinion_title(title: str | None) -> bool:
+    """Tell whether a title starts with an opinion-page heading or carries an opinion tag."""
+    if title is None:
+        return False
+    squeezed = re.sub(r"\s+", "", title).casefold()
+    return squeezed.startswith(OPINION_TITLE_STARTS) or any(
+        tag in squeezed for tag in OPINION_TITLE_TAGS
+    )
