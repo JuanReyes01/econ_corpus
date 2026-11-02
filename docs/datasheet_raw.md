@@ -42,7 +42,7 @@ The blog label:
 - 99.9% of blog-labelled records are `(Online)` editions, mostly New York Times, Washington Post, Los Angeles Times, Chicago Tribune, Tampa Bay Times.
 - It belongs to the publication edition, not the article or date: per newspaper, all online
   records carry it or none do, in every year (4.1b, last column).
-- 95.2% sit in an opinion or editorial section (4.1c). The content is
+- 95.4% sit in an opinion or editorial section (4.1c). The content is
   news opinion, not casual blog posts.
 
 ## 4. Contents
@@ -191,8 +191,8 @@ Most common first. Why the query returned them: **[TBD]**.
   ids are distinct. 100,661 ids appear in more than one file and
   0 repeat inside a file, which points to overlapping downloads. Kept.
 - **News mixed with opinion:** document type is not a reliable marker.
-  33.1% of records have a non-opinion label but sit in an opinion
-  section; 204,020 (14.8%) have neither an opinion label nor
+  35.7% of records have a non-opinion label but sit in an opinion
+  section; 165,649 (12.0%) have neither an opinion label nor
   an opinion section. All are kept here; selecting opinion pieces belongs to the cleaned dataset.
 - **Authors:** 667,422 records (48.5%) name an author. Unsigned pieces,
   mostly editorials, cannot be linked to a person.
