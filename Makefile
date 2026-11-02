@@ -40,6 +40,12 @@ format:
 
 
 
+## Build the datasheet of the raw table (needs data/interim/records.parquet)
+.PHONY: datasheet
+datasheet:
+	uv run python -m econ_corpus.datasheet
+
+
 ## Run tests
 .PHONY: test
 test:
