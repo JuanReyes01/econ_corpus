@@ -1,0 +1,193 @@
+"""Tests for econ_corpus.exclusions on tiny synthetic tables."""
+
+from datetime import date
+from pathlib import Path
+
+import pyarrow as pa
+import pyarrow.parquet as pq
+
+from econ_corpus import exclusions, summaries
+
+DEFAULTS = {
+    "is_footer": False,
+    "source_file": "ProQuestDocuments-2024-11-22_1.txt",
+    "record_index": 0,
+    "doc_id": 1,
+    "body_sha256": "aaa",
+    "title": "Sample title",
+    "pub_date": date(2020, 1, 2),
+    "publication_key": "newyorktimes,lateedition(eastcoast);newyork,n.y.",
+    "doc_type": "Commentary",
+    "section": "Opinion",
+}
+
+
+def make_rows(*rows: dict) -> dict[str, list]:
+    """Build a dict of columns from row dicts; missing keys take the defaults."""
+    full = [{**DEFAULTS, **row} for row in rows]
+    return {key: [row[key] for row in full] for key in DEFAULTS}
+
+
+def reasons_of(*rows: dict) -> list[str]:
+    return exclusions.assign_reasons(make_rows(*rows))
+
+
+# --- the reasons table -------------------------------------------------------------
+
+
+def test_reason_codes_are_unique_and_end_with_kept() -> None:
+    codes = [r["code"] for r in exclusions.REASONS]
+    assert len(codes) == len(set(codes))
+    assert codes[-1] == "kept"
+
+
+def test_every_reason_has_a_description_and_a_dropped_flag() -> None:
+    assert all(r["description"] for r in exclusions.REASONS)
+    assert all(isinstance(r["dropped"], bool) for r in exclusions.REASONS)
+
+
+def test_only_clear_non_opinion_and_duplicates_are_dropped() -> None:
+    dropped = {r["code"] for r in exclusions.REASONS if r["dropped"]}
+    assert dropped == {
+        "file_footer",
+        "duplicate_id",
+        "duplicate_text",
+        "missing_metadata",
+        "not_opinion",
+    }
+
+
+# --- file order --------------------------------------------------------------------
+
+
+def test_file_order_sorts_by_date_then_numeric_suffix() -> None:
+    names = [
+        "ProQuestDocuments-2024-11-22_128.txt",
+        "ProQuestDocuments-2024-11-22_9.txt",
+        "ProQuestDocuments-2024-11-22.txt",
+        "ProQuestDocuments-2024-11-21_500.txt",
+    ]
+    assert sorted(names, key=summaries.file_order) == [
+        "ProQuestDocuments-2024-11-21_500.txt",
+        "ProQuestDocuments-2024-11-22.txt",
+        "ProQuestDocuments-2024-11-22_9.txt",
+        "ProQuestDocuments-2024-11-22_128.txt",
+    ]
+
+
+# --- one reason per row ------------------------------------------------------------
+
+
+def test_footer_rows_are_not_articles() -> None:
+    assert reasons_of({"is_footer": True, "doc_id": None}) == ["file_footer"]
+
+
+def test_plain_opinion_piece_is_kept() -> None:
+    assert reasons_of({}) == ["kept"]
+
+
+def test_news_label_in_an_opinion_section_is_kept() -> None:
+    assert reasons_of({"doc_type": "NEWSPAPER", "section": "Opinion"}) == ["kept"]
+
+
+def test_opinion_label_in_another_section_is_kept() -> None:
+    assert reasons_of({"doc_type": "Commentary", "section": "Sports"}) == ["kept"]
+
+
+def test_no_opinion_label_and_no_opinion_section_is_not_opinion() -> None:
+    assert reasons_of({"doc_type": "NEWSPAPER", "section": "Sports"}) == ["not_opinion"]
+
+
+def test_no_document_type_and_no_section_is_missing_metadata() -> None:
+    assert reasons_of({"doc_type": None, "section": None}) == ["missing_metadata"]
+
+
+def test_generic_label_and_no_section_is_unclear_not_dropped() -> None:
+    row = {"doc_type": "NEWSPAPER", "section": None, "title": "World News: Vote count"}
+    assert reasons_of(row) == ["unclear_opinion"]
+
+
+def test_editorial_title_rescues_a_record_with_no_section() -> None:
+    row = {"doc_type": "NEWSPAPER", "section": None, "title": "REVIEW & OUTLOOK (Editorial): X"}
+    assert reasons_of(row) == ["kept"]
+
+
+def test_op_ed_tag_in_the_title_keeps_a_record_in_a_news_section() -> None:
+    row = {"doc_type": "News", "section": "A", "title": "What it means:   [Op-Ed ]"}
+    assert reasons_of(row) == ["kept"]
+
+
+# --- duplicates --------------------------------------------------------------------
+
+
+def test_repeated_id_keeps_the_earliest_download_whatever_the_row_order() -> None:
+    later = {"source_file": "ProQuestDocuments-2024-12-01_2.txt"}
+    earlier = {"source_file": "ProQuestDocuments-2024-11-22_9.txt"}
+    assert reasons_of(later, earlier) == ["duplicate_id", "kept"]
+
+
+def test_numeric_file_suffix_decides_the_earliest_copy() -> None:
+    a = {"source_file": "ProQuestDocuments-2024-11-22_128.txt"}
+    b = {"source_file": "ProQuestDocuments-2024-11-22_9.txt"}
+    assert reasons_of(a, b) == ["duplicate_id", "kept"]
+
+
+def test_a_news_article_repeated_is_counted_once_as_news_and_then_as_duplicates() -> None:
+    news = {"doc_type": "NEWSPAPER", "section": "Sports"}
+    second = {**news, "source_file": "ProQuestDocuments-2024-11-23_1.txt"}
+    assert reasons_of(news, second) == ["not_opinion", "duplicate_id"]
+
+
+def test_same_text_title_date_and_newspaper_under_another_id_is_a_duplicate() -> None:
+    first = {"doc_id": 1}
+    second = {"doc_id": 2, "source_file": "ProQuestDocuments-2024-11-23_1.txt"}
+    assert reasons_of(first, second) == ["kept", "duplicate_text"]
+
+
+def test_same_text_with_another_title_is_not_an_obvious_duplicate() -> None:
+    first = {"doc_id": 1}
+    second = {"doc_id": 2, "title": "Another title"}
+    assert reasons_of(first, second) == ["kept", "kept"]
+
+
+def test_same_text_on_another_date_is_not_an_obvious_duplicate() -> None:
+    first = {"doc_id": 1}
+    second = {"doc_id": 2, "pub_date": date(2021, 5, 6)}
+    assert reasons_of(first, second) == ["kept", "kept"]
+
+
+def test_records_without_body_are_never_text_duplicates() -> None:
+    first = {"doc_id": 1, "body_sha256": None}
+    second = {"doc_id": 2, "body_sha256": None}
+    assert reasons_of(first, second) == ["kept", "kept"]
+
+
+# --- counts and files --------------------------------------------------------------
+
+
+def test_reason_counts_add_up_and_list_every_reason() -> None:
+    reasons = ["kept", "kept", "not_opinion", "file_footer"]
+    rows = exclusions.reason_counts(reasons)
+    assert [r[0] for r in rows[1:-1]] == [r["code"] for r in exclusions.REASONS]
+    assert rows[-1] == ["Total", "", "4", "100.0%", ""]
+    counts = {r[0]: r[2] for r in rows[1:-1]}
+    assert counts["kept"] == "2"
+    assert counts["duplicate_id"] == "0"
+    assert rows[0][-1] == "Dropped"
+    assert {r[0]: r[-1] for r in rows[1:-1]}["not_opinion"] == "yes"
+    assert {r[0]: r[-1] for r in rows[1:-1]}["unclear_opinion"] == "no"
+
+
+def test_write_exclusions_keeps_one_row_per_input_row(tmp_path: Path) -> None:
+    rows = make_rows(
+        {},
+        {"doc_id": 2, "doc_type": "NEWSPAPER", "section": "Sports", "body_sha256": "bbb"},
+        {"is_footer": True, "doc_id": None},
+    )
+    source = tmp_path / "records.parquet"
+    pq.write_table(pa.table(rows), source)
+    out = tmp_path / "interim" / "exclusions.parquet"
+    exclusions.write_exclusions(source, out)
+    result = pq.read_table(out).to_pydict()
+    assert result["reason"] == ["kept", "not_opinion", "file_footer"]
+    assert set(result) == {"source_file", "record_index", "reason"}
