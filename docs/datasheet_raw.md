@@ -3,62 +3,53 @@ data and writes docs/datasheet_raw.md. Edit the prose here, never the generated 
 
 # Datasheet: raw table of U.S. newspaper opinion articles (ProQuest)
 
-Draft. Items marked **[TBD]** still need an answer from the data collector.
+Draft. Items marked **[TBD]** are not yet documented.
 
-## 1. What this is
+## 1. Summary
 
-One row per record exported from ProQuest: **1,374,965 records** from **2,801 export
-files**, publication years **1980–2024**. The table is the exports reorganised, not
-cleaned: nothing is dropped, and values that could not be parsed are flagged. It keeps the
-parsed metadata, where each record came from (`source_file`, `record_index`), and a SHA-256 hash,
-word count and character count of the body. The article text itself is ProQuest-licensed and
-is not in the table.
+- **Records:** 1,374,965, from 2,801 export files; publication years 1980–2024.
+- **Unit:** one row per exported record. Nothing is removed; values that cannot be parsed are flagged.
+- **Columns:** parsed metadata, provenance (`source_file`, `record_index`), and a SHA-256 hash,
+  word count and character count of the body. The article text is ProQuest-licensed and is not
+  included.
 
-## 2. Where it comes from
+## 2. Collection
 
 - **Source:** ProQuest US Newsstream, through the Universidad de los Andes library proxy.
-- **When:** exports dated 2024-11-22 to 2025-01-26 (from the file names).
-- **Query (as documented by the collector):** exact publication name for 10 newspapers, AND
-  `noft(opinion OR op-ed OR editorial)`, a search of the full text for those words.
-- **Filters:** document type Commentary, Editorial or News, English, and a date range that
-  resumed from the last download. The collector added the online editions of the newspapers on
-  purpose, because much current opinion is published there. ProQuest labels those editions
-  `Blog, podcast o sitio web`.
-- **How:** 100 results per page, select all, export every 5 pages (500 records) as a `.txt`
-  file. Partly automated; CAPTCHAs solved by hand.
-- **Why these newspapers:** they are among the U.S. newspapers with the highest circulation.
-  The scraper notes also list New York Post, but the library's ProQuest subscription does not
-  provide it (checked by the collector), so it has no records.
+- **Period:** exports dated 2024-11-22 to 2025-01-26.
+- **Newspapers:** 10, selected for having the highest circulation in the
+  U.S. Online editions are included on purpose, since much current opinion is published online.
+  New York Post is not provided by the subscription.
+- **Query:** exact publication name AND `noft(opinion OR op-ed OR editorial)`, a full-text
+  search for those words.
+- **Filters:** document type Commentary, Editorial or News; English; date range resumed from the
+  last download.
+- **How:** 100 results per page, select all, export every 5 pages (500 records) to a `.txt`
+  file. CAPTCHAs solved by hand.
 
-## 3. Did the filters hold?
+## 3. Filter check
 
 | Filter | Result | Evidence |
 |---|---|---|
-| Newspapers | Yes, but 282 publications outside the list also appear. Queried newspapers with no records: none | 4.1, 4.7 |
+| Newspapers | 282 publications outside the list also appear. Queried newspapers with no records: none | 4.1, 4.7 |
 | Source type | Not newspapers only, by design: 421,849 records (30.7%) are online editions that ProQuest labels `Blog, podcast o sitio web` | 4.1, 4.1b, 4.1c |
-| Document type | Labels vary widely (515 distinct). 448,205 records (32.6%) carry none of Commentary, Editorial or News | 4.3 |
-| English | Yes, 99.8% are English only; the rest are bilingual or unlabelled | 4.5 |
-| Dates | Yes, 1980–2024 | 4.2 |
+| Document type | 515 distinct labels; 448,205 records (32.6%) carry none of Commentary, Editorial or News | 4.3 |
+| English | 99.8% English only; the rest bilingual or unlabelled | 4.5 |
+| Dates | 1980–2024 | 4.2 |
 
-What the blog label means here:
+The blog label:
 
-- 99.9% of the blog-labelled records are `(Online)` editions. Most come from
-  New York Times, Washington Post, Los Angeles Times, Chicago Tribune, Tampa Bay Times (columns *Online* and *Blog/podcast/website* in 4.1).
-- The label belongs to the publication edition, not to the article or the date. For each
-  newspaper, either all of its online records carry it or none do, in every year (4.1b, last
-  column). The share changes over time only because online editions start in different years
-  (4.2).
-- They are mostly opinion content, not casual blog posts: 95.2% sit in an
-  opinion or editorial section (4.1c).
-- The source is best read as a database of news opinion pieces, news articles and news
-  organisations' websites, not of newspapers in print only.
+- 99.9% of blog-labelled records are `(Online)` editions, mostly New York Times, Washington Post, Los Angeles Times, Chicago Tribune, Tampa Bay Times.
+- It belongs to the publication edition, not the article or date: per newspaper, all online
+  records carry it or none do, in every year (4.1b, last column).
+- 95.2% sit in an opinion or editorial section (4.1c). The content is
+  news opinion, not casual blog posts.
 
-## 4. What is in it
+## 4. Contents
 
-### 4.1 Newspapers, editions and signed pieces
+### 4.1 Newspapers
 
-Publication labels are grouped by newspaper. *With author* is the share of records with a named
-author.
+*With author*: share of records with a named author.
 
 | Newspaper | Records | Print | Online | Pre-1997 | Blog/podcast/website | With author |
 |---|---|---|---|---|---|---|
@@ -89,7 +80,7 @@ author.
 | USA Today | 20,377 | 2014 | 0.0% | 0 |
 | Tampa Bay Times | 3,088 | 2017 | 100.0% | 0 |
 
-### 4.1c What the blog-labelled records are
+### 4.1c Blog-labelled records by document type
 
 | Document type | Blog-labelled records | Share of blog-labelled |
 |---|---|---|
@@ -102,7 +93,7 @@ author.
 
 ### 4.2 Years
 
-By decade of the publication year. The full yearly table is `reports/tables/raw_by_year.csv`.
+By decade; yearly table in `reports/tables/raw_by_year.csv`.
 
 | Decade | Records | Unique ids | With author |
 |---|---|---|---|
@@ -113,10 +104,14 @@ By decade of the publication year. The full yearly table is `reports/tables/raw_
 | 2020s | 183,087 | 174,958 | 71.4% |
 | Unknown year | 1,753 | 835 | 0.0% |
 
+2014 stands out: 112,098 records but only 39,087 distinct ids.
+Its articles were downloaded repeatedly (69.1% of its ids appear in 3 or
+more files), so the peak is duplication, not more articles.
+
 ### 4.3 Document types and authorship
 
-Top labels as exported. A record with two labels (for example `Commentary, Opinions`) counts
-once under each. Editorials are mostly unsigned; commentary and op-eds are mostly signed.
+A record with two labels counts once under each. Editorials are mostly unsigned; commentary and
+op-eds mostly signed.
 
 | Document type | Records | With author |
 |---|---|---|
@@ -135,8 +130,7 @@ once under each. Editorials are mostly unsigned; commentary and op-eds are mostl
 
 ### 4.4 Sections
 
-Top section labels as exported, grouped ignoring case. Each newspaper names its sections
-differently.
+Top labels, grouped ignoring case. Each newspaper names its sections differently.
 
 | Section | Records | Share |
 |---|---|---|
@@ -174,8 +168,7 @@ differently.
 
 ### 4.7 Publications outside the query
 
-Publications not among the queried newspapers, most common first. Why the query returned
-them: **[TBD]**.
+Most common first. Why the query returned them: **[TBD]**.
 
 | Publication | Records |
 |---|---|
@@ -192,19 +185,18 @@ them: **[TBD]**.
 | Reno Gazette - Journal; Reno, Nev. | 175 |
 | York Daily Record; York, Pa. | 166 |
 
-## 5. Known issues for users
+## 5. Known issues
 
-- **Duplicates:** 145,118 records (10.6%) repeat a ProQuest id already in the
-  table; there are 1,228,965 distinct ids. 100,661 ids appear in more
-  than one file and 0 repeat inside a single file, which points to
-  overlapping download rounds. They are concentrated in the 2010s (4.2). Duplicate rows are kept.
-- **Opinion and news are mixed:** the keyword query matches any article that mentions
-  "opinion" or "editorial", and News is a queried document type. This table is not yet a set of
-  opinion pieces.
+- **Duplicates:** 145,118 records (10.6%) repeat a ProQuest id; 1,228,965
+  ids are distinct. 100,661 ids appear in more than one file and
+  0 repeat inside a file, which points to overlapping downloads. Kept.
+- **News mixed with opinion:** document type is not a reliable marker.
+  33.1% of records have a non-opinion label but sit in an opinion
+  section; 204,020 (14.8%) have neither an opinion label nor
+  an opinion section. All are kept here; selecting opinion pieces belongs to the cleaned dataset.
 - **Authors:** 667,422 records (48.5%) name an author. Unsigned pieces,
   mostly editorials, cannot be linked to a person.
 - **No body text:** 2,500 records, all in 5 files.
 - **Stray spaces:** ProQuest inserts spaces inside metadata values (`En glish`). Values are kept
-  as exported; the `*_key` columns are the space-free versions to use for comparing categories.
-- **Parsing:** rules and evidence are in `docs/decisions.md`; the parser is
-  `econ_corpus/parse.py`.
+  as exported; the `*_key` columns are the space-free versions for comparing categories.
+- **Parsing:** rules and evidence in `docs/decisions.md`; parser in `econ_corpus/parse.py`.
