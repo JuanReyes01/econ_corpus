@@ -9,8 +9,8 @@ Data descriptor, version 1.0 (2026-11-02). Companion to the cleaned dataset deri
 
 The table holds 1,374,965 records exported from ProQuest US Newsstream for ten U.S.
 newspapers with the highest circulation, published 1980–2024. Each record keeps
-its metadata as exported, parsed dates, years and identifiers with explicit quality flags, its
-file of origin, and a hash and word count of the article text. Nothing was removed or corrected,
+every metadata field of the export, the article text, parsed dates, years and identifiers with
+explicit quality flags, its file of origin, and a hash and word count of the text. Nothing was removed or corrected,
 so the table documents the source as delivered, including duplicates, news items and publications
 outside the query. A companion table assigns every record one exclusion reason. This descriptor
 reports how the data were collected and parsed, what they contain, and where they depart from
@@ -38,7 +38,7 @@ kept raw so that other researchers can derive their own samples from it.
 - **Source:** ProQuest US Newsstream, through the Universidad de los Andes library proxy.
 - **Period:** exports dated 2024-11-22 to 2025-01-26.
 - **Newspapers:** 10, selected for having the highest circulation in the
-  U.S. Online editions are included on purpose, since much current opinion is published online.
+  U.S. [1]. Online editions are included on purpose, since much current opinion is published online.
   New York Post is not provided by the subscription.
 - **Query:** exact publication name AND `noft(opinion OR op-ed OR editorial)`, a full-text
   search for those words.
@@ -60,8 +60,11 @@ kept raw so that other researchers can derive their own samples from it.
   stored in the `*_key` columns. The body is never altered.
 - Dates, years and identifiers are parsed with an explicit status (`ok`, `missing`,
   `unparseable`, and `year_only` for dates). No value is silently dropped.
-- Provenance is kept in `source_file` and `record_index`. The article text is replaced by its
-  SHA-256 hash, word count and character count.
+- Every metadata label of the export gets its own column, named in English (section 3.1);
+  fields that are empty in a record stay empty. The header above the text (document link,
+  abstract, links) is kept too.
+- Provenance is kept in `source_file` and `record_index`. The article text is stored as
+  exported, together with its SHA-256 hash, word count and character count.
 
 ### 2.3 Quality control
 
@@ -77,8 +80,11 @@ kept raw so that other researchers can derive their own samples from it.
 
 ### 3.1 Raw table
 
-One row per record, in `data/interim/records.parquet`. The article text is ProQuest-licensed and
-is not included.
+One row per record, as `econ_corpus_raw.csv` (UTF-8, comma-separated) and as the parquet it is
+written from, `data/interim/records.parquet`. The text is ProQuest-licensed and the license
+allows sharing it for internal use only, so the table is distributed among the project's
+researchers and is not published. Spreadsheet programs truncate cells above 32,767 characters;
+read the CSV with a data-analysis library instead.
 
 | Column | Type | Content |
 |---|---|---|
@@ -88,6 +94,13 @@ is not included.
 | `title`, `author`, `publication`, `section` | string | Metadata as exported; multi-line values joined |
 | `language`, `source_type`, `doc_type` | string | Metadata as exported |
 | `year_raw`, `date_raw`, `id_raw` | string | Publication year, publication date and ProQuest id as exported |
+| `subject`, `location`, `people`, `organization`, `business_index_term`, `keyword`, `classification` | string | Indexing fields (labels `Materia`, `Lugar`, `Personas`, `Empresa/organización`, `Término de indexación de negocios`, `Identificador / palabra clave`, `Clasificación`) |
+| `origin_place_date`, `pages`, `page_count`, `first_page`, `issue`, `volume`, `issue_year`, `column_name` | string | Print location fields (`Lugar y fecha de origen`, `Páginas`, `Número de páginas`, `Primera página`, `Número`, `Tomo`, `Año`, `columna`) |
+| `issn`, `eissn`, `coden`, `publisher`, `publication_place`, `publication_country`, `publication_subject`, `publication_history` | string | Publication fields (`ISSN`, `e-ISSN`, `CODEN`, `Editorial`, `Lugar de publicación`, `País de publicación`, `Materia de publicación`, `Historial de publicaciones`); `publication_history` is empty in every record of this export |
+| `document_url`, `url`, `header_url`, `links` | string | Links: `URL del documento`, `URL`, the document link above the text, and `Enlaces` |
+| `abstract` | string | `Resumen`; usually "Ninguno disponible." |
+| `company`, `corporate_author`, `product_name`, `ethnicity`, `clip_duration` | string | Other fields as exported (`Empresa`, `Autor corporativo/institucional`, `Nombre del producto`, `Etnicidad`, `Duración del clip`) |
+| `copyright`, `last_updated`, `database`, `fulltext_availability`, `accession_number`, `milestone_date`, `document_features`, `source_details` | string | Record-keeping fields (`Copyright`, `Última actualización`, `Base de datos`, `Disponibilidad de texto completo`, `Número de acceso`, `Fecha del hito`, `Características del documento`, `Detalles de fuente`) |
 | `pub_year`, `date_year`, `doc_id` | integer | Parsed year, year of the parsed date, and ProQuest id |
 | `pub_date` | date | Parsed publication date; empty if only a year is given |
 | `year_status`, `date_status`, `id_status` | string | `ok`, `missing`, `unparseable`; dates also `year_only` |
@@ -97,6 +110,7 @@ is not included.
 | `has_body` | boolean | Record has body text |
 | `body_words`, `body_chars` | integer | Word and character counts of the body |
 | `body_sha256` | string | SHA-256 hash of the body text |
+| `text` | string | Article text as exported (`Texto completo`); empty if the record has none |
 
 ### 3.2 Companion files
 
@@ -293,13 +307,28 @@ the raw table.
   mostly editorials, cannot be linked to a person.
 - **No body text:** 2,500 records, all in 5 files.
 - **Metadata as exported:** values keep ProQuest's stray spaces; use the `*_key` columns to
-  compare categories. Some fields are recognised but not stored as columns (for example `URL`,
-  `Empresa`, `Historial de publicaciones`).
+  compare categories. Fields that are sparse (for example `url`, `company`,
+  `publication_history`) are kept in case a later stage needs them.
+- **License:** the table contains ProQuest text and is for internal use among the project's
+  researchers only.
 - **Query matches text, not genre:** the keyword search returns any article mentioning
   "opinion" or "editorial", and News is a queried document type.
 
 ## 7. Code availability
 
-The pipeline is in the repository `econ_corpus`: `parse` (exports to table), `exclusions`
-(reasons), `tables`, `figures` and `datasheet` (this document). Every rule and its evidence are
-in `docs/decisions.md`. `make datasheet` regenerates this document from the table.
+The pipeline is in the private repository `econ_corpus` [2]: `parse` (exports to table),
+`export` (table to CSV), `exclusions` (reasons), `tables`, `figures` and `datasheet` (this
+document). Every rule and its evidence are in `docs/decisions.md`. `make datasheet`
+regenerates this document from the table. The repository holds code and documentation only;
+the data are not in it.
+
+## 8. References
+
+[1] Statista, "Largest daily newspapers in the United States in the six months to September
+2023, by average print circulation (in thousands)," Statista, Feb. 19, 2024. Accessed: Nov. 3,
+2026. [Online]. Available:
+https://www.statista.com/statistics/272790/circulation-of-the-biggest-daily-newspapers-in-the-us/
+
+[2] J. C. Reyes, "econ_corpus: build and audit a corpus of U.S. newspaper opinion articles,"
+GitHub repository, 2026. Accessed: Nov. 3, 2026. [Online]. Available:
+https://github.com/JuanReyes01/econ_corpus
