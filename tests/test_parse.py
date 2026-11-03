@@ -268,7 +268,19 @@ def test_write_parquet_streams_files_and_drops_body_text(tmp_path: Path) -> None
 
 
 def test_labels_between_body_and_title_are_metadata_not_body() -> None:
-    extra = {"e-ISSN": "12345678", "columna": "Editorial", "Número de acceso": "99"}
+    extra = {
+        "e-ISSN": "12345678",
+        "columna": "Editorial",
+        "Número de acceso": "99",
+        "Empresa": "Example Corp",
+        "URL": "https://example.test/article",
+        "Historial de publicaciones\u00a0": "Example Daily",
+        "Nombre del producto": "Example product",
+        "Tomo": "12",
+        "Año": "2020",
+        "Etnicidad": "Example",
+        "Duración del clip": "1:00",
+    }
     row = parse_one(make_record(materia="Topic A", extra=extra))
     assert row["title"] == "Sample title"
     assert row["has_materia"] is True

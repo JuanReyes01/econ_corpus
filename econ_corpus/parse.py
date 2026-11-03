@@ -66,7 +66,9 @@ SEEN_LABELS = [
     "País de publicación", "Materia de publicación", "URL del documento", "Copyright",
     "Última actualización", "Base de datos", "Disponibilidad de texto completo", "e-ISSN",
     "columna", "Número de acceso", "Fecha del hito", "Características del documento",
-    "Detalles de fuente", "Número", "Autor corporativo/institucional",
+    "Detalles de fuente", "Número", "Autor corporativo/institucional", "Empresa", "URL",
+    "Historial de publicaciones", "Nombre del producto", "Tomo", "Año", "Etnicidad",
+    "Duración del clip",
 ]  # fmt: skip
 # Columns that also get a `<column>_key` copy used to compare categories.
 KEY_COLUMNS = ["language", "source_type", "doc_type", "publication"]
