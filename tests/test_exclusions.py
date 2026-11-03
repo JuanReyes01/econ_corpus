@@ -50,6 +50,7 @@ def test_only_clear_non_opinion_and_duplicates_are_dropped() -> None:
     dropped = {r["code"] for r in exclusions.REASONS if r["dropped"]}
     assert dropped == {
         "file_footer",
+        "not_queried_newspaper",
         "duplicate_id",
         "duplicate_text",
         "missing_metadata",
@@ -115,6 +116,21 @@ def test_editorial_title_rescues_a_record_with_no_section() -> None:
 def test_op_ed_tag_in_the_title_keeps_a_record_in_a_news_section() -> None:
     row = {"doc_type": "News", "section": "A", "title": "What it means:   [Op-Ed ]"}
     assert reasons_of(row) == ["kept"]
+
+
+def test_publication_outside_the_queried_newspapers_is_dropped() -> None:
+    other = {"publication_key": "washingtonexaminer;washington,d.c."}
+    assert reasons_of(other) == ["not_queried_newspaper"]
+
+
+def test_every_copy_of_a_non_queried_publication_gets_that_reason() -> None:
+    other = {"publication_key": "laopinión;losangeles,calif."}
+    second = {**other, "source_file": "ProQuestDocuments-2024-11-23_1.txt"}
+    assert reasons_of(other, second) == ["not_queried_newspaper", "not_queried_newspaper"]
+
+
+def test_missing_publication_is_not_treated_as_non_queried() -> None:
+    assert reasons_of({"publication_key": None}) == ["kept"]
 
 
 # --- duplicates --------------------------------------------------------------------

@@ -8,8 +8,9 @@ Lives here: the reasons table and the rules that assign a reason. Does not live 
 rows themselves (the raw table is never modified) or the descriptions of the data (datasheet).
 
 Rules are applied in the order of REASONS; the first one that matches decides. Only
-obvious cases are handled: repeated ProQuest ids, identical text with the same title, date
-and newspaper, and records in a news section with no sign of being opinion. A record that
+obvious cases are handled: publications that were not queried, repeated ProQuest ids,
+identical text with the same title, date and newspaper, and records in a news section with no
+sign of being opinion. A record that
 cannot be decided (no section, generic type, no opinion title) is not dropped but flagged
 `unclear_opinion`, to be settled by whoever uses the data. Subtler duplicates come later.
 """
@@ -27,6 +28,11 @@ REASONS = [
     {
         "code": "file_footer",
         "description": "Row is the footer of an export file, not an article",
+        "dropped": True,
+    },
+    {
+        "code": "not_queried_newspaper",
+        "description": "Publication is not one of the queried newspapers",
         "dropped": True,
     },
     {
@@ -107,6 +113,8 @@ def assign_reasons(rows: Articles) -> list[str]:
         text_key = (sha, title, day, summaries.newspaper_family(rows["publication_key"][i]))
         if rows["is_footer"][i]:
             reasons[i] = "file_footer"
+        elif summaries.newspaper_family(rows["publication_key"][i]) == "Other":
+            reasons[i] = "not_queried_newspaper"
         elif doc_id is not None and doc_id in seen_ids:
             reasons[i] = "duplicate_id"
         elif sha and title and day and text_key in seen_text:
