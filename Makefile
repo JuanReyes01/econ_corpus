@@ -52,6 +52,12 @@ exclusions:
 	uv run python -m econ_corpus.exclusions
 
 
+## Write the raw table as a shareable CSV (needs data/interim/records.parquet)
+.PHONY: export
+export:
+	uv run python -m econ_corpus.export
+
+
 ## Run tests
 .PHONY: test
 test:
