@@ -17,7 +17,7 @@ import re
 import pyarrow.compute as pc
 import pyarrow.parquet as pq
 
-from econ_corpus import summaries, tables
+from econ_corpus import figures, summaries, tables
 from econ_corpus.tables import Articles, Table
 
 COLUMNS = [
@@ -164,7 +164,9 @@ def write_csv(rows: Table, path: Path) -> None:
         csv.writer(handle).writerows(rows)
 
 
-def build(parquet: Path, template: Path, out_md: Path, tables_dir: Path) -> None:
+def build(
+    parquet: Path, template: Path, out_md: Path, tables_dir: Path, figures_dir: Path
+) -> None:
     """Read the parquet, fill the template and write the datasheet and the CSV tables."""
     table = pq.read_table(parquet, columns=COLUMNS)
     articles = table.filter(pc.invert(table["is_footer"])).to_pydict()
@@ -179,10 +181,18 @@ def build(parquet: Path, template: Path, out_md: Path, tables_dir: Path) -> None
         "missing": tables.missing_table(articles),
         "other_publications": tables.other_publications_table(articles),
     }
-    values = facts(articles) | {name: tables.md_table(rows) for name, rows in described.items()}
+    footers = {"n_footer_rows": summaries.num(pc.sum(table["is_footer"]).as_py())}
+    values = (
+        facts(articles)
+        | footers
+        | {name: tables.md_table(rows) for name, rows in described.items()}
+    )
     out_md.write_text(fill(template.read_text(encoding="utf-8"), values), encoding="utf-8")
     write_csv(tables.year_table(articles), tables_dir / "raw_by_year.csv")
     write_csv(tables.download_table(articles), tables_dir / "raw_by_download_date.csv")
+    figures_dir.mkdir(parents=True, exist_ok=True)
+    chart = figures.year_chart_svg(tables.year_table(articles))
+    (figures_dir / "records_by_year.svg").write_text(chart, encoding="utf-8")
 
 
 def main() -> None:
@@ -192,6 +202,7 @@ def main() -> None:
         Path("docs/datasheet_raw.template.md"),
         Path("docs/datasheet_raw.md"),
         Path("reports/tables"),
+        Path("reports/figures"),
     )
 
 

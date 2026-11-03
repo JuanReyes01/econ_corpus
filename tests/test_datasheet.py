@@ -6,7 +6,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 
-from econ_corpus import datasheet, summaries, tables
+from econ_corpus import datasheet, parse, summaries, tables
 
 NYT_ONLINE = "newyorktimes(online);newyork"
 NYT_PRINT = "newyorktimes,lateedition(eastcoast);newyork,n.y."
@@ -284,12 +284,16 @@ def test_build_writes_datasheet_and_csv_tables(tmp_path: Path) -> None:
     parquet = tmp_path / "records.parquet"
     pq.write_table(pa.table(merged), parquet)
     template = tmp_path / "template.md"
-    template.write_text("Articles: {{n_articles}}\n\n{{newspapers}}\n", encoding="utf-8")
+    template.write_text(
+        "Articles: {{n_articles}}\nFooters: {{n_footer_rows}}\n\n{{newspapers}}\n",
+        encoding="utf-8",
+    )
     values = tmp_path / "out" / "datasheet.md"
     values.parent.mkdir()
-    datasheet.build(parquet, template, values, tmp_path / "tables")
+    datasheet.build(parquet, template, values, tmp_path / "tables", tmp_path / "figures")
     text = values.read_text(encoding="utf-8")
-    assert text.startswith("Articles: 2\n")
+    assert text.startswith("Articles: 2\nFooters: 1\n")
+    assert (tmp_path / "figures" / "records_by_year.svg").read_text().startswith("<svg")
     assert "| New York Times | 2 |" in text
     assert (tmp_path / "tables" / "raw_by_year.csv").exists()
     assert (tmp_path / "tables" / "raw_by_download_date.csv").exists()
@@ -409,6 +413,14 @@ def test_facts_count_news_labelled_records_by_opinion_signals() -> None:
     assert facts["news_label_opinion_section_pct"] == "25.0%"
     assert facts["no_opinion_signal_n"] == "2"
     assert facts["no_opinion_signal_pct"] == "50.0%"
+
+
+def test_every_table_column_is_documented_in_the_template() -> None:
+    template = (Path(__file__).parents[1] / "docs" / "datasheet_raw.template.md").read_text(
+        encoding="utf-8"
+    )
+    missing = [name for name in parse.SCHEMA.names if f"`{name}`" not in template]
+    assert not missing
 
 
 # --- template ----------------------------------------------------------------------
