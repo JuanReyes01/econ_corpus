@@ -1,9 +1,10 @@
 Reason,Meaning,Records,Share,Dropped
 file_footer,"Row is the footer of an export file, not an article","2,801",0.2%,yes
-duplicate_id,Repeats a ProQuest id seen in an earlier download,"145,118",10.5%,yes
-duplicate_text,"Same body, title, date and newspaper as an earlier record","3,864",0.3%,yes
-missing_metadata,"No document type, no section and no opinion title: cannot be classified","1,696",0.1%,yes
-not_opinion,"A news section, and neither an opinion document type nor an opinion title","128,520",9.3%,yes
-unclear_opinion,"Generic document type, no section and no opinion title: may be opinion","11,635",0.8%,no
-kept,Shows an opinion signal and passes every rule,"1,084,132",78.7%,no
+not_queried_newspaper,Publication is not one of the queried newspapers,"14,132",1.0%,yes
+duplicate_id,Repeats a ProQuest id seen in an earlier download,"143,394",10.4%,yes
+duplicate_text,"Same body, title, date and newspaper as an earlier record","2,908",0.2%,yes
+missing_metadata,"No document type, no section and no opinion title: cannot be classified",885,0.1%,yes
+not_opinion,"A news section, and neither an opinion document type nor an opinion title","125,285",9.1%,yes
+unclear_opinion,"Generic document type, no section and no opinion title: may be opinion","11,153",0.8%,no
+kept,Shows an opinion signal and passes every rule,"1,077,208",78.2%,no
 Total,,"1,377,766",100.0%,
