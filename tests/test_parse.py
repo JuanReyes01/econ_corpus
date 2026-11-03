@@ -255,15 +255,15 @@ def test_sanity_check_fails_without_footer(tmp_path: Path) -> None:
     assert result["ok"] is False
 
 
-def test_write_parquet_streams_files_and_drops_body_text(tmp_path: Path) -> None:
+def test_write_parquet_streams_files_and_keeps_the_text(tmp_path: Path) -> None:
     a = write_file(tmp_path, "a.txt", [make_record()] * 2)
     b = write_file(tmp_path, "b.txt", [make_record(materia="X")])
     out = tmp_path / "out" / "records.parquet"
     checks = parse.write_parquet([a, b], out)
     table = pq.read_table(out)
     assert table.num_rows == 5  # 2 + footer, 1 + footer
-    assert "body" not in table.column_names
     assert {"source_file", "record_index", "body_sha256", "body_words"} <= set(table.column_names)
+    assert table["text"].to_pylist()[0] == "Body line one.\nBody line two."
     assert [c["ok"] for c in checks] == [True, True]
 
 
@@ -285,6 +285,54 @@ def test_labels_between_body_and_title_are_metadata_not_body() -> None:
     assert row["title"] == "Sample title"
     assert row["has_materia"] is True
     assert row["body_words"] == 6
+
+
+# --- every field that exists is kept -----------------------------------------------
+
+
+def test_extra_metadata_labels_get_their_own_column() -> None:
+    extra = {
+        "URL": "https://example.test/article",
+        "Empresa": "Example Corp",
+        "Historial de publicaciones": "Example Daily",
+        "Lugar": "Springfield",
+    }
+    row = parse_one(make_record(materia="Topic A; Topic B", extra=extra))
+    assert row["subject"] == "Topic A; Topic B"
+    assert row["url"] == "https://example.test/article"
+    assert row["company"] == "Example Corp"
+    assert row["publication_history"] == "Example Daily"
+    assert row["location"] == "Springfield"
+
+
+def test_extra_label_missing_from_a_record_is_none() -> None:
+    row = parse_one(make_record())
+    assert row["subject"] is None
+    assert row["url"] is None
+
+
+def test_header_fields_before_the_body_are_kept() -> None:
+    row = parse_one(make_record())
+    assert row["header_url"] == "https://example.test/doc"
+    assert row["abstract"] == "Ninguno disponible."
+    assert row["links"] == "https://example.test/links"
+
+
+def test_text_is_the_body_exactly_as_exported() -> None:
+    body = 'En glish  text,\n\nwith   odd spacing and a "quote".'
+    assert parse_one(make_record(body=body))["text"] == body
+
+
+def test_footer_and_empty_body_have_no_text() -> None:
+    footer = parse_one(parse.split_records(make_file([make_record()]))[-1], index=1)
+    assert footer["text"] is None
+    assert parse_one(make_record(body="   "))["text"] is None
+
+
+def test_every_extra_label_and_the_text_are_in_the_schema() -> None:
+    assert set(parse.EXTRA_LABELS.values()) <= set(parse.SCHEMA.names)
+    assert parse.SCHEMA.names[-1] == "text"
+    assert len(set(parse.SCHEMA.names)) == len(parse.SCHEMA.names)
 
 
 def test_underscore_rule_inside_body_is_reported_not_a_failure(tmp_path: Path) -> None:

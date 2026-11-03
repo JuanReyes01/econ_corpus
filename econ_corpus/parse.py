@@ -1,9 +1,9 @@
 """Stage 1 of the pipeline: turn raw ProQuest .txt exports into one flat table.
 
 Input: the .txt files ProQuest produces, each holding hundreds of records.
-Output: a parquet table with one row per record. Each row has the parsed metadata, the
-provenance (`source_file`, `record_index`) and a hash and word count of the body, never
-the body text itself, so the licensed text is not copied.
+Output: a parquet table with one row per record. Each row has every metadata field that
+the export contains (one column per label), the parsed dates, years and ids, the provenance
+(`source_file`, `record_index`), a hash and word count of the body and the body text itself.
 
 Lives here: splitting files into records, reading fields, normalising metadata values,
 parsing dates, years and ids, the per-file sanity check and the streaming parquet writer.
@@ -56,20 +56,54 @@ KEPT_LABELS = {
     "Tipo de documento": "doc_type",
     "ID del documento de ProQuest": "id_raw",
 }
-# Labels we do not keep but must recognise, otherwise the metadata walk (see
-# `read_metadata`) stops at them and the fields above them are lost into the body.
-# The list was built from the data: the first full run showed which labels were missing.
-SEEN_LABELS = [
-    "Materia", "Lugar", "Personas", "Empresa/organización", "Término de indexación de negocios",
-    "Identificador / palabra clave", "Clasificación", "Lugar y fecha de origen", "Páginas",
-    "Número de páginas", "Primera página", "ISSN", "CODEN", "Editorial", "Lugar de publicación",
-    "País de publicación", "Materia de publicación", "URL del documento", "Copyright",
-    "Última actualización", "Base de datos", "Disponibilidad de texto completo", "e-ISSN",
-    "columna", "Número de acceso", "Fecha del hito", "Características del documento",
-    "Detalles de fuente", "Número", "Autor corporativo/institucional", "Empresa", "URL",
-    "Historial de publicaciones", "Nombre del producto", "Tomo", "Año", "Etnicidad",
-    "Duración del clip",
-]  # fmt: skip
+# The other metadata labels (Spanish label -> column). They are kept as exported, unparsed.
+# They must be recognised, otherwise the metadata walk (see `read_metadata`) stops at them and
+# the fields above them are lost into the body. The list was built from the data: the first
+# full run showed which labels were missing.
+EXTRA_LABELS = {
+    "Materia": "subject",
+    "Lugar": "location",
+    "Personas": "people",
+    "Empresa/organización": "organization",
+    "Término de indexación de negocios": "business_index_term",
+    "Identificador / palabra clave": "keyword",
+    "Clasificación": "classification",
+    "Lugar y fecha de origen": "origin_place_date",
+    "Páginas": "pages",
+    "Número de páginas": "page_count",
+    "Primera página": "first_page",
+    "ISSN": "issn",
+    "CODEN": "coden",
+    "Editorial": "publisher",
+    "Lugar de publicación": "publication_place",
+    "País de publicación": "publication_country",
+    "Materia de publicación": "publication_subject",
+    "URL del documento": "document_url",
+    "Copyright": "copyright",
+    "Última actualización": "last_updated",
+    "Base de datos": "database",
+    "Disponibilidad de texto completo": "fulltext_availability",
+    "e-ISSN": "eissn",
+    "columna": "column_name",
+    "Número de acceso": "accession_number",
+    "Fecha del hito": "milestone_date",
+    "Características del documento": "document_features",
+    "Detalles de fuente": "source_details",
+    "Número": "issue",
+    "Autor corporativo/institucional": "corporate_author",
+    "Empresa": "company",
+    "URL": "url",
+    "Historial de publicaciones": "publication_history",
+    "Nombre del producto": "product_name",
+    "Tomo": "volume",
+    "Año": "issue_year",
+    "Etnicidad": "ethnicity",
+    "Duración del clip": "clip_duration",
+}
+# Fields of the header, before 'Texto completo:': the document link is the first line that
+# starts with http; the others are labelled.
+HEADER_LABELS = {"Resumen": "abstract", "Enlaces": "links"}
+HEADER_URL = "header_url"
 # Columns that also get a `<column>_key` copy used to compare categories.
 KEY_COLUMNS = ["language", "source_type", "doc_type", "publication"]
 
@@ -84,17 +118,19 @@ def compact(value: str) -> str:
 
 
 # Labels are matched through `compact` too, so a stray space in a label does not break it.
-# Kept labels map to their column name, the others to their own Spanish name.
-LABEL_KEYS = {compact(k): v for k, v in KEPT_LABELS.items()} | {compact(k): k for k in SEEN_LABELS}
+LABEL_KEYS = {compact(k): v for k, v in (KEPT_LABELS | EXTRA_LABELS).items()}
+HEADER_KEYS = {compact(k): v for k, v in HEADER_LABELS.items()}
+METADATA_COLS = [*KEPT_LABELS.values(), *EXTRA_LABELS.values()]
 
-STR_COLS = ["source_file", *KEPT_LABELS.values(), *[f"{c}_key" for c in KEY_COLUMNS]]
+STR_COLS = ["source_file", *METADATA_COLS, *HEADER_LABELS.values(), HEADER_URL]
+STR_COLS += [f"{c}_key" for c in KEY_COLUMNS]
 STR_COLS += ["date_status", "year_status", "id_status", "body_sha256"]
 SCHEMA = pa.schema(
     [(c, pa.string()) for c in STR_COLS]
     + [(c, pa.int64()) for c in ("record_index", "pub_year", "date_year", "doc_id")]
     + [(c, pa.int64()) for c in ("n_meta_fields", "body_words", "body_chars")]
     + [(c, pa.bool_()) for c in ("is_footer", "has_materia", "has_body")]
-    + [("pub_date", pa.date32())]
+    + [("pub_date", pa.date32()), ("text", pa.string())]
 )
 
 
@@ -172,11 +208,27 @@ def read_metadata(lines: list[str], floor: int) -> tuple[dict[str, str], int]:
         key = LABEL_KEYS.get(compact(m[1])) if m else None
         if key is None:
             break
-        # Lines under the label without a blank line between them continue its value.
-        parts = [m[2], *lines[start + 1 : end]]
-        fields[key] = " ".join(p.strip() for p in parts if p.strip())
+        fields[key] = _value(m[2], lines[start + 1 : end])
         meta_start = start
     return fields, meta_start
+
+
+def _value(first: str, rest: list[str]) -> str:
+    """Join a label's value; lines under the label without a blank line continue it."""
+    return " ".join(p.strip() for p in [first, *rest] if p.strip())
+
+
+def read_header(lines: list[str]) -> dict[str, str]:
+    """Read the header lines above 'Texto completo:': the document link, abstract and links."""
+    fields: dict[str, str] = {}
+    for start, end in _blocks(lines, 0):
+        m = LABEL_RE.match(lines[start])
+        key = HEADER_KEYS.get(compact(m[1])) if m else None
+        if key:
+            fields[key] = _value(m[2], lines[start + 1 : end])
+        elif lines[start].startswith("http"):
+            fields.setdefault(HEADER_URL, _value(lines[start], lines[start + 1 : end]))
+    return fields
 
 
 def empty_row(source_file: str, record_index: int, *, is_footer: bool) -> dict:
@@ -203,17 +255,19 @@ def parse_record(chunk: str, source_file: str, record_index: int) -> dict:
         # The body starts on the 'Texto completo:' line and ends where the metadata begins.
         first = lines[body_at][len(BODY_LABEL) :]
         body = "\n".join([first, *lines[body_at + 1 : meta_start]]).strip()
-    for col in KEPT_LABELS.values():
-        row[col] = fields.get(col) or None
+    header = read_header(lines[:body_at]) if body_at is not None else {}
+    for col in (*METADATA_COLS, *HEADER_LABELS.values(), HEADER_URL):
+        row[col] = fields.get(col) or header.get(col) or None
     for col in KEY_COLUMNS:
         row[f"{col}_key"] = compact(row[col]) if row[col] else None
     row["pub_date"], row["date_year"], row["date_status"] = parse_date(row["date_raw"])
     row["pub_year"], row["year_status"] = parse_int(row["year_raw"], 1500, 2100)
     row["doc_id"], row["id_status"] = parse_int(row["id_raw"])
-    row |= {"has_materia": "Materia" in fields, "n_meta_fields": len(fields)}
+    row |= {"has_materia": "subject" in fields, "n_meta_fields": len(fields)}
     if body:
         row |= {"has_body": True, "body_words": len(body.split()), "body_chars": len(body)}
         row["body_sha256"] = hashlib.sha256(body.encode("utf-8")).hexdigest()
+        row["text"] = body
     return row
 
 
@@ -269,7 +323,7 @@ def write_parquet(paths: list[Path], out: Path) -> list[dict]:
     out = Path(out)
     out.parent.mkdir(parents=True, exist_ok=True)
     checks = []
-    with pq.ParquetWriter(out, SCHEMA) as writer:
+    with pq.ParquetWriter(out, SCHEMA, compression="zstd") as writer:
         for path in paths:
             text, name = read_text(path), Path(path).name
             writer.write_table(pa.Table.from_pylist(parse_text(text, name), schema=SCHEMA))
