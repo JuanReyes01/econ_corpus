@@ -1288,3 +1288,53 @@ def test_a_credit_is_read_by_the_rules_and_says_how() -> None:
         (Name("Richard", "Roe", ""), "as_written")
     ]
     assert bylines.read_byline("Roe, Richard", {}) == bylines.read_byline("Roe, Richard", CREDITS)
+
+
+# --- compilers ---------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "byline",
+    [
+        "Compiled by Jane Doe",
+        "COMPILED BY JANE DOE",
+        "Compiled Jane Doe",
+        "Compiled by Jane Doe. jane@example.com",
+        "Compiled by Jane Doe, who can be reached at jane@example.com",
+        "This page is compiled by Jane Doe, assistant editor",
+        "In Other Words was compiled by Jane Doe",
+        "Jane Doe compiled this report",
+        "Compiled for The Times by Jane Doe",
+        "Compiled by Jane Doe and Richard Roe",
+        "Compiled by Jane Doe, with contributions from Richard Roe",
+        "COMPILED FROM NEWS DISPATCHES",
+    ],
+)
+def test_whoever_compiled_a_piece_is_not_its_author(byline: str) -> None:
+    assert bylines.people(byline) == []
+    assert parts.is_note(byline)
+
+
+def test_the_author_next_to_a_compiler_is_still_read() -> None:
+    assert names_of("Doe, Jane; Compiled by Richard Roe") == ["Jane Doe"]
+    assert names_of("Compiled by Richard Roe; Doe, Jane") == ["Jane Doe"]
+
+
+def test_a_name_that_only_looks_like_the_word_is_a_name() -> None:
+    assert names_of("Compilet, Jane") == ["Jane Compilet"]
+
+
+@pytest.mark.parametrize(
+    "byline",
+    [
+        "Jane Doe and compiled by Richard Roe",
+        "By Jane Doe. Compiled by Richard Roe",
+        "Jane Doe, with data compiled by Richard Roe",
+        "Jane Doe is a professor who compiled the index",
+        "Jane Doe. She compiled the survey",
+        "Jane Doe was an aide to Presidents Poe and compiled; Roe, Richard",
+    ],
+)
+def test_the_word_compiled_after_an_author_does_not_remove_the_author(byline: str) -> None:
+    assert [authors.display(name) for name in bylines.people(byline)] == ["Jane Doe"]
+    assert not parts.is_note(byline)

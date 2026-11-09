@@ -41,7 +41,14 @@ ABSENT_RE = re.compile(
     r"|on (?:an? )?(?:\w+ )?(?:v ?acation|leave|tour|assignment|sabbatical|holiday))",
     re.IGNORECASE,
 )
-CREDIT_RE = re.compile(r"\bcontributed (?:reporting|research)\b", re.IGNORECASE)
+# Work on a piece that is not writing it: 'contributed reporting', and the line that says who
+# compiled it ('Compiled by Jane Doe', 'This page is compiled by ...', 'Jane Doe compiled
+# this report'). 'compiled' further on in a part is a word of a sentence about its author.
+CREDIT_RE = re.compile(
+    r"\bcontributed (?:reporting|research)\b"
+    r"|^\s*compiled\b|\b(?:is|was|are|were) compiled by\b|\bcompiled this\b",
+    re.IGNORECASE,
+)
 # A period glued to the word after it ('Jane Q.Doe', "Jane Q.O'Doe", 'Jane Doe.These are'),
 # but not the periods between initials ('J.Q.', 'M.D').
 PERIOD_GLUED_RE = re.compile(r"(?<=[^\W\d_]\.)(?=[^\W\d_](?:[^\W\d_]|['\u2019]))")
@@ -99,7 +106,8 @@ def is_note(part: str) -> bool:
     """Tell whether a part says that the people it names did not write this article.
 
     'Jane Doe is on vacation.' is printed under another columnist's article; so are
-    'Jane Doe and Ann Roe are on vacation.' and a credit for reporting or research.
+    'Jane Doe and Ann Roe are on vacation.', a credit for reporting or research, and the
+    line that says who compiled a piece (a page of quotes, of jokes, of letters).
     """
     *before, last = JOINER_RE.split(part)
     words, rest = _leading(last)
