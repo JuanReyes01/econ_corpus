@@ -372,3 +372,15 @@ def test_parse_folder_reads_the_files_in_name_order_and_checks_each(tmp_path: Pa
 def test_parse_folder_refuses_a_folder_without_exports(tmp_path: Path) -> None:
     with pytest.raises(FileNotFoundError):
         parse.parse_folder(tmp_path, tmp_path / "records.parquet")
+
+
+def test_parse_folder_writes_nothing_when_a_file_fails_the_check(tmp_path: Path) -> None:
+    raw = tmp_path / "raw"
+    raw.mkdir()
+    write_file(raw, "a.txt", [make_record()])
+    write_file(raw, "b.txt", [make_record()], footer=False)
+    out = tmp_path / "records.parquet"
+    with pytest.raises(ValueError, match=r"b\.txt"):
+        parse.parse_folder(raw, out)
+    assert not out.exists()
+    assert list(tmp_path.glob("*.tmp")) == []

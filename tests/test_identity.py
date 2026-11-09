@@ -224,3 +224,14 @@ def test_a_name_seen_with_given_and_family_swapped_is_a_candidate() -> None:
     assert lookalikes.candidates(names, identity.resolve(names)) == [
         ("hockdoelee", "leehockdoe", "swapped_names")
     ]
+
+
+def test_an_initial_and_a_first_name_it_starts_are_candidates() -> None:
+    names = seen(("Doe, J", {A}, 3), ("Doe, Jane", {A}, 5), ("Roe, Ann", {A}, 5))
+    pairs = lookalikes.candidates(names, identity.resolve(names))
+    assert pairs == [("janedoe", "jdoe", "nickname")]
+
+
+def test_an_initial_before_a_full_given_name_is_not_a_short_form() -> None:
+    names = seen(("Doe, J Brad", {A}, 3), ("Doe, Jane", {A}, 5))
+    assert lookalikes.candidates(names, identity.resolve(names)) == []

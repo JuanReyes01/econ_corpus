@@ -1,4 +1,4 @@
-"""Stage 8 of the pipeline: describe the cleaned dataset and write its datasheet.
+"""Step 6 of the pipeline: describe the cleaned dataset and write its datasheet.
 
 Input: the cleaned tables written by `processed`, the reasons written by `exclusions`, the
 manual-review files and a prose template with {{placeholders}}.
@@ -19,7 +19,7 @@ import sys
 import pyarrow as pa
 import pyarrow.csv as pacsv
 
-from econ_corpus import clean_tables, datasheet, figures, review, summaries, tables
+from econ_corpus import clean_tables, datasheet, figures, manifest, review, summaries, tables
 from econ_corpus.reasons import LEFT_OUT, REASONS, load
 
 Rows = list[dict[str, str]]
@@ -130,11 +130,12 @@ def _rows(path: Path) -> Rows:
 def read_inputs(clean: Path, records: Path, reasons_file: Path, review_dir: Path) -> Inputs:
     """Read the cleaned tables, the reasons and the review files.
 
-    The three must belong together: the reasons are matched to the records by key, they must
-    have been computed with these review files, and they must keep as many articles as the
-    cleaned table holds. Otherwise the datasheet would mix two states of the pipeline.
+    The three must belong together: the reasons must have been computed from these records
+    and with these review files, and the cleaned tables must have been built from both.
+    Otherwise the datasheet would mix two states of the pipeline.
     """
     review.same_review(reasons_file, review.load_parts(review_dir / review.PARTS_FILE))
+    manifest.check(clean, reasons_file, review_dir)
     codes = load(records, reasons_file).to_pylist()
     columns = ["newspaper", "edition", "pub_year"]
     art = pacsv.read_csv(
@@ -144,9 +145,6 @@ def read_inputs(clean: Path, records: Path, reasons_file: Path, review_dir: Path
             include_columns=columns, column_types={"pub_year": pa.int64()}
         ),
     ).to_pydict()
-    if codes.count("kept") != len(art["newspaper"]):
-        msg = "the cleaned tables do not match the reasons: run processed again"
-        raise ValueError(msg)
     return Inputs(
         authors=_rows(clean / "authors.csv"),
         names=_rows(clean / "author_names.csv"),
@@ -192,7 +190,7 @@ def main() -> None:
         Path("data/processed/clean"),
         Path("data/interim/records.parquet"),
         Path("data/interim/exclusions.parquet"),
-        Path("data/review"),
+        review.folder(Path("data/review")),
         template=Path("docs/datasheet_clean.template.md"),
         out_md=Path("docs/datasheet_clean.md"),
         tables_dir=Path("reports/tables"),

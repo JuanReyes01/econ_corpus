@@ -1,4 +1,4 @@
-"""Stage 1 of the pipeline: turn raw ProQuest .txt exports into one flat table.
+"""Step 1 of the pipeline: turn raw ProQuest .txt exports into one flat table.
 
 Input: the .txt files ProQuest produces, each holding hundreds of records.
 Output: a parquet table with one row per record. Each row has every metadata field that
@@ -7,7 +7,7 @@ the export contains (one column per label), the parsed dates, years and ids, the
 
 Lives here: splitting files into records, reading fields, normalising metadata values,
 parsing dates, years and ids, the per-file sanity check and the streaming parquet writer.
-Does not live here: deciding which records to keep (exclusions) or measuring quality (audit).
+Does not live here: deciding which records to keep (exclusions) or describing them (datasheet).
 
 Nothing is dropped silently. A value that cannot be parsed stays in the table with a
 status column ('missing', 'unparseable', ...) so later stages can count it.
@@ -330,22 +330,33 @@ def write_parquet(paths: list[Path], out: Path) -> list[dict]:
 
 
 def parse_folder(raw_dir: Path, out: Path) -> list[dict]:
-    """Parse every .txt export of a folder, in file-name order; return the sanity checks."""
+    """Parse every .txt export of a folder, in file-name order; return the sanity checks.
+
+    The table is written under another name and takes its place only if every file passes
+    its check, so a parse that fails never replaces a good table.
+    """
     paths = sorted(Path(raw_dir).glob("*.txt"))
     if not paths:
         msg = f"no .txt exports in {raw_dir}"
         raise FileNotFoundError(msg)
-    return write_parquet(paths, out)
+    partial = out.with_name(out.name + ".tmp")
+    try:
+        checks = write_parquet(paths, partial)
+        failed = [c["source_file"] for c in checks if not c["ok"]]
+        if failed:
+            msg = "files that failed the sanity check: " + ", ".join(failed)
+            raise ValueError(msg)
+        partial.replace(out)
+    finally:
+        partial.unlink(missing_ok=True)
+    return checks
 
 
 def main() -> None:
     """Parse the folder given on the command line into the repo's default table."""
     checks = parse_folder(Path(sys.argv[1]), Path("data/interim/records.parquet"))
-    failed = [c["source_file"] for c in checks if not c["ok"]]
     records = sum(c["records"] for c in checks)
-    print(f"{len(checks):,} files, {records:,} records, {len(failed)} failed the check")  # noqa: T201
-    if failed:
-        sys.exit("files that failed the sanity check: " + ", ".join(failed))
+    print(f"{len(checks):,} files, {records:,} records, every file passed the check")  # noqa: T201
 
 
 if __name__ == "__main__":

@@ -1,19 +1,23 @@
 """The reasons table: why a row of the parsed table is left out, as data.
 
-Input: none for the table itself; `load` reads the reasons file and the keys of a records file.
+Input: none for the table itself; `write_reasons` and `load` take the records a reason was
+decided from.
 Output: `REASONS`, one entry per reason, and `LEFT_OUT`, the codes of rows that are not part of
-the shared raw table. `load` reads the reasons written by `exclusions` for a records file.
+the shared raw table; a reasons file tied to its records, and its reasons read back.
 
-Lives here: the codes, their meaning and the two flags. Does not live here: the rules that
-assign a reason (exclusions) or what is done with the flags (export, datasheet).
+Lives here: the codes, their meaning, the two flags, and the file that holds one reason per
+row. Does not live here: the rules that assign a reason (exclusions) or what is done with the
+flags (export, datasheet).
 
 `in_raw` says whether a row belongs to the shared raw table (footers and repeats do not);
 `dropped` says whether it leaves the cleaned dataset. Each row gets exactly one reason.
 """
 
+import hashlib
 from pathlib import Path
 
 import pyarrow as pa
+import pyarrow.csv as pacsv
 import pyarrow.parquet as pq
 
 # The reasons table: code and meaning, in the order the rules are applied.
@@ -62,7 +66,7 @@ REASONS = [
     },
     {
         "code": "no_text",
-        "description": "Opinion piece with no body text, or a placeholder shared by many records",
+        "description": "Opinion piece with no text, or only a notice shared by several articles",
         "in_raw": True,
         "dropped": True,
     },
@@ -89,16 +93,64 @@ REASONS = [
 LEFT_OUT = [r["code"] for r in REASONS if not r["in_raw"]]
 
 KEYS = ["source_file", "record_index"]
+# The columns a reason is decided from: a change in any of them makes the reasons stale.
+INPUTS = [
+    *KEYS, "is_footer", "doc_id", "body_sha256", "title", "pub_date", "publication_key",
+    "doc_type", "section", "body_chars", "body_words", "author",
+]  # fmt: skip
+RECORDS_STAMP = "records"  # metadata key of the reasons file that holds their fingerprint
+
+
+def fingerprint(table: pa.Table) -> str:
+    """Return a short code that changes whenever a value of the table changes.
+
+    The rows are hashed as CSV text, so the code does not depend on how the file was written.
+    """
+    digest = hashlib.sha256(",".join(table.column_names).encode())
+    options = pacsv.WriteOptions(include_header=False)
+    for batch in table.to_batches():
+        sink = pa.BufferOutputStream()
+        pacsv.write_csv(batch, sink, options)
+        digest.update(sink.getvalue())
+    return digest.hexdigest()[:16]
+
+
+def write_reasons(
+    rows: pa.Table,
+    codes: list[str],
+    out: Path,
+    stamps: dict[str, str] | None = None,
+    row_group_size: int | None = None,
+) -> None:
+    """Write one reason per row of the records, next to its keys.
+
+    The file carries a fingerprint of the columns the reasons were decided from, plus the
+    stamps of the caller, so `load` can refuse it once the records change.
+    """
+    rows = rows.select(INPUTS)
+    table = pa.table({**{key: rows[key] for key in KEYS}, "reason": codes})
+    stamps = {**(stamps or {}), RECORDS_STAMP: fingerprint(rows)}
+    out.parent.mkdir(parents=True, exist_ok=True)
+    pq.write_table(table.replace_schema_metadata(stamps), out, row_group_size=row_group_size)
 
 
 def load(records: Path, reasons: Path) -> pa.ChunkedArray:
     """Return the reason of every row of `records`, in order.
 
-    The reasons file must hold the same rows in the same order; one written for another parse
-    would put the reasons on the wrong records, so it is refused.
+    The reasons file must hold the same rows in the same order and must have been computed
+    from these records: one written for another parse would put the reasons on the wrong
+    records, or keep reasons that no longer follow from the data, so it is refused.
     """
     table = pq.read_table(reasons, columns=[*KEYS, "reason"])
-    if not table.select(KEYS).equals(pq.read_table(records, columns=KEYS)):
+    rows = pq.read_table(records, columns=INPUTS)
+    if not table.select(KEYS).equals(rows.select(KEYS)):
         msg = f"the rows of {reasons.name} and {records.name} differ: run the exclusions again"
+        raise ValueError(msg)
+    stored = (pq.read_schema(reasons).metadata or {}).get(RECORDS_STAMP.encode(), b"").decode()
+    if stored != fingerprint(rows):
+        msg = (
+            f"{records.name} changed since {reasons.name} was computed (another parse): "
+            "run the exclusions again"
+        )
         raise ValueError(msg)
     return table["reason"]

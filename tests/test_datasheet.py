@@ -7,6 +7,7 @@ import pyarrow.parquet as pq
 import pytest
 
 from econ_corpus import datasheet, parse, summaries, tables
+from econ_corpus.reasons import write_reasons
 
 NYT_ONLINE = "newyorktimes(online);newyork"
 NYT_PRINT = "newyorktimes,lateedition(eastcoast);newyork,n.y."
@@ -77,6 +78,7 @@ def test_edition(key: str, expected: str) -> None:
         "Perspective",
         "Commentary",
         "EDITORIAL-OPINION",
+        "EPg",  # the editorial page of the Boston Globe before 1997
     ],
 )
 def test_opinion_sections_are_recognised_despite_spacing_and_wording(section: str) -> None:
@@ -251,10 +253,12 @@ def test_year_table_has_one_row_per_year() -> None:
     assert [r[:2] for r in rows[1:]] == [["2001", "2"], ["2003", "1"]]
 
 
-def test_section_table_groups_ignoring_case() -> None:
-    articles = make_articles({"section": "Opinion"}, {"section": "OPINION"}, {"section": None})
+def test_section_table_groups_spellings_of_one_label() -> None:
+    articles = make_articles(
+        {"section": "Opinion"}, {"section": "OPINION"}, {"section": "Opin ion"}, {"section": None}
+    )
     rows = tables.section_table(articles)
-    assert rows[1] == ["opinion", "2", "66.7%"]
+    assert rows[1:] == [["Opinion", "3", "75.0%"]]
 
 
 def test_missing_table_counts_each_field() -> None:
@@ -305,6 +309,9 @@ def test_build_describes_the_shared_table_and_counts_what_was_removed(tmp_path: 
         {"doc_id": 3},
     )
     columns = {**articles, "is_footer": [False] * 4, "record_index": [0, 1, 2, 3]}
+    # The other columns a reason is decided from, which the reasons file is tied to.
+    columns |= {"body_sha256": ["aaa"] * 4, "pub_date": ["2001-01-02"] * 4}
+    columns |= {"body_chars": [100] * 4, "body_words": [20] * 4}
     footer = {k: [None] for k in columns} | {"is_footer": [True], "record_index": [4]}
     merged = {k: columns[k] + footer[k] for k in columns}
     parquet = tmp_path / "records.parquet"
@@ -312,7 +319,7 @@ def test_build_describes_the_shared_table_and_counts_what_was_removed(tmp_path: 
     reasons = tmp_path / "exclusions.parquet"
     codes = ["kept", "duplicate_id", "kept", "duplicate_text", "file_footer"]
     keys = {"source_file": merged["source_file"], "record_index": merged["record_index"]}
-    pq.write_table(pa.table({**keys, "reason": codes}), reasons)
+    write_reasons(pq.read_table(parquet), codes, reasons)
     other = tmp_path / "other.parquet"
     pq.write_table(pa.table({**keys, "record_index": [9, 8, 7, 6, 5], "reason": codes}), other)
     with pytest.raises(ValueError, match="rows"):
@@ -386,6 +393,28 @@ def test_document_type_labels_are_counted_one_by_one_without_stray_spaces() -> N
     facts = datasheet.facts(articles)
     assert facts["n_doc_type_labels"] == "2"
     assert facts["n_outside_doc_types"] == "0"
+
+
+def test_file_order_reads_both_ways_of_numbering_downloads() -> None:
+    names = [
+        "ProQuestDocuments-2024-12-11 (2).txt",
+        "ProQuestDocuments-2024-12-11.txt",
+        "ProQuestDocuments-2024-12-11 (1).txt",
+        "ProQuestDocuments-2024-12-11_3.txt",
+    ]
+    assert sorted(names, key=summaries.file_order) == [
+        "ProQuestDocuments-2024-12-11.txt",
+        "ProQuestDocuments-2024-12-11 (1).txt",
+        "ProQuestDocuments-2024-12-11 (2).txt",
+        "ProQuestDocuments-2024-12-11_3.txt",
+    ]
+
+
+def test_document_type_table_groups_spellings_of_one_label() -> None:
+    articles = make_articles(
+        {"doc_type": "News"}, {"doc_type": "New s"}, {"doc_type": "NEWS"}, {"doc_type": "News"}
+    )
+    assert tables.doc_type_table(articles)[1:] == [["News", "4", "100.0%"]]
 
 
 def test_newsday_of_another_country_is_not_the_queried_newsday() -> None:

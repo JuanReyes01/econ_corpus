@@ -1,11 +1,12 @@
-"""Stage 2 of the pipeline: describe the raw table and write its datasheet.
+"""Step 3b of the pipeline: describe the raw table and write its datasheet.
 
 Input: the parquet written by `parse`, the reasons written by `exclusions` and a prose
 template with {{placeholders}}.
 Output: a markdown datasheet whose numbers all come from the data, plus yearly and
 per-download tables as CSV, so every figure in the text can be reproduced.
 
-The shared raw table leaves out footers and repeated ids, so the tables describe that table;
+The shared raw table leaves out footers, repeated ids and repeated text, so the tables describe
+that table;
 the repeats, the yearly counts and the download dates describe the table as parsed.
 
 Lives here: the headline numbers, the template filling and the file writing. Does not

@@ -5,8 +5,9 @@ from pathlib import Path
 
 import pyarrow as pa
 import pyarrow.parquet as pq
+import pytest
 
-from econ_corpus import exclusions, review, summaries
+from econ_corpus import exclusions, reasons, review, summaries
 
 DEFAULTS = {
     "is_footer": False,
@@ -15,6 +16,7 @@ DEFAULTS = {
     "doc_id": 1,
     "body_sha256": "aaa",
     "body_chars": 100,
+    "body_words": 500,
     "author": "Doe, Jane",
     "title": "Sample title",
     "pub_date": date(2020, 1, 2),
@@ -274,24 +276,6 @@ def test_stray_spaces_and_case_in_the_title_do_not_hide_a_repeated_text() -> Non
     assert reasons_of(first, second) == ["kept", "duplicate_text"]
 
 
-def copies_of_one_body(n: int) -> list[dict]:
-    """Build n different articles that all carry the same body, as a placeholder would."""
-    return [{"doc_id": i, "title": f"Title {i}", "body_sha256": "ppp"} for i in range(1, n + 1)]
-
-
-def test_a_body_shared_by_many_different_articles_is_a_placeholder_not_text() -> None:
-    assert reasons_of(*copies_of_one_body(exclusions.PLACEHOLDER_MIN)) == (
-        ["no_text"] * exclusions.PLACEHOLDER_MIN
-    )
-    few = exclusions.PLACEHOLDER_MIN - 1
-    assert reasons_of(*copies_of_one_body(few)) == ["kept"] * few
-
-
-def test_copies_of_one_id_do_not_make_a_body_a_placeholder() -> None:
-    rows = [{"doc_id": 1, "record_index": i} for i in range(exclusions.PLACEHOLDER_MIN + 5)]
-    assert reasons_of(*rows).count("kept") == 1
-
-
 def test_same_text_with_another_title_is_not_an_obvious_duplicate() -> None:
     first = {"doc_id": 1}
     second = {"doc_id": 2, "title": "Another title"}
@@ -346,3 +330,49 @@ def test_write_exclusions_keeps_one_row_per_input_row(tmp_path: Path) -> None:
     exclusions.write_exclusions(source, out, {"Doe Roe, Ann": "Doe, Ann"})
     assert pq.read_schema(out).metadata[b"byline_parts"].decode() != stamp
     assert set(result) == {"source_file", "record_index", "reason"}
+
+
+def test_reasons_are_refused_for_records_that_changed_since_they_were_computed(
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "records.parquet"
+    pq.write_table(pa.table(make_rows({}, {"doc_id": 2, "body_sha256": "bbb"})), source)
+    out = tmp_path / "exclusions.parquet"
+    exclusions.write_exclusions(source, out)
+    assert reasons.load(source, out).to_pylist() == ["kept", "kept"]
+    # A new parse gives the same files and positions but another byline.
+    pq.write_table(
+        pa.table(make_rows({}, {"doc_id": 2, "body_sha256": "bbb", "author": None})), source
+    )
+    with pytest.raises(ValueError, match="parse"):
+        reasons.load(source, out)
+
+
+def test_a_short_body_under_many_titles_is_a_placeholder_however_few_rows() -> None:
+    rows = [
+        {"doc_id": i, "title": f"Title {i}", "body_sha256": "ppp", "body_words": 12}
+        for i in range(1, exclusions.PLACEHOLDER_ARTICLES + 1)
+    ]
+    assert reasons_of(*rows) == ["no_text"] * exclusions.PLACEHOLDER_ARTICLES
+    assert reasons_of(*rows[:-1]) == ["kept"] * (exclusions.PLACEHOLDER_ARTICLES - 1)
+
+
+def test_a_long_body_under_many_titles_is_text() -> None:
+    rows = [
+        {"doc_id": i, "title": f"Part {i}", "body_sha256": "lll", "body_words": 6000}
+        for i in range(1, 30)
+    ]
+    assert reasons_of(*rows) == ["kept"] * 29
+
+
+def test_copies_of_one_article_do_not_make_its_body_a_placeholder() -> None:
+    rows = [{"doc_id": i, "body_sha256": "sss", "body_words": 40} for i in range(1, 30)]
+    assert reasons_of(*rows) == ["kept", *["duplicate_text"] * 28]
+
+
+def test_a_short_body_printed_on_many_days_under_one_title_is_a_placeholder() -> None:
+    rows = [
+        {"doc_id": i, "pub_date": date(2020, 1, i), "body_sha256": "ccc", "body_words": 11}
+        for i in range(1, exclusions.PLACEHOLDER_ARTICLES + 1)
+    ]
+    assert reasons_of(*rows) == ["no_text"] * exclusions.PLACEHOLDER_ARTICLES

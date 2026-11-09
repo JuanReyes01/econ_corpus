@@ -29,6 +29,22 @@ VERDICTS = set(CAUTION)
 Decisions = dict[tuple[str, str], str]
 
 
+def folder(path: Path) -> Path:
+    """Return the folder of the review files, refusing one that does not exist.
+
+    The review files are not in the repository, so a missing folder is a copy of the project
+    without them, not a review with no decisions: running on would silently undo the review.
+    An empty folder is the way to say that there is no review.
+    """
+    if not path.is_dir():
+        msg = (
+            f"the review folder {path} does not exist: restore the review files into it "
+            "(README.md says where they are kept) or create it empty to run with no review"
+        )
+        raise FileNotFoundError(msg)
+    return path
+
+
 def _rows(path: Path) -> list[dict[str, str]]:
     if not path.exists():
         return []
@@ -127,9 +143,9 @@ def outcome_counts(parts: list[dict[str, str]], pairs: list[dict[str, str]]) -> 
     }
 
 
-def fingerprint(corrections: dict[str, str]) -> str:
-    """Return a short code that changes whenever a correction is added, removed or edited."""
-    return hashlib.sha256(json.dumps(sorted(corrections.items())).encode()).hexdigest()[:16]
+def fingerprint(decisions: dict) -> str:
+    """Return a short code that changes whenever a decision is added, removed or edited."""
+    return hashlib.sha256(json.dumps(sorted(decisions.items())).encode()).hexdigest()[:16]
 
 
 def same_review(reasons_file: Path, corrections: dict[str, str]) -> None:

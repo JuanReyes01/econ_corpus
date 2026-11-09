@@ -5,8 +5,10 @@ from pathlib import Path
 
 import pyarrow as pa
 import pyarrow.parquet as pq
+import pytest
 
 from econ_corpus import parse, processed, review, review_cases
+from econ_corpus.reasons import write_reasons
 
 HEADER = ["author_id_a", "name_a", "articles_a", "author_id_b", "name_b", "articles_b", "kind"]
 
@@ -102,9 +104,8 @@ def test_build_writes_every_kind_of_case_with_its_evidence(tmp_path: Path) -> No
         rows.append(row)
     records, reasons = tmp_path / "records.parquet", tmp_path / "exclusions.parquet"
     pq.write_table(pa.Table.from_pylist(rows, schema=parse.SCHEMA), records)
-    keys = {"source_file": ["a.txt"] * 8, "record_index": list(range(8))}
     codes = ["kept"] * 6 + ["no_person_author", "file_footer"]
-    pq.write_table(pa.table({**keys, "reason": codes}), reasons)
+    write_reasons(pq.read_table(records), codes, reasons)
     clean, review_dir = tmp_path / "clean", tmp_path / "review"
     processed.build(records, reasons, clean)
     counts = review_cases.build(records, reasons, clean, review_dir)
@@ -165,3 +166,60 @@ def test_merged_names_with_and_without_a_suffix_are_listed_when_both_are_frequen
 def test_suffix_merges_already_decided_are_not_listed_again() -> None:
     decided = {("jamesdoe", "jamesdoejr")}
     assert review_cases.suffix_merges(NAMES, decided, min_articles=3)[1:] == []
+
+
+def test_build_refuses_tables_built_before_the_review_files_changed(tmp_path: Path) -> None:
+    rows = [parse.empty_row("a.txt", 0, is_footer=False)]
+    rows[0] |= {"doc_id": 100, "author": "Doe, Jane", "publication_key": NYT, "pub_year": 2020}
+    rows[0] |= {"title": "Title", "text": "Synthetic body.", "has_body": True}
+    records, reasons = tmp_path / "records.parquet", tmp_path / "exclusions.parquet"
+    pq.write_table(pa.Table.from_pylist(rows, schema=parse.SCHEMA), records)
+    write_reasons(pq.read_table(records), ["kept"], reasons)
+    clean, review_dir = tmp_path / "clean", tmp_path / "review"
+    review_dir.mkdir()
+    processed.build(records, reasons, clean, review_dir=review_dir)
+    (review_dir / "author_pairs.csv").write_text(
+        "key_a,key_b,decision,reason\njanedoe,janeqdoe,same,\n", encoding="utf-8"
+    )
+    with pytest.raises(ValueError, match="processed"):
+        review_cases.build(records, reasons, clean, review_dir)
+
+
+def test_names_read_by_moving_pieces_around_are_watched() -> None:
+    bylines = ["Sen, Jane Doe", "Doe, Jane Roe and Ann", "Doe, Jane"]
+    assert set(review_cases.watched_parts(bylines, set())) == {
+        "Sen, Jane Doe",
+        "Doe, Jane Roe and Ann",
+    }
+
+
+def test_build_lists_the_unread_parts_of_kept_articles_too(tmp_path: Path) -> None:
+    rows = [parse.empty_row("a.txt", 0, is_footer=False)]
+    rows[0] |= {"doc_id": 100, "publication_key": NYT, "pub_year": 2020}
+    rows[0] |= {"author": "Doe, Jane; The Example Board", "title": "Title", "has_body": True}
+    records, reasons = tmp_path / "records.parquet", tmp_path / "exclusions.parquet"
+    pq.write_table(pa.Table.from_pylist(rows, schema=parse.SCHEMA), records)
+    write_reasons(pq.read_table(records), ["kept"], reasons)
+    clean, review_dir = tmp_path / "clean", tmp_path / "review"
+    processed.build(records, reasons, clean)
+    assert review_cases.build(records, reasons, clean, review_dir)["rejected_to_review"] == 1
+    assert read(review_dir / "cases" / "rejected_to_review.csv") == [
+        {"part": "The Example Board", "times": "1"}
+    ]
+
+
+@pytest.mark.parametrize("part", ["Doe, Jane e", "DOE, BYJANE", "Doe, Jan e"])
+def test_names_that_may_be_damaged_are_watched(part: str) -> None:
+    assert review_cases.watched_parts([part], set()) == {part: 1}
+
+
+def test_ordinary_names_are_not_watched() -> None:
+    plain = [
+        "Doe, Jane Q.",
+        "J.Q. Doe",
+        "Doe, Byron",
+        "BYDOE, JANE",
+        "Jane Q.Doe",
+        "JANE DOE.Jane Doe is a teacher.",
+    ]
+    assert review_cases.watched_parts(plain, set()) == {}

@@ -1,4 +1,4 @@
-"""Stage 5b of the pipeline: list the pairs of authors that look alike but are not merged.
+"""Used by step 4 of the pipeline: list the pairs of authors that look alike but are not merged.
 
 Input: the names seen in the bylines (see `identity.Seen`) and the author each key belongs to.
 Output: pairs of authors with the reason they look alike, to be reviewed by hand.
@@ -12,7 +12,7 @@ from collections import defaultdict
 from itertools import combinations
 
 from econ_corpus import identity
-from econ_corpus.authors import fold
+from econ_corpus.authors import Name, fold
 from econ_corpus.identity import Seen
 from econ_corpus.name_words import NICKNAMES
 
@@ -29,6 +29,16 @@ def _is_nickname(a: str, b: str) -> bool:
     return a != b and (
         begins or long in NICKNAMES.get(short, ()) or short in NICKNAMES.get(long, ())
     )
+
+
+def _is_initial(one: Name, other: Name) -> bool:
+    """Tell whether the only given name of one is the initial of the other's first name.
+
+    'J Doe' can be 'Jane Doe'. 'J Brad Doe' goes by Brad, so it is not listed with every
+    first name that starts with J.
+    """
+    (first, middle), (longer, _) = identity.given(one), identity.given(other)
+    return len(first) == 1 and not middle and len(longer) > 1 and longer.startswith(first)
 
 
 def _one_edit(a: str, b: str) -> bool:
@@ -69,7 +79,11 @@ def _nickname_pairs(seen: dict[str, Seen]) -> set[tuple[str, str]]:
     for keys in by_family.values():
         for a, b in combinations(keys, 2):
             one, other = seen[a], seen[b]
-            short_form = _is_nickname(identity.given(one.name)[0], identity.given(other.name)[0])
+            short_form = (
+                _is_nickname(identity.given(one.name)[0], identity.given(other.name)[0])
+                or _is_initial(one.name, other.name)
+                or _is_initial(other.name, one.name)
+            )
             if (
                 short_form
                 and one.papers & other.papers

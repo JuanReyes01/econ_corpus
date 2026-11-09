@@ -99,25 +99,47 @@ def year_table(articles: Articles) -> Table:
     return _period_table(articles, lambda y: str(y) if y else "Unknown year", "Year")
 
 
+class _Labels:
+    """Counts of labels grouped despite case and stray spaces ('News', 'New s', 'NEWS')."""
+
+    def __init__(self) -> None:
+        self.counts: Counter = Counter()
+        self._spellings: defaultdict[str, Counter] = defaultdict(Counter)
+
+    def add(self, label: str) -> str:
+        """Count a label; return the key of its group."""
+        key = summaries.label_key(label)
+        self.counts[key] += 1
+        self._spellings[key][label.strip()] += 1
+        return key
+
+    def top(self, rows: int = TOP_N) -> list[tuple[str, str, int]]:
+        """Return key, commonest spelling and count of the most common groups."""
+        return [
+            (key, self._spellings[key].most_common(1)[0][0], n)
+            for key, n in self.counts.most_common(rows)
+        ]
+
+
 def doc_type_table(articles: Articles) -> Table:
     """Most common document-type labels; a multi-label value counts once per label."""
-    records: Counter = Counter()
+    labels = _Labels()
     signed: Counter = Counter()
     for value, author in zip(articles["doc_type"], articles["author"], strict=True):
         for label in summaries.split_labels(value):
-            records[label] += 1
-            signed[label] += author is not None
-    body = [
-        [k, summaries.num(n), summaries.pct(signed[k], n)] for k, n in records.most_common(TOP_N)
-    ]
+            signed[labels.add(label)] += author is not None
+    body = [[name, summaries.num(n), summaries.pct(signed[k], n)] for k, name, n in labels.top()]
     return [["Document type", "Records", "With author"], *body]
 
 
 def section_table(articles: Articles) -> Table:
-    """Most common section labels, grouped ignoring case."""
-    counts = Counter(s.strip().casefold() for s in articles["section"] if s)
+    """Most common section labels, grouped despite case and stray spaces."""
+    labels = _Labels()
+    for section in articles["section"]:
+        if section:
+            labels.add(section)
     total = len(articles["section"])
-    body = [[k, summaries.num(n), summaries.pct(n, total)] for k, n in counts.most_common(TOP_N)]
+    body = [[name, summaries.num(n), summaries.pct(n, total)] for _, name, n in labels.top()]
     return [["Section", "Records", "Share"], *body]
 
 
@@ -245,13 +267,12 @@ def online_edition_table(articles: Articles) -> Table:
 
 def blog_profile_table(articles: Articles) -> Table:
     """List the document types of the records labelled blog/podcast/website."""
-    counts: Counter = Counter()
+    labels = _Labels()
     total = 0
     for source, doc_type in zip(articles["source_type_key"], articles["doc_type"], strict=True):
         if source == BLOG_LABEL:
             total += 1
-            counts.update(summaries.split_labels(doc_type))
-    body = [
-        [label, summaries.num(n), summaries.pct(n, total)] for label, n in counts.most_common(6)
-    ]
+            for label in summaries.split_labels(doc_type):
+                labels.add(label)
+    body = [[name, summaries.num(n), summaries.pct(n, total)] for _, name, n in labels.top(6)]
     return [["Document type", "Blog-labelled records", "Share of blog-labelled"], *body]

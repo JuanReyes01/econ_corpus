@@ -103,3 +103,18 @@ def test_fingerprint_depends_on_the_corrections_not_on_their_order() -> None:
 def test_an_empty_replacement_counts_as_kept_as_read() -> None:
     counts = review.outcome_counts([{"replacement": ""}, {"replacement": "Doe, Jane"}], [])
     assert (counts["n_parts_keep"], counts["n_parts_corrected"]) == (1, 1)
+
+
+def test_the_review_folder_must_exist_even_if_empty(tmp_path: Path) -> None:
+    assert review.folder(tmp_path) == tmp_path
+    with pytest.raises(FileNotFoundError, match="review"):
+        review.folder(tmp_path / "missing")
+
+
+@pytest.mark.parametrize("bad", ["Doe, -", "-, Jane", "Doe, 12"])
+def test_a_correction_without_letters_on_both_sides_is_refused(tmp_path: Path, bad: str) -> None:
+    path = write(
+        tmp_path / "parts.csv", f'part,replacement,reason\n"Jane Doe, Springfield","{bad}",\n'
+    )
+    with pytest.raises(ValueError, match="readable"):
+        review.load_parts(path)

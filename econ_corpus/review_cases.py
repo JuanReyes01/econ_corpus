@@ -1,13 +1,14 @@
-"""Stage 7 of the pipeline: list the author cases that need a manual review.
+"""Step 5 of the pipeline: list the author cases that need a manual review.
 
 Input: the cleaned tables written by `processed`, the records with their reasons, and the
 parts already decided in a review.
 Output, in `data/review/cases/`: `parts_to_review.csv` (byline parts whose reading is
-ambiguous), `names_to_review.csv` (names that may be a place or a publication),
-`rejected_to_review.csv` (parts read as nobody in articles left out for having no person
-among their authors), `pairs_to_review.csv` (look-alike authors not yet reviewed) and
-`merged_to_review.csv` (authors merged from a name with a suffix and one without), each with
-the evidence a reviewer needs.
+ambiguous), `names_to_review.csv` (names that may be a place or a publication, long names
+and names read by moving pieces around),
+`rejected_to_review.csv` (parts read as nobody, in kept articles and in those left out for
+having no person among their authors), `pairs_to_review.csv` (look-alike authors not yet
+reviewed) and `merged_to_review.csv` (authors merged from a name with a suffix and one
+without), each with the evidence a reviewer needs.
 
 Lives here: which cases are worth a review, and the evidence shown. Does not live here: the
 decisions (taken by reading each case and kept in `data/review`, see `review`).
@@ -17,6 +18,7 @@ from collections import Counter, defaultdict
 from collections.abc import Iterable, Iterator
 import csv
 from pathlib import Path
+import re
 import sys
 
 import pyarrow as pa
@@ -24,11 +26,12 @@ import pyarrow.compute as pc
 import pyarrow.csv as pacsv
 import pyarrow.parquet as pq
 
-from econ_corpus import authors, datasheet, reasons, review
-from econ_corpus.bylines import is_signed, read_part, split_authors
+from econ_corpus import authors, datasheet, manifest, reasons, review
+from econ_corpus.bylines import is_signed, read_part, split_authors, unscrambled
 from econ_corpus.name_words import SUFFIXES, WATCH_WORDS
 from econ_corpus.tables import Table
 
+GLUED_BY_RE = re.compile(r"(?i:by)[^\W\d_]{4,}")  # a first name such as 'BYJANE'
 MIN_ARTICLES = 2  # a pair is reviewed when both authors have at least this many articles
 LONG_NAME = 4  # words in a name from which it is worth a second look
 MIN_SUFFIX_MERGE = 3  # articles each form needs for a suffix merge to be listed
@@ -56,15 +59,24 @@ def ambiguous_parts(bylines: Iterable[str | None], decided: set[str]) -> Counter
 def watched_parts(bylines: Iterable[str | None], decided: set[str]) -> Counter:
     """Count the parts read as a person whose name deserves a second look.
 
-    Either the name holds a place or publication word, or it has four or more words, which is
-    often two people or a name with something attached.
+    The name holds a place or publication word; or it has four or more words, which is
+    often two people or a name with something attached; or it was read by moving pieces
+    around: a title where the family name goes ('Sen, Jane Doe'), which can be the family
+    name Sen, or co-authors put back in order ('Doe, Jane Roe and Ann'); or the export may
+    have damaged it: a lone small letter ('Doe, Jane e' is Jane E. or Janee) or 'BY' glued to
+    the first name ('DOE, BYJANE').
     """
     found: Counter = Counter()
     for part in _parts(bylines, decided):
         names = read_part(part)[0]
         words = [w for name in names for w in authors.display(name).split()]
         long = any(len(f"{n.given} {n.family}".split()) >= LONG_NAME for n in names)
-        if long or any(authors.fold(p) in WATCH_WORDS for w in words for p in w.split("-")):
+        moved = authors.is_title(part.partition(",")[0].strip()) or names == unscrambled(part)
+        watched = any(authors.fold(p) in WATCH_WORDS for w in words for p in w.split("-"))
+        damaged = any(len(w) == 1 and w.islower() for w in words) or any(
+            GLUED_BY_RE.fullmatch(n.given.split()[0]) for n in names
+        )
+        if names and (long or watched or moved or damaged):
             found[part] += 1
     return found
 
@@ -169,7 +181,12 @@ def _pair_rows(clean: Path, article: dict[str, Article]) -> Table:
 
 
 def build(records: Path, reasons_file: Path, clean: Path, review_dir: Path) -> dict[str, int]:
-    """Write the cases to review into `review_dir/cases`; return how many of each."""
+    """Write the cases to review into `review_dir/cases`; return how many of each.
+
+    The cleaned tables must have been built from these reasons and review files: cases listed
+    from older tables would repeat decided ones or miss new ones.
+    """
+    manifest.check(clean, reasons_file, review_dir)
     columns = ["doc_id", "newspaper", "pub_year", "title", "author"]
     options = pacsv.ConvertOptions(include_columns=columns, column_types={"doc_id": pa.string()})
     parse = pacsv.ParseOptions(newlines_in_values=True)
@@ -184,7 +201,8 @@ def build(records: Path, reasons_file: Path, clean: Path, review_dir: Path) -> d
     watched = watched_parts(art["author"], decided | set(ambiguous))
     nobody = pc.equal(reasons.load(records, reasons_file), "no_person_author")
     unread = pq.read_table(records, columns=["author"]).filter(nobody)["author"].to_pylist()
-    rejected = rejected_parts(unread, decided).most_common()
+    # A kept article can also hold a part that names nobody, next to one that names a person.
+    rejected = rejected_parts([*unread, *art["author"]], decided).most_common()
     article = dict(
         zip(
             art["doc_id"],
@@ -214,7 +232,7 @@ def main() -> None:
         Path("data/interim/records.parquet"),
         Path("data/interim/exclusions.parquet"),
         Path("data/processed/clean"),
-        Path("data/review"),
+        review.folder(Path("data/review")),
     )
     print(", ".join(f"{name}: {n:,}" for name, n in counts.items()))  # noqa: T201
 

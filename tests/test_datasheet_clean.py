@@ -7,6 +7,7 @@ import pyarrow.parquet as pq
 import pytest
 
 from econ_corpus import datasheet_clean, parse, processed
+from econ_corpus.reasons import write_reasons
 
 NYT = "newyorktimes,lateedition(eastcoast);newyork,n.y."
 
@@ -87,9 +88,8 @@ def test_build_writes_the_datasheet_the_flow_figure_and_the_flow_table(tmp_path:
         rows.append(row)
     records, reasons = tmp_path / "records.parquet", tmp_path / "exclusions.parquet"
     pq.write_table(pa.Table.from_pylist(rows, schema=parse.SCHEMA), records)
-    keys = {"source_file": ["a.txt"] * 4, "record_index": [0, 1, 2, 3]}
     codes = ["kept", "kept", "no_person_author", "file_footer"]
-    pq.write_table(pa.table({**keys, "reason": codes}), reasons)
+    write_reasons(pq.read_table(records), codes, reasons)
     clean = tmp_path / "clean"
     processed.build(records, reasons, clean)
     template = tmp_path / "template.md"
@@ -125,10 +125,9 @@ def test_build_refuses_tables_that_do_not_match_the_reasons(tmp_path: Path) -> N
         row |= {"title": f"Title {i}", "text": "Synthetic body.", "has_body": True}
     records, reasons = tmp_path / "records.parquet", tmp_path / "exclusions.parquet"
     pq.write_table(pa.Table.from_pylist(rows, schema=parse.SCHEMA), records)
-    keys = {"source_file": ["a.txt"] * 2, "record_index": [0, 1]}
-    pq.write_table(pa.table({**keys, "reason": ["kept", "no_author"]}), reasons)
+    write_reasons(pq.read_table(records), ["kept", "no_author"], reasons)
     processed.build(records, reasons, tmp_path / "clean")
-    pq.write_table(pa.table({**keys, "reason": ["kept", "kept"]}), reasons)  # reasons move on
+    write_reasons(pq.read_table(records), ["kept", "kept"], reasons)  # reasons move on
     template = tmp_path / "template.md"
     template.write_text("Articles: {{n_articles}}\n", encoding="utf-8")
     with pytest.raises(ValueError, match="processed"):

@@ -1,4 +1,4 @@
-"""Stage 5 of the pipeline: decide which name keys are the same author.
+"""Used by step 4 of the pipeline: decide which name keys are the same author.
 
 Input: the names seen in the bylines, each with the newspapers it appears in and its
 number of articles (see `authors` for the names and their keys).

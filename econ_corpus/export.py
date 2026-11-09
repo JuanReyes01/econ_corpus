@@ -1,4 +1,4 @@
-"""Stage 2b of the pipeline: write the raw table as a CSV that can be shared.
+"""Step 3a of the pipeline: write the raw table as a CSV that can be shared.
 
 Input: the parquet written by `parse` (all metadata fields, parsed columns and the text) and
 the exclusions parquet, which gives every row one reason.
@@ -7,7 +7,7 @@ File footers, repeated ProQuest ids and repeated text (the reasons not marked `i
 out; every other row stays, whatever its reason.
 
 Lives here: the streaming filter and conversion. Does not live here: which reasons leave the
-raw table (exclusions) or any change to a value. The CSV holds ProQuest-licensed text, so it is
+raw table (reasons) or any change to a value. The CSV holds ProQuest-licensed text, so it is
 shared directly and never committed.
 """
 

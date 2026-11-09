@@ -37,6 +37,10 @@ OPINION_SECTION_WORDS = (
     "commentary", "column",
 )  # fmt: skip
 
+# Section labels that are an opinion section without holding one of those words: 'EPg' is
+# the editorial page of the Boston Globe before 1997.
+OPINION_SECTIONS = {"epg"}
+
 # A document-type label containing one of these words is treated as an opinion label.
 OPINION_LABEL_WORDS = ("opinion", "editorial", "commentary", "op-ed", "op/ed", "letter", "column")
 
@@ -102,7 +106,7 @@ def is_opinion_section(section: str | None) -> bool:
     if section is None:
         return False
     squeezed = re.sub(r"\s+", "", section).casefold()
-    return any(w in squeezed for w in OPINION_SECTION_WORDS)
+    return squeezed in OPINION_SECTIONS or any(w in squeezed for w in OPINION_SECTION_WORDS)
 
 
 def is_opinion_label(label: str) -> bool:
@@ -112,9 +116,13 @@ def is_opinion_label(label: str) -> bool:
 
 
 def file_order(source_file: str) -> tuple[str, int]:
-    """Return a sort key for export files: download date, then the numeric suffix."""
-    match = re.search(r"(\d{4}-\d{2}-\d{2})(?:_(\d+))?", source_file)
-    return (match[1], int(match[2] or 0)) if match else ("", 0)
+    """Return a sort key for export files: download date, then the number after it.
+
+    ProQuest numbers the downloads of one day as '_3'; a browser that saves a name twice
+    writes ' (3)'. Both are read.
+    """
+    match = re.search(r"(\d{4}-\d{2}-\d{2})(?:_(\d+)| \((\d+)\))?", source_file)
+    return (match[1], int(match[2] or match[3] or 0)) if match else ("", 0)
 
 
 def is_opinion_title(title: str | None) -> bool:

@@ -9,6 +9,7 @@ import pyarrow.parquet as pq
 import pytest
 
 from econ_corpus import export, parse
+from econ_corpus.reasons import write_reasons
 
 TEXT = 'Line one, with a comma.\n\nA "quoted" line and\ttab.'
 LEFT_OUT = ("file_footer", "duplicate_id", "duplicate_text")
@@ -30,10 +31,9 @@ def write_tables(tmp_path: Path, reasons: list[str], row_group: int = 1000) -> t
     pq.write_table(
         pa.Table.from_pylist(rows, schema=parse.SCHEMA), records, row_group_size=row_group
     )
-    keys = {"source_file": ["a.txt"] * len(reasons), "record_index": list(range(len(reasons)))}
     exclusions = tmp_path / "exclusions.parquet"
     # A different row-group size from the records, so the two files do not line up by chance.
-    pq.write_table(pa.table({**keys, "reason": reasons}), exclusions, row_group_size=row_group + 3)
+    write_reasons(pq.read_table(records), reasons, exclusions, row_group_size=row_group + 3)
     return records, exclusions
 
 

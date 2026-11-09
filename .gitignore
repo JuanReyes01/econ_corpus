@@ -191,3 +191,4 @@ cython_debug/
 .pypirc
 # Datasheet PDFs are rendered by `make pdf` for the delivery folder
 /docs/*.pdf
+/docs/.gitkeep

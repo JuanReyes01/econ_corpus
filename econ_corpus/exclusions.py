@@ -1,11 +1,12 @@
-"""Stage 3 of the pipeline: give every row of the raw table exactly one reason.
+"""Step 2 of the pipeline: give every row of the parsed table exactly one reason.
 
 Input: the parquet written by `parse` (rows, footers included).
 Output: a small parquet with `source_file`, `record_index` and `reason`, one row per input
 row, so the counts per reason add up to the size of the raw table.
 
-Lives here: the reasons table and the rules that assign a reason. Does not live here: the
-rows themselves (the raw table is never modified) or the descriptions of the data (datasheet).
+Lives here: the rules that assign a reason. Does not live here: the reasons table and its
+file (reasons), the rows themselves (the parsed table is never modified) or the descriptions
+of the data (datasheet).
 
 Rules are applied in the order of REASONS; the first one that matches decides. Only
 obvious cases are handled: repeated ProQuest ids, publications that were not queried,
@@ -18,22 +19,18 @@ Two flags per reason: `in_raw` says whether the row is part of the shared raw ta
 repeated ids and repeated text are not), `dropped` whether it leaves the cleaned dataset.
 """
 
-from collections import Counter
 from collections.abc import Iterable
 from pathlib import Path
 
-import pyarrow as pa
 import pyarrow.parquet as pq
 
 from econ_corpus import bylines, datasheet, parse, review, summaries
-from econ_corpus.reasons import REASONS
+from econ_corpus.reasons import INPUTS, REASONS, write_reasons
 from econ_corpus.tables import Articles, Table
 
-PLACEHOLDER_MIN = 20  # a body carried by this many different articles is not their text
-COLUMNS = [
-    "is_footer", "source_file", "record_index", "doc_id", "body_sha256", "title", "pub_date",
-    "publication_key", "doc_type", "section", "body_chars", "author",
-]  # fmt: skip
+# A body shorter than PLACEHOLDER_WORDS carried by PLACEHOLDER_ARTICLES or more different
+# articles is a notice ("text not available") or a credit, not the text of those articles.
+PLACEHOLDER_WORDS, PLACEHOLDER_ARTICLES = 100, 5
 
 
 def _opinion_reason(doc_type: str | None, section: str | None, title: str | None) -> str:
@@ -103,6 +100,21 @@ def _before_judging(rows: Articles, i: int, kept: dict[int, int], family: str | 
     return "missing_metadata" if family is None or doc_id is None else ""
 
 
+def _placeholders(rows: Articles, judged: list[int]) -> set[str]:
+    """Return the bodies that are a notice shared by different articles, not their text.
+
+    Articles are counted, not rows: an article is a title on a date, so the copies of one
+    article share a body without making it a notice. A long body under several titles is
+    real text printed more than once.
+    """
+    articles: dict[str, set[tuple]] = {}
+    for i in judged:
+        if (rows["body_words"][i] or 0) < PLACEHOLDER_WORDS:
+            article = (parse.compact(rows["title"][i] or ""), rows["pub_date"][i])
+            articles.setdefault(rows["body_sha256"][i], set()).add(article)
+    return {sha for sha, found in articles.items() if len(found) >= PLACEHOLDER_ARTICLES}
+
+
 def assign_reasons(rows: Articles, corrections: dict[str, str] | None = None) -> list[str]:
     """Return one reason code per row, with repeats judged in download order.
 
@@ -112,8 +124,8 @@ def assign_reasons(rows: Articles, corrections: dict[str, str] | None = None) ->
     is none; the others are `duplicate_text`. So each article is counted once and a signed copy
     is not lost to an unsigned one. "Signed" means any byline other than Anonymous: the choice
     must not depend on how names are read or on the manual review, because these rows also
-    leave the shared raw table. A body carried by many different articles is a placeholder
-    ("text not available"), not text.
+    leave the shared raw table. A short body carried by many different articles is a placeholder
+    ("text not available"), not text (see `_placeholders`).
     """
     n = len(rows["source_file"])
     file_key = {f: summaries.file_order(f) for f in set(rows["source_file"])}
@@ -124,7 +136,7 @@ def assign_reasons(rows: Articles, corrections: dict[str, str] | None = None) ->
     families = [summaries.newspaper_family(key) for key in rows["publication_key"]]
     reasons = [_before_judging(rows, i, kept, families[i]) for i in range(n)]
     judged = [i for i in order if not reasons[i]]
-    carried = Counter(rows["body_sha256"][i] for i in judged)  # articles carrying each body
+    placeholders = _placeholders(rows, judged)
     same_text: dict[tuple, list[int]] = {}  # copies of one text, in download order
     by_byline: dict[str | None, str] = {}  # bylines repeat, so each is read once
     qualifies: set[int] = set()  # signed opinion pieces with text
@@ -140,7 +152,7 @@ def assign_reasons(rows: Articles, corrections: dict[str, str] | None = None) ->
             byline = rows["author"][i]
             if byline not in by_byline:
                 by_byline[byline] = _author_reason(byline, corrections)
-            has_text = rows["body_chars"][i] and carried[sha] < PLACEHOLDER_MIN
+            has_text = rows["body_chars"][i] and sha not in placeholders
             reasons[i] = by_byline[byline] if has_text else "no_text"
             if reasons[i] not in ("no_text", "no_author"):
                 qualifies.add(i)
@@ -173,23 +185,20 @@ def reason_counts(reasons: list[str]) -> Table:
 def write_exclusions(
     parquet: Path, out: Path, corrections: dict[str, str] | None = None
 ) -> list[str]:
-    """Assign a reason to every row of the raw table and write them next to their keys."""
-    rows = pq.read_table(parquet, columns=COLUMNS).to_pydict()
-    reasons = assign_reasons(rows, corrections)
-    out.parent.mkdir(parents=True, exist_ok=True)
-    keys = {k: rows[k] for k in ("source_file", "record_index")}
+    """Assign a reason to every row of the parsed table and write them next to their keys."""
+    table = pq.read_table(parquet, columns=INPUTS)
+    reasons = assign_reasons(table.to_pydict(), corrections)
     # The reasons depend on the review, so they carry its fingerprint (see review.same_review).
-    stamp = {review.STAMP: review.fingerprint(corrections or {})}
-    pq.write_table(pa.table({**keys, "reason": reasons}).replace_schema_metadata(stamp), out)
+    write_reasons(table, reasons, out, {review.STAMP: review.fingerprint(corrections or {})})
     return reasons
 
 
 def main() -> None:
-    """Assign reasons to the raw table at its default location and save the counts."""
+    """Assign reasons to the parsed table at its default location and save the counts."""
     reasons = write_exclusions(
         Path("data/interim/records.parquet"),
         Path("data/interim/exclusions.parquet"),
-        review.load_parts(Path("data/review") / review.PARTS_FILE),
+        review.load_parts(review.folder(Path("data/review")) / review.PARTS_FILE),
     )
     datasheet.write_csv(reason_counts(reasons), Path("reports/tables/exclusion_counts.csv"))
 

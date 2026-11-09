@@ -8,6 +8,7 @@ import pyarrow.parquet as pq
 import pytest
 
 from econ_corpus import parse, processed, review
+from econ_corpus.reasons import write_reasons
 
 A, B = "Example Daily", "Sample Times"
 NYT = "newyorktimes,lateedition(eastcoast);newyork,n.y."
@@ -204,8 +205,7 @@ def write_inputs(tmp_path: Path, corrections: dict[str, str] | None = None) -> t
     reasons = tmp_path / "exclusions.parquet"
     codes = ["kept", "no_person_author", "kept", "file_footer"]
     stamp = {"byline_parts": review.fingerprint(corrections or {})}
-    table = pa.table({**KEYS, "reason": codes}).replace_schema_metadata(stamp)
-    pq.write_table(table, reasons, row_group_size=3)
+    write_reasons(pq.read_table(records), codes, reasons, stamp, row_group_size=3)
     return records, reasons
 
 
@@ -254,7 +254,7 @@ def test_build_applies_the_review_files_when_they_exist(tmp_path: Path) -> None:
 def test_build_refuses_reasons_that_keep_an_article_without_a_person(tmp_path: Path) -> None:
     records, _ = write_inputs(tmp_path)
     stale = tmp_path / "stale.parquet"
-    pq.write_table(pa.table({**KEYS, "reason": ["kept", "kept", "kept", "file_footer"]}), stale)
+    write_reasons(pq.read_table(records), ["kept", "kept", "kept", "file_footer"], stale)
     with pytest.raises(ValueError, match="exclusions"):
         processed.build(records, stale, tmp_path / "clean")
 
@@ -275,8 +275,7 @@ def test_build_refuses_a_kept_article_without_a_proquest_id(tmp_path: Path) -> N
     records = tmp_path / "records.parquet"
     pq.write_table(pa.Table.from_pylist(rows, schema=parse.SCHEMA), records)
     reasons = tmp_path / "exclusions.parquet"
-    keys = {"source_file": ["a.txt"], "record_index": [0]}
-    pq.write_table(pa.table({**keys, "reason": ["kept"]}), reasons)
+    write_reasons(pq.read_table(records), ["kept"], reasons)
     with pytest.raises(ValueError, match="ProQuest id"):
         processed.build(records, reasons, tmp_path / "clean")
 

@@ -1,4 +1,4 @@
-"""Stage 4 of the pipeline: read a person's name.
+"""Used by step 4 of the pipeline: read a person's name.
 
 Input: one name as written in a byline ('Doe, Jane Q' or 'Jane Q. Doe').
 Output: a `Name` (given names, family name, suffix), or None if the text is not clearly a
@@ -22,6 +22,7 @@ from econ_corpus.name_words import (
     ORG_WORDS,
     PARTICLES,
     ROLE_WORDS,
+    SAINTS,
     SUFFIXES,
 )
 
@@ -35,8 +36,12 @@ class Name(NamedTuple):
 
 
 WORD_RE = re.compile(r"[^\W\d_]+(?:['\u2019.\-][^\W\d_]+)*\.?")  # letters, with ' - . inside
-BY_RE = re.compile(r"^by\s+", re.IGNORECASE)
-MC_RE = re.compile(r"(Ma?c)([A-Z][A-Z'\u2019\-]*)")  # 'McDOE', 'MacDOE'
+BY_RE = re.compile(r"^(?:[Bb][Yy]\s+|By(?=[A-Z][a-z]))")  # 'By Jane Doe', 'ByJane Doe'
+# Capitals after a prefix that is not in capitals: 'McDOE', 'DeDOE', "d'DOE", 'El-DOE'.
+MC_RE = re.compile(r"(Ma?c|De|Di|Du|La|Le|[A-Z]?[a-z]+['\u2019\-])([A-Z][A-Z'\u2019\-]+)")
+POSSESSIVES = ("'s", "\u2019s")
+MIN_SHOUTED = 3  # letters a word in capitals needs to be a name, not initials ('JD')
+VOWELS = set("aeiouy")
 INITIALS_RE = re.compile(r"(?:[^\W\d_]\.)+")  # 'J.' or 'J.Q.R.'
 MAX_NATURAL, MAX_FAMILY, MAX_GIVEN = 5, 3, 4  # most words a name, or one side of it, may have
 
@@ -56,12 +61,20 @@ def abbreviation(token: str) -> str:
     return "" if "." in stem else stem.casefold()
 
 
+def is_title(text: str) -> bool:
+    """Tell whether a text is a title or initials, which can stand where a family name goes."""
+    return abbreviation(text) in HONORIFICS or bool(INITIALS_RE.fullmatch(text))
+
+
 def is_particle(word: str) -> bool:
     """Tell whether a word is a particle of a family name ('van', 'de', 'Del').
 
-    A few particles are far more often a given name when written with a capital ('Al Doe').
+    A few particles are far more often a given name when written with a capital ('Al Doe');
+    'St.' is one only with its capital.
     """
     bare = lookup(word)
+    if bare in SAINTS:
+        return word[0].isupper()
     return bare in PARTICLES and (word[0].islower() or bare not in GIVEN_WHEN_CAPITAL)
 
 
@@ -78,11 +91,14 @@ def _has_org_word(words: list[str]) -> bool:
 def _are_name_words(tokens: list[str]) -> bool:
     """Check that every word looks like part of a name.
 
-    A final period is accepted only on initials, so a word that ends a sentence
-    ('Doe. Springfield') is not.
+    A final period is accepted only on initials and on 'St.', so a word that ends a sentence
+    ('Doe. Springfield') is not; neither is a possessive ("Doe's").
     """
     return all(
-        WORD_RE.fullmatch(t) and (not t.endswith(".") or INITIALS_RE.fullmatch(t)) for t in tokens
+        WORD_RE.fullmatch(t)
+        and not t.endswith(POSSESSIVES)
+        and (not t.endswith(".") or INITIALS_RE.fullmatch(t) or lookup(t) in SAINTS)
+        for t in tokens
     )
 
 
@@ -117,21 +133,31 @@ def given_first(text: str, suffix: str = "") -> Name | None:
 def _family_first(family: str, given: str, suffix: str) -> Name | None:
     """Read 'Family, Given', the form ProQuest writes for most authors."""
     given = BY_RE.sub("", given)  # 'DOE, By JANE'
-    if abbreviation(family) in HONORIFICS or INITIALS_RE.fullmatch(family):
+    if is_title(family):
         # A title or a state where the family name goes ('Sen, Jane Doe', 'N.J., Jane Doe'):
-        # the name is what follows, if it reads as one.
+        # the name is what follows, if it reads as one. Initials alone are never a family
+        # name ('E., Jane'); a title can be one ('Sen, Jane').
         moved = given_first(given, suffix)
-        if moved:
+        if moved or INITIALS_RE.fullmatch(family):
             return moved
     family_words, given_words = family.split(), _drop_honorifics(given.split())
-    if not 1 <= len(family_words) <= MAX_FAMILY or not 1 <= len(given_words) <= MAX_GIVEN:
+    # 'Doe, John Jr.': the suffix follows the given names. Not in 'Jane Doe, Richard Roe Jr.',
+    # two names, where more than a family name stands before the comma.
+    alone = all(is_particle(word) for word in family_words[:-1])
+    last = abbreviation(given_words[-1]) if len(given_words) > 1 else ""
+    if not suffix and alone and last in SUFFIXES:
+        suffix, given_words = SUFFIXES[last], given_words[:-1]
+    # 'Springfield, JANE DOE' is a town before a name in capitals, not 'Family, Given'.
+    shouted = [w for w in given_words if w.isupper() and sum(c.isalpha() for c in w) > 1]
+    town = len(shouted) > 1 and not any(_in_capitals(word) for word in family_words)
+    if town or not 1 <= len(family_words) <= MAX_FAMILY or not 1 <= len(given_words) <= MAX_GIVEN:
         return None
     # One word before the comma can be a family name that is also an institution word
     # ('Press, Jane'); several words holding one ('The Times, London') are an institution.
     # 'and' among the given names means two people ('Doe, Jane Roe and Ann').
     refused = (
         not _are_name_words(family_words + given_words)
-        or lookup(family) in ROLE_WORDS
+        or lookup(family) in ROLE_WORDS | SAINTS  # 'Staff, Jane', 'St, Jane'
         or "and" in map(lookup, given_words)
         or _has_org_word(given_words)
         or (len(family_words) > 1 and _has_org_word(family_words))
@@ -145,11 +171,22 @@ def parse_name(part: str) -> Name | None:
     """Return the person a part names, or None if it is not clearly a person's name."""
     sides = [side.strip() for side in part.split(",")]
     suffix = ""
+
+    def named() -> bool:
+        """Tell whether what stands before the last side is already a whole name."""
+        return len(sides) > 2 or len(sides[0].split()) > 1  # noqa: PLR2004
+
+    # 'Doe, Jane, M.D.' and 'Jane Doe, MD' end in a degree. In 'Doe, JD' the JD can be the
+    # initials of the given names, but only in capitals: 'Doe, Rn' is a degree.
+    while (
+        len(sides) > 1
+        and sides[-1]
+        and all(lookup(t) in DEGREES for t in sides[-1].split())
+        and (named() or not sides[-1].isupper())
+    ):
+        sides = sides[:-1]
     # 'Doe, John, Jr' and 'John Doe, Jr' end in a suffix; in 'Doe, JR' the JR is a given name.
-    while len(sides) > 1 and sides[-1] and all(lookup(t) in DEGREES for t in sides[-1].split()):
-        sides = sides[:-1]  # a degree after the name ('Doe, Jane, M.D.')
-    names_before = len(sides) > 2 or len(sides[0].split()) > 1  # noqa: PLR2004
-    if names_before and abbreviation(sides[-1]) in SUFFIXES:
+    if named() and abbreviation(sides[-1]) in SUFFIXES:
         suffix, sides = SUFFIXES[abbreviation(sides[-1])], sides[:-1]
     if len(sides) == 1:
         return given_first(sides[0], suffix)
@@ -162,15 +199,15 @@ def reviewed_name(part: str) -> Name | None:
     """Read 'Family, Given' or 'Family, Given, Suffix' as a reviewer wrote it.
 
     None of the checks that guard against institutions apply: a person decided this is a
-    name, so 'Red Star, Jane' and 'Doe, Jane 8.' are taken as written.
+    name, so 'Red Star, Jane' and 'Doe, Jane 8.' are taken as written. Each side still needs
+    a letter: 'Doe, -' is a slip of the reviewer, not a name.
     """
     sides = [side.strip() for side in part.split(",")]
     suffix = ""
     if len(sides) == 3 and abbreviation(sides[2]) in SUFFIXES:  # noqa: PLR2004
         suffix, sides = SUFFIXES[abbreviation(sides[2])], sides[:2]
-    if len(sides) != 2 or not all(sides):  # noqa: PLR2004
-        return None
-    return Name(sides[1], sides[0], suffix)
+    lettered = all(any(c.isalpha() for c in side) for side in sides)
+    return Name(sides[1], sides[0], suffix) if len(sides) == 2 and lettered else None  # noqa: PLR2004
 
 
 def _in_capitals(word: str) -> bool:
@@ -187,11 +224,22 @@ def _normal_case(word: str) -> str:
 
 
 def display(name: Name) -> str:
-    """Return the name given-name first; a name written in capitals gets normal casing."""
+    """Return the name given-name first, with normal casing for what was written in capitals.
+
+    In a name all in capitals every word is fixed. In any other name only a word that is
+    clearly not initials is: three or more capitals with a vowel ('JANE'), or capitals after
+    a prefix ('DeDOE'). Other capitals stay ('JD Doe', 'JQD Doe').
+    """
     words = f"{name.given} {name.family}".split()
     # Lower-case particles ('del') do not count when deciding that a name is in capitals.
-    if all(_in_capitals(w) for w in words if not (w.islower() and is_particle(w))):
-        words = [w if "." in w or not _in_capitals(w) else _normal_case(w) for w in words]
+    shouted = all(_in_capitals(w) for w in words if not (w.islower() and is_particle(w)))
+
+    def fix(word: str) -> bool:
+        letters = [c for c in fold(word) if c.isalpha()]
+        spoken = len(letters) >= MIN_SHOUTED and bool(VOWELS & set(letters))
+        return "." not in word and _in_capitals(word) and (shouted or spoken or not word.isupper())
+
+    words = [_normal_case(w) if fix(w) else w for w in words]
     return " ".join([*words, name.suffix]).strip()
 
 

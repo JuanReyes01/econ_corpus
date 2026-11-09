@@ -1,10 +1,11 @@
-"""Stage 6 of the pipeline: write the cleaned dataset as normalised tables.
+"""Step 4 of the pipeline: write the cleaned dataset as normalised tables.
 
 Input: the parquet written by `parse` and the reasons written by `exclusions`.
 Output, in one folder: `articles.csv` (the records whose reason is `kept`), `authors.csv`
 (one row per author), `author_names.csv` (every name variant of each author and the rule that
 linked it), `article_authors.csv` (the many-to-many link, with the position in the byline)
-and `author_candidates.csv` (pairs of authors that look alike and were not merged).
+and `author_candidates.csv` (pairs of authors that look alike and were not merged), plus
+`manifest.json`, the fingerprints of the inputs the tables were built from.
 
 Lives here: building the tables and writing them. Does not live here: which records are kept
 (exclusions), how a byline is read (authors), which names are one author (identity) or the
@@ -22,7 +23,16 @@ import pyarrow.compute as pc
 import pyarrow.csv as pacsv
 import pyarrow.parquet as pq
 
-from econ_corpus import authors, datasheet, identity, lookalikes, reasons, review, summaries
+from econ_corpus import (
+    authors,
+    datasheet,
+    identity,
+    lookalikes,
+    manifest,
+    reasons,
+    review,
+    summaries,
+)
 from econ_corpus.authors import Name
 from econ_corpus.bylines import read_byline
 from econ_corpus.tables import Table
@@ -182,6 +192,7 @@ def build(
     for name, table in tables.items():
         datasheet.write_csv(table, out_dir / f"{name}.csv")
     _write_articles(records, kept, out_dir / "articles.csv", batch_size)
+    manifest.write(out_dir, reasons_file, review_dir)
     counts = {name: len(table) - 1 for name, table in tables.items() if name != "author_names"}
     return {"articles": rows.num_rows, **counts}
 
@@ -192,7 +203,7 @@ def main() -> None:
         Path("data/interim/records.parquet"),
         Path("data/interim/exclusions.parquet"),
         Path("data/processed/clean"),
-        review_dir=Path("data/review"),
+        review_dir=review.folder(Path("data/review")),
     )
     print(", ".join(f"{name}: {n:,}" for name, n in counts.items()))  # noqa: T201
 

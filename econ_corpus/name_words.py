@@ -23,6 +23,10 @@ DEGREES = {"md", "phd", "esq", "jd", "dds", "rn", "mba", "dvm", "mph"}
 # Words that belong to the family name ('Jane van Doe').
 PARTICLES = {"von", "van", "vanden", "de", "del", "della", "der", "den", "di", "da", "la", "le"}
 PARTICLES |= {"du", "dos", "das", "ter", "ten", "bin", "ibn", "al", "el"}
+# 'St.' and 'Ste.' also belong to it ('Jane St. Doe'), and are the only words of a name that
+# end in a period without being initials.
+SAINTS = {"st", "ste"}
+PARTICLES |= SAINTS
 # Of those, the ones that written with a capital are far more often a given name ('Al Doe').
 GIVEN_WHEN_CAPITAL = {"al", "el", "da", "bin", "ibn", "ten"}
 # Articles: alone, they are never a person's given name ('Le Monde').
@@ -44,12 +48,33 @@ ORG_WORDS = {
     "observer", "examiner", "inquirer", "weekly", "magazine", "ledger", "media", "inc", "llc",
     "company", "group", "excerpted", "illustration", "photo", "cartoon", "debate", "usa",
     "guest", "daily", "international", "national", "affairs", "studies", "advertiser",
+    "agency", "project", "administration", "administrations", "development", "rights",
+    "commission", "school", "clinic", "sports", "newspapers", "government", "organization",
+    "community", "institution", "corporation", "police", "veterans", "llp",
 }  # fmt: skip
 # In 'Family, Given' form a one-word family name can be an ORG_WORD ('Press, Jane'), so only
 # these words rule a part out when they stand alone before the comma.
 ROLE_WORDS = {"staff", "board", "editors", "editorial", "readers", "anonymous", "opinion"}
 ROLE_WORDS |= {"contributor", "contributors", "today", "democrat", "affairs", "studies"}
 ROLE_WORDS |= {"advertiser"}
+# Institution words that are not a family name even alone ('University, Example').
+ROLE_WORDS |= {
+    "university", "association", "committee", "institute", "foundation", "society", "college",
+    "department", "coalition", "alliance", "council", "network",
+}  # fmt: skip
+
+# Words that go on a sentence after a name ('Jane Doe of Springfield', 'Jane Doe is a teacher').
+# Any other small word right after a name may be a piece that a stray space cut off it.
+SENTENCE_WORDS = {
+    "is", "was", "are", "were", "has", "had", "will", "of", "from", "in", "at", "for", "with",
+    "on", "to", "the", "a", "an", "who", "as", "by", "and", "or",
+}  # fmt: skip
+
+# The last word of a note saying that someone did not write ('Jane Doe is on vacation.').
+ABSENT_WORDS = {
+    "vacation", "leave", "today", "tour", "assignment", "sabbatical", "holiday", "traveling",
+    "reporting", "article", "column",
+}  # fmt: skip
 
 # Words of places and publications that are also family names ('Jane Washington'). A name
 # holding one is read as a person, and listed for manual review (see `review_cases`).

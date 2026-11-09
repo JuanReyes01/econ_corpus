@@ -47,6 +47,9 @@ format:
 RAW_DIR ?= /home/juanc/data/econ_corpus/raw/ProQuestDownloads
 DELIVERY ?= /home/juanc/data/econ_corpus/delivery
 
+# Each step reads what the one before wrote, so they never run side by side, even with -j.
+.NOTPARALLEL:
+
 ## 1. Parse the ProQuest exports in RAW_DIR into data/interim/records.parquet (about 5 minutes)
 .PHONY: parse
 parse:
@@ -105,15 +108,15 @@ pdf:
 	uv run python -m econ_corpus.pdf docs/datasheet_raw.md docs/datasheet_clean.md
 
 
-## Assemble the delivery folder in DELIVERY from the current outputs (needs `make pdf`)
+## Copy the current outputs into the delivery folder DELIVERY (renders the PDFs first)
+# Everything is a copy, never a link: a later run of the pipeline must not change what was
+# delivered, and the files of one delivery belong to one state of the pipeline.
 .PHONY: delivery
-delivery:
+delivery: pdf
 	mkdir -p $(DELIVERY)/2_raw_csv $(DELIVERY)/3_clean
-	test -e $(DELIVERY)/1_raw_txt || cp -al $(RAW_DIR) $(DELIVERY)/1_raw_txt
-	ln -f data/processed/econ_corpus_raw.csv $(DELIVERY)/2_raw_csv/
-	cp docs/datasheet_raw.pdf $(DELIVERY)/2_raw_csv/
-	ln -f data/processed/clean/*.csv $(DELIVERY)/3_clean/
-	cp docs/datasheet_clean.pdf $(DELIVERY)/3_clean/
+	test -e $(DELIVERY)/1_raw_txt || cp -r --reflink=auto $(RAW_DIR) $(DELIVERY)/1_raw_txt
+	cp --reflink=auto --remove-destination data/processed/econ_corpus_raw.csv docs/datasheet_raw.pdf $(DELIVERY)/2_raw_csv/
+	cp --reflink=auto --remove-destination data/processed/clean/*.csv docs/datasheet_clean.pdf $(DELIVERY)/3_clean/
 	rm -rf $(DELIVERY)/3_clean/review
 	cp -r data/review $(DELIVERY)/3_clean/review
 	cp docs/delivery_readme.md $(DELIVERY)/README.md
