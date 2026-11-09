@@ -353,6 +353,8 @@ def _piece_of_note(part: str, *, in_sentence: bool, moved: bool) -> bool:
 
 
 Found = dict[str, tuple[Name, str]]
+# Review mark of a part that is an author only as the first name of a byline (a producer).
+CREDIT = "CREDIT"
 
 
 def _with(found: Found, before: Found, name: Name, how: str, part: str) -> Found:
@@ -382,7 +384,9 @@ def read_byline(
     """Return the persons a byline names, in order, each once, with how each was read.
 
     A part listed in `corrections` (decisions of the manual review) is read from its corrected
-    byline and marked 'manual_review'; the others are 'as_written' or 'recovered'. After a
+    byline and marked 'manual_review'; the others are 'as_written' or 'recovered'. A part
+    marked CREDIT is read by the rules when it gives the first name of the byline, and names
+    nobody after another name: the producer of a podcast is listed after its host. After a
     part that leaves a sentence about its author unfinished, a part written 'Family, Given' is
     a piece of that sentence which the export cut off and turned round ('Jane Doe was an aide
     to Presidents Poe and Richard Roe' gives 'Roe, Richard'), not an author. The editor's note
@@ -396,7 +400,10 @@ def read_byline(
     # front, so a later part that ends in 'is' or 'is on' is the note it was cut from.
     moved = bool(parts) and bool(_after_sentence(parts[0]))
     for part in parts:
-        if corrections and part in corrections:
+        credit = bool(corrections) and corrections.get(part) == CREDIT
+        if credit and found:
+            names, how = [], ""
+        elif corrections and part in corrections and not credit:
             reviewed = (authors.reviewed_name(p) for p in corrections[part].split(";"))
             names = [name for name in reviewed if name]
             how = "manual_review"

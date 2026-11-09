@@ -2,7 +2,8 @@
 
 Input: two CSV files kept next to the data, never in the repository, because they hold the
 names of private persons (readers who signed letters):
-`byline_parts.csv` (part, replacement, reason) corrects how one part of a byline is read, and
+`byline_parts.csv` (part, replacement, reason) corrects how one part of a byline is read
+(or marks it CREDIT: a person listed after the authors for producing the piece), and
 `author_pairs.csv` (key_a, key_b, decision, reason) says whether two name keys are one person.
 Output: the same decisions as dictionaries, ready for `authors` and `identity`.
 
@@ -19,6 +20,7 @@ from pathlib import Path
 import pyarrow.parquet as pq
 
 from econ_corpus import authors
+from econ_corpus.bylines import CREDIT
 
 PARTS_FILE, PAIRS_FILE = "byline_parts.csv", "author_pairs.csv"
 STAMP = "byline_parts"  # metadata key of the reasons file that holds the fingerprint
@@ -76,8 +78,9 @@ def decided_parts(path: Path) -> set[str]:
 def load_parts(path: Path) -> dict[str, str]:
     """Return part -> corrected byline; an empty byline means the part names nobody.
 
-    A replacement must be KEEP, UNSURE, NOBODY (in any case) or names written 'Family, Given'
-    and separated by ';'; anything else is refused, because it would silently remove the author.
+    A replacement must be KEEP, UNSURE, NOBODY, CREDIT (in any case) or names written 'Family,
+    Given' and separated by ';'; anything else is refused, because it would silently remove
+    the author. CREDIT stays as a marker (see `bylines.read_byline`).
     """
     rows = _rows(path)
     _refuse_repeats(path, [row["part"] for row in rows])
@@ -89,6 +92,9 @@ def load_parts(path: Path) -> dict[str, str]:
             raise ValueError(msg)
         replacement = row["replacement"].strip()
         if replacement.casefold() in AS_READ:
+            continue
+        if replacement.casefold() == CREDIT.casefold():
+            corrections[row["part"]] = CREDIT
             continue
         pieces = [authors.reviewed_name(piece) for piece in replacement.split(";")]
         if replacement.casefold() == NOBODY:
@@ -142,8 +148,10 @@ def outcome_counts(parts: list[dict[str, str]], pairs: list[dict[str, str]]) -> 
     verdicts = Counter(row["decision"].strip().casefold() for row in pairs)
     return {
         "n_review_parts": len(parts),
-        "n_parts_corrected": len(parts) - sum(marks[m] for m in (*AS_READ, NOBODY)),
+        "n_parts_corrected": len(parts)
+        - sum(marks[m] for m in (*AS_READ, NOBODY, CREDIT.casefold())),
         "n_parts_nobody": marks[NOBODY],
+        "n_parts_credit": marks[CREDIT.casefold()],
         "n_parts_keep": marks["keep"] + marks[""],  # an empty replacement keeps the reading
         "n_parts_unsure": marks["unsure"],
         "n_review_pairs": len(pairs),

@@ -1256,3 +1256,35 @@ def test_a_suffix_inside_a_list_of_board_members_ends_no_sentence() -> None:
     assert [n.family for n in bylines.read_part(part)[0]] == ["Doe", "Roe", "Poe"]
     apart = f"Jane Doe Jr. Richard Roe. {BOARD_NOTE}"
     assert [n.family for n in bylines.read_part(apart)[0]] == ["Doe", "Roe"]
+
+
+# --- production credits ------------------------------------------------------------
+
+CREDITS = {"Roe, Richard": bylines.CREDIT, "Poe, Ann": bylines.CREDIT}
+
+
+def names_of(raw: str) -> list[str]:
+    return [authors.display(name) for name in bylines.people(raw, CREDITS)]
+
+
+def test_a_credit_after_the_first_name_of_a_byline_is_not_an_author() -> None:
+    assert names_of("Doe, Jane; Roe, Richard; Poe, Ann") == ["Jane Doe"]
+    assert names_of("Doe, Jane; Roe, Richard; Coe, Tom") == ["Jane Doe", "Tom Coe"]
+
+
+def test_a_credit_that_comes_first_or_alone_is_the_author() -> None:
+    assert names_of("Roe, Richard") == ["Richard Roe"]
+    assert names_of("Roe, Richard; Doe, Jane") == ["Richard Roe", "Jane Doe"]
+    # Only the first of the credits: the others still come after a name.
+    assert names_of("Roe, Richard; Poe, Ann") == ["Richard Roe"]
+
+
+def test_a_credit_after_a_part_that_names_nobody_is_the_first_name() -> None:
+    assert names_of("The Editorial Board; Roe, Richard; Doe, Jane") == ["Richard Roe", "Jane Doe"]
+
+
+def test_a_credit_is_read_by_the_rules_and_says_how() -> None:
+    assert bylines.read_byline("Roe, Richard", CREDITS) == [
+        (Name("Richard", "Roe", ""), "as_written")
+    ]
+    assert bylines.read_byline("Roe, Richard", {}) == bylines.read_byline("Roe, Richard", CREDITS)

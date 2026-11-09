@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from econ_corpus import review
+from econ_corpus import bylines, review
 
 
 def write(path: Path, text: str) -> Path:
@@ -140,3 +140,20 @@ def test_a_folder_with_only_the_case_lists_is_still_no_review(tmp_path: Path) ->
     (tmp_path / "cases" / "pairs_to_review.csv").write_text("kind\n", encoding="utf-8")
     (tmp_path / ".gitkeep").write_text("", encoding="utf-8")
     assert review.folder(tmp_path) == tmp_path
+
+
+# --- production credits ------------------------------------------------------------
+
+
+def test_a_part_marked_credit_is_kept_as_a_marker_whatever_its_case(tmp_path: Path) -> None:
+    path = write(
+        tmp_path / "parts.csv",
+        'part,replacement,reason\n"Roe, Richard",CREDIT,producer\n"Poe, Ann",credit,\n',
+    )
+    assert review.load_parts(path) == {"Roe, Richard": bylines.CREDIT, "Poe, Ann": bylines.CREDIT}
+
+
+def test_credits_are_counted_apart_from_corrections() -> None:
+    parts = [{"replacement": "CREDIT"}, {"replacement": "Doe, Jane"}, {"replacement": "NOBODY"}]
+    counts = review.outcome_counts(parts, [])
+    assert (counts["n_parts_credit"], counts["n_parts_corrected"]) == (1, 1)
