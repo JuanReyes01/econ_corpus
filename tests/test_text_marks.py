@@ -6,7 +6,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 
-from econ_corpus.raw import language, text_marks
+from econ_corpus.raw import language, prose, text_marks
 
 ENGLISH = "The price of bread went up again, and it is not the first time that it has."
 SPANISH = "El precio del pan volvió a subir este año, y no es la primera vez que pasa."
@@ -54,3 +54,6 @@ def test_the_marks_of_a_table_of_records_come_in_row_order(tmp_path: Path) -> No
     marks = text_marks.read(records)
     assert marks.rubric == [False, False, True, False, True]
     assert marks.english == language.english_shares(pa.array(texts, type=pa.string()))
+    assert marks.own_words == prose.own_word_counts(pa.array(texts, type=pa.string()))
+    assert marks.own_words[1] == 0
+    assert marks.own_words[0] == len(ENGLISH.split())

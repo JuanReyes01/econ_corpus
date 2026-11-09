@@ -86,7 +86,7 @@ REASONS = [
     },
     {
         "code": "short_or_cartoon",
-        "description": "Signed opinion piece under 50 words or under a cartoon heading",
+        "description": "Signed opinion piece with under 30 words written by its author",
         "in_raw": True,
         "dropped": True,
     },
@@ -98,7 +98,7 @@ REASONS = [
     },
     {
         "code": "kept",
-        "description": "Opinion piece with at least 50 words of English text, signed by a person",
+        "description": "Opinion piece with at least 30 words of English text, signed by a person",
         "in_raw": True,
         "dropped": False,
     },

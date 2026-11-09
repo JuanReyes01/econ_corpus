@@ -13,9 +13,9 @@ obvious cases are handled: repeated ProQuest ids, publications that were not que
 identical text in the same newspaper, and records in a news section with no sign of being
 opinion. A record that cannot be decided (no section, generic type, no opinion
 title) is `unclear_opinion`: it stays in the raw table and is left out of the cleaned dataset.
-An opinion piece then needs text and a person among its authors, and at least MIN_WORDS words
-of English text under a title that is not the heading of a cartoon. Copies whose text
-differs (edited versions) come later.
+An opinion piece then needs text and a person among its authors, and at least
+`prose.MIN_OWN_WORDS` words written by its author, in English. Copies whose text differs
+(edited versions) come later.
 
 Two flags per reason: `in_raw` says whether the row is part of the shared raw table (footers,
 repeated ids and repeated text are not), `dropped` whether it leaves the cleaned dataset.
@@ -28,7 +28,7 @@ from pathlib import Path
 import pyarrow.parquet as pq
 
 from econ_corpus.names import bylines, review
-from econ_corpus.raw import export, language, parse, text_marks
+from econ_corpus.raw import export, language, parse, prose, text_marks
 from econ_corpus.raw.reasons import INPUTS, REASONS, check_parser, write_reasons
 from econ_corpus.shared import summaries, tables
 from econ_corpus.shared.tables import Articles, Table
@@ -37,8 +37,6 @@ from econ_corpus.shared.tables import Articles, Table
 # by different articles. Carried by PLACEHOLDER_ARTICLES or more of them it is a notice ("text
 # not available") or a credit, not their text.
 PLACEHOLDER_WORDS, PLACEHOLDER_ARTICLES = 100, 5
-# Under MIN_WORDS a body is a caption or a teaser: the piece has no text to read.
-MIN_WORDS = 50
 # The round-up of late-night jokes of ROUNDUP_PAPER often has no heading: a title that names
 # a comedian over a body under ROUNDUP_WORDS. Its columns about a comedian are longer.
 ROUNDUP_PAPER, ROUNDUP_WORDS = "USA Today", 300
@@ -164,6 +162,7 @@ def assign_reasons(
     corrections: dict[str, str] | None = None,
     english: list[float | None] | None = None,
     rubric: list[bool] | None = None,
+    own_words: list[int] | None = None,
 ) -> list[str]:
     """Return one reason code per row, with repeats judged in download order.
 
@@ -176,10 +175,10 @@ def assign_reasons(
     short body carried by many different articles is a placeholder ("text not available"), not
     text (see `_placeholders`). A page under the heading of a compiled page (jokes, quotes of
     others) has no author, whoever signs it. A piece that passes every rule is still left
-    out of the cleaned dataset as `short_or_cartoon` under MIN_WORDS words or under the
-    heading of a cartoon, and as `not_english` when `english` (see `text_marks.read`; None
-    skips the rule) gives its text a share of common English words under
-    `language.MIN_ENGLISH`.
+    out of the cleaned dataset as `short_or_cartoon` when `own_words` gives it fewer than
+    `prose.MIN_OWN_WORDS` words of its author (a drawing, a photograph, a list of links), and
+    as `not_english` when `english` gives its text a share of common English words under
+    `language.MIN_ENGLISH`. Both come from `text_marks.read`; None skips the rule.
     """
     n = len(rows["source_file"])
     file_key = {f: summaries.file_order(f) for f in set(rows["source_file"])}
@@ -212,8 +211,8 @@ def assign_reasons(
             if reasons[i] not in ("no_text", "no_author"):
                 qualifies.add(i)
             # Decided last and outside `qualifies`, so the raw table does not depend on it.
-            short = (rows["body_words"][i] or 0) < MIN_WORDS
-            if reasons[i] == "kept" and (short or summaries.is_cartoon_title(title)):
+            written = None if own_words is None else own_words[i]  # None: nothing to judge
+            if reasons[i] == "kept" and written is not None and written < prose.MIN_OWN_WORDS:
                 reasons[i] = "short_or_cartoon"
             share = None if english is None else english[i]  # None: nothing to judge
             if reasons[i] == "kept" and share is not None and share < language.MIN_ENGLISH:
@@ -251,7 +250,7 @@ def write_exclusions(
     check_parser(parquet)
     table = pq.read_table(parquet, columns=INPUTS)
     marks = text_marks.read(parquet)
-    reasons = assign_reasons(table.to_pydict(), corrections, marks.english, marks.rubric)
+    reasons = assign_reasons(table.to_pydict(), corrections, **marks._asdict())
     # The reasons depend on the review, so they carry its fingerprint (see review.same_review).
     write_reasons(table, reasons, out, {review.STAMP: review.fingerprint(corrections or {})})
     return reasons

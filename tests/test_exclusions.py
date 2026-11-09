@@ -8,7 +8,7 @@ import pyarrow.parquet as pq
 import pytest
 
 from econ_corpus.names import review
-from econ_corpus.raw import exclusions, language, parse, reasons
+from econ_corpus.raw import exclusions, language, parse, prose, reasons
 from econ_corpus.shared import summaries
 
 DEFAULTS = {
@@ -34,8 +34,14 @@ def make_rows(*rows: dict) -> dict[str, list]:
     return {key: [row[key] for row in full] for key in DEFAULTS}
 
 
-ENGLISH = "The price of bread went up again, and it is not the first time that it has."
-SPANISH = "El precio del pan volvió a subir este año, y no es la primera vez que pasa."
+ENGLISH = (
+    "The price of bread went up again this year, and it is not the first time that the people "
+    "of this town have had to pay more for less. What would you do about it?"
+)
+SPANISH = (
+    "El precio del pan volvió a subir este año, y no es la primera vez que la gente de este "
+    "pueblo tiene que pagar más por menos. ¿Qué haría usted para cambiarlo?"
+)
 
 
 def records_table(rows: dict[str, list], texts: list[str] | None = None) -> pa.Table:
@@ -371,37 +377,45 @@ def test_records_without_body_are_never_text_duplicates() -> None:
 # --- short texts and cartoons -------------------------------------------------------
 
 
-def test_a_signed_opinion_piece_under_the_least_words_is_left_out() -> None:
-    assert reasons_of({"body_words": exclusions.MIN_WORDS - 1}) == ["short_or_cartoon"]
-    assert reasons_of({"body_words": exclusions.MIN_WORDS}) == ["kept"]
-    assert reasons_of({"body_words": None}) == ["short_or_cartoon"]
+FEW, ENOUGH = prose.MIN_OWN_WORDS - 1, prose.MIN_OWN_WORDS
+
+
+def test_a_signed_opinion_piece_with_too_few_words_of_its_author_is_left_out() -> None:
+    rows = make_rows({"doc_id": 1}, {"doc_id": 2, "body_sha256": "bbb"})
+    assert exclusions.assign_reasons(rows, own_words=[FEW, ENOUGH]) == ["short_or_cartoon", "kept"]
+    assert exclusions.assign_reasons(rows, own_words=[0, ENOUGH]) == ["short_or_cartoon", "kept"]
+    assert exclusions.assign_reasons(rows) == ["kept", "kept"]  # no count: nothing to judge
+
+
+def test_the_words_stored_do_not_decide() -> None:
+    # A short letter is text; a long page of credits and links is not.
+    assert exclusions.assign_reasons(make_rows({"body_words": 35}), own_words=[ENOUGH]) == ["kept"]
+    furniture = make_rows({"body_words": 120})
+    assert exclusions.assign_reasons(furniture, own_words=[FEW]) == ["short_or_cartoon"]
 
 
 def test_the_reasons_table_states_the_least_words() -> None:
     by_code = {r["code"]: r["description"] for r in exclusions.REASONS}
-    assert f"under {exclusions.MIN_WORDS} words" in by_code["short_or_cartoon"]
-    assert f"at least {exclusions.MIN_WORDS} words" in by_code["kept"]
+    assert f"under {prose.MIN_OWN_WORDS} words" in by_code["short_or_cartoon"]
+    assert f"at least {prose.MIN_OWN_WORDS} words" in by_code["kept"]
 
 
-@pytest.mark.parametrize(
-    "title",
-    ["TOON-OP; Sample title", "Toon-Op; Sample title", "Op-Comic: Sample title", "OP- COMIC"],
-)
-def test_a_title_labelled_as_a_cartoon_is_left_out_whatever_its_length(title: str) -> None:
-    assert reasons_of({"title": title}) == ["short_or_cartoon"]
-
-
-@pytest.mark.parametrize("title", ["Cartoon warfare", "Op-Art: Sample title", "The comic toon-op"])
-def test_a_text_about_cartoons_is_kept(title: str) -> None:
-    assert reasons_of({"title": title}) == ["kept"]
+@pytest.mark.parametrize("title", ["TOON-OP; Sample title", "PANEL DISCUSSION; Sample title"])
+def test_the_heading_of_a_cartoon_does_not_decide(title: str) -> None:
+    # What a cartoonist writes under the drawing is text; the drawing alone leaves no words.
+    rows = make_rows({"title": title})
+    assert exclusions.assign_reasons(rows, own_words=[ENOUGH]) == ["kept"]
+    assert exclusions.assign_reasons(rows, own_words=[FEW]) == ["short_or_cartoon"]
 
 
 def test_a_short_piece_that_fails_an_earlier_rule_keeps_that_reason() -> None:
-    short = {"body_words": 10}
-    assert reasons_of({**short, "author": None}) == ["no_author"]
-    assert reasons_of({**short, "author": "The Editorial Board"}) == ["no_person_author"]
-    assert reasons_of({**short, "doc_type": "NEWSPAPER", "section": "Sports"}) == ["not_opinion"]
-    assert reasons_of({**short, "body_chars": 0}) == ["no_text"]
+    def reason(change: dict) -> list[str]:
+        return exclusions.assign_reasons(make_rows(change), own_words=[FEW])
+
+    assert reason({"author": None}) == ["no_author"]
+    assert reason({"author": "The Editorial Board"}) == ["no_person_author"]
+    assert reason({"doc_type": "NEWSPAPER", "section": "Sports"}) == ["not_opinion"]
+    assert reason({"body_chars": 0}) == ["no_text"]
 
 
 def test_a_short_piece_stays_in_the_raw_table() -> None:
@@ -410,15 +424,16 @@ def test_a_short_piece_stays_in_the_raw_table() -> None:
     assert by_code["not_english"]["in_raw"]
 
 
-def test_which_copy_of_a_text_stays_does_not_depend_on_the_cartoon_label() -> None:
+def test_which_copy_of_a_text_stays_does_not_depend_on_its_own_words() -> None:
     # The raw table must be the same with or without this rule.
-    labelled = {"doc_id": 1, "title": "TOON-OP; Sample title"}
-    plain = {"doc_id": 2, "source_file": LATER}
-    assert reasons_of(labelled, plain) == ["short_or_cartoon", "duplicate_text"]
-    short = {"body_words": 10}
-    assert reasons_of({**short, "doc_id": 1}, {**short, **plain}) == [
-        "short_or_cartoon",
+    rows = make_rows({"doc_id": 1}, {"doc_id": 2, "source_file": LATER})
+    with_rule = exclusions.assign_reasons(rows, own_words=[FEW, FEW])
+    assert with_rule == ["short_or_cartoon", "duplicate_text"]
+    assert exclusions.assign_reasons(rows) == ["kept", "duplicate_text"]
+    unsigned_first = make_rows({"doc_id": 1, "author": None}, {"doc_id": 2, "source_file": LATER})
+    assert exclusions.assign_reasons(unsigned_first, own_words=[FEW, FEW]) == [
         "duplicate_text",
+        "short_or_cartoon",
     ]
 
 
@@ -477,13 +492,17 @@ def test_the_rubric_of_an_opinion_page_marks_opinion_like_a_title_or_a_section()
         ({"author": None}, "no_author"),
         ({"author": "The Editorial Board"}, "no_person_author"),
         ({"body_chars": 0}, "no_text"),
-        ({"body_words": 10}, "short_or_cartoon"),
         ({"section": None}, "kept"),
         ({"section": None, "doc_type": None}, "kept"),
     ],
 )
 def test_a_piece_under_the_rubric_still_needs_text_and_a_person(change: dict, reason: str) -> None:
     assert exclusions.assign_reasons(make_rows({**NEWS, **change}), rubric=[True]) == [reason]
+
+
+def test_a_piece_under_the_rubric_still_needs_words_of_its_author() -> None:
+    reasons = exclusions.assign_reasons(make_rows(NEWS), rubric=[True], own_words=[FEW])
+    assert reasons == ["short_or_cartoon"]
 
 
 def test_write_exclusions_reads_the_rubric_from_the_text(tmp_path: Path) -> None:
@@ -512,14 +531,17 @@ def test_a_signed_opinion_piece_with_too_few_english_words_is_left_out() -> None
         ({"author": None}, "no_author"),
         ({"author": "The Editorial Board"}, "no_person_author"),
         ({"doc_type": "NEWSPAPER", "section": "Sports"}, "not_opinion"),
-        ({"body_words": 10}, "short_or_cartoon"),
-        ({"title": "TOON-OP; Sample title"}, "short_or_cartoon"),
     ],
 )
 def test_a_foreign_text_that_fails_an_earlier_rule_keeps_that_reason(
     change: dict, reason: str
 ) -> None:
     assert exclusions.assign_reasons(make_rows(change), english=[LOW]) == [reason]
+
+
+def test_a_foreign_text_with_too_few_words_is_left_out_as_short() -> None:
+    rows = make_rows({})
+    assert exclusions.assign_reasons(rows, english=[LOW], own_words=[FEW]) == ["short_or_cartoon"]
 
 
 def test_which_copy_of_a_text_stays_does_not_depend_on_its_language() -> None:
@@ -537,6 +559,15 @@ def test_write_exclusions_reads_the_language_from_the_text(tmp_path: Path) -> No
     source = tmp_path / "records.parquet"
     pq.write_table(records_table(rows, [SPANISH, ENGLISH]), source)
     assert exclusions.write_exclusions(source, tmp_path / "out.parquet") == ["not_english", "kept"]
+
+
+def test_write_exclusions_counts_the_words_of_the_author_in_the_text(tmp_path: Path) -> None:
+    rows = make_rows({"doc_id": 1}, {"doc_id": 2, "body_sha256": "bbb"})
+    source = tmp_path / "records.parquet"
+    drawing = "Caption: A man holds a loaf of bread.\nCredit: Jane Doe\nIllustration Cartoon"
+    pq.write_table(records_table(rows, [drawing, ENGLISH]), source)
+    reasons = exclusions.write_exclusions(source, tmp_path / "out.parquet")
+    assert reasons == ["short_or_cartoon", "kept"]
 
 
 # --- counts and files --------------------------------------------------------------

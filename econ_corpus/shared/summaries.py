@@ -61,9 +61,6 @@ OPINION_TITLE_STARTS = (
     "conneticutopinion;", "opinionexchange:", "letters:", "letters;",
 )  # fmt: skip
 OPINION_TITLE_TAGS = ("(editorial)", "[op-ed", "[editorial", "[letter", "[commentary")
-# Headings a newspaper prints before the title of a cartoon ('TOON-OP; ...'), without
-# the hyphen, which is not always there.
-CARTOON_TITLE_STARTS = ("toonop", "opcomic", "paneldiscussion;")
 # Headings of pages put together from the words of others: jokes of the week, quotes from
 # other newspapers ('Punchlines', 'Best of Late Night', 'IN OTHER WORDS: A sampling of
 # opinions', 'EDITORIALS ELSEWHERE; ...').
@@ -159,12 +156,6 @@ def is_opinion_title(title: str | None) -> bool:
     squeezed = re.sub(r"\s+", "", title).casefold()
     heading = squeezed.startswith(OPINION_TITLE_STARTS) or squeezed == "letters"
     return heading or any(tag in squeezed for tag in OPINION_TITLE_TAGS)
-
-
-def is_cartoon_title(title: str | None) -> bool:
-    """Tell whether a title starts with the heading of a cartoon."""
-    squeezed = re.sub(r"[\s-]+", "", title or "").casefold()
-    return squeezed.startswith(CARTOON_TITLE_STARTS)
 
 
 def is_compiled_title(title: str | None) -> bool:

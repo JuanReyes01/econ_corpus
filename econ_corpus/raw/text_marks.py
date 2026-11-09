@@ -2,10 +2,12 @@
 
 Input: the `text` column of the parquet written by `parse`.
 Output: for every record, in row order, the share of common English words at the start of
-its text and whether its first line is the rubric of an opinion page.
+its text, whether its first line is the rubric of an opinion page, and how many of its words
+were written by its author.
 
 Lives here: reading the texts once, and the rubrics. Does not live here: how the share is
-computed (language) or what a share or a rubric means for a record (exclusions).
+computed (language), how the words of the author are counted (prose) or what a mark means
+for a record (exclusions).
 
 ProQuest files some opinion pages under a news section with a generic document type; the
 only mark left is the rubric that the newspaper printed above the page, which the export
@@ -19,7 +21,7 @@ import pyarrow as pa
 import pyarrow.compute as pc
 import pyarrow.parquet as pq
 
-from econ_corpus.raw import language
+from econ_corpus.raw import language, prose
 
 # Printed by USA Today above its debate and its columns from 1991 to 1997.
 OPINION_RUBRIC_RE = r"^\s*THE EDITORIAL PAGE\b"
@@ -31,6 +33,7 @@ class Marks(NamedTuple):
 
     english: list[float | None]
     rubric: list[bool]
+    own_words: list[int]
 
 
 def opinion_rubrics(texts: pa.Array | pa.ChunkedArray) -> list[bool]:
@@ -45,9 +48,10 @@ def read(records: Path) -> Marks:
     The texts are read one row group at a time: all together they do not fit in memory.
     """
     file = pq.ParquetFile(records)
-    marks = Marks([], [])
+    marks = Marks([], [], [])
     for group in range(file.num_row_groups):
         texts = file.read_row_group(group, columns=["text"])["text"]
         marks.english.extend(language.english_shares(texts))
         marks.rubric.extend(opinion_rubrics(texts))
+        marks.own_words.extend(prose.own_word_counts(texts))
     return marks
