@@ -7,7 +7,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 
-from econ_corpus.clean import processed, review_cases
+from econ_corpus.clean import author_cases, processed, review_cases
 from econ_corpus.names import review
 from econ_corpus.raw import parse
 from econ_corpus.raw.reasons import write_reasons
@@ -50,13 +50,13 @@ def test_pairs_to_review_are_unreviewed_with_enough_articles_on_both_sides() -> 
         ["3", "Ann Poe", "9", "4", "Ann Poh", "1", "one_letter_apart", "not_reviewed"],
         ["5", "Al Roe", "4", "6", "Al Rowe", "4", "one_letter_apart", "unsure"],
     ]
-    assert review_cases.pairs_to_review(candidates, min_articles=2) == [candidates[1]]
+    assert author_cases.pairs_to_review(candidates, min_articles=2) == [candidates[1]]
 
 
 def test_evidence_shows_newspapers_years_and_two_titles() -> None:
     articles = [("Example Daily", 2001, "First title"), ("Example Daily", 1999, "Second title")]
     articles.append(("Sample Times", None, "Third title"))
-    assert review_cases.evidence(articles) == (
+    assert author_cases.evidence(articles) == (
         "Example Daily:2/Sample Times:1 1999-2001 | First title // Second title"
     )
 
@@ -162,7 +162,7 @@ NAMES = [
 
 
 def test_merged_names_with_and_without_a_suffix_are_listed_when_both_are_frequent() -> None:
-    assert review_cases.suffix_merges(NAMES, set(), min_articles=3) == [
+    assert author_cases.suffix_merges(NAMES, set(), min_articles=3) == [
         ["key_a", "name_a", "articles_a", "key_b", "name_b", "articles_b"],
         ["jamesdoe", "James Doe", "40", "jamesdoejr", "James Doe Jr", "21"],
     ]
@@ -170,7 +170,7 @@ def test_merged_names_with_and_without_a_suffix_are_listed_when_both_are_frequen
 
 def test_suffix_merges_already_decided_are_not_listed_again() -> None:
     decided = {("jamesdoe", "jamesdoejr")}
-    assert review_cases.suffix_merges(NAMES, decided, min_articles=3)[1:] == []
+    assert author_cases.suffix_merges(NAMES, decided, min_articles=3)[1:] == []
 
 
 def test_build_refuses_tables_built_before_the_review_files_changed(tmp_path: Path) -> None:
@@ -236,7 +236,7 @@ def test_a_pair_with_one_frequent_author_is_reviewed_whatever_the_other_has() ->
         ["1", "Jane Doe", "900", "2", "Jane Deo", "1", "one_letter_apart", "not_reviewed"],
         ["3", "Ann Poe", "9", "4", "Ann Poh", "1", "one_letter_apart", "not_reviewed"],
     ]
-    assert [row[1] for row in review_cases.pairs_to_review(candidates)] == ["Jane Doe"]
+    assert [row[1] for row in author_cases.pairs_to_review(candidates)] == ["Jane Doe"]
 
 
 def test_decisions_that_apply_to_nothing_are_listed() -> None:
@@ -244,7 +244,7 @@ def test_decisions_that_apply_to_nothing_are_listed() -> None:
     decided = {"The Example Board", "Roe, Ann", "Doe, Jane"}
     assert review_cases.unused_parts(bylines, decided) == ["Roe, Ann"]
     pairs = {("janedoe", "janeqdoe"), ("annroe", "annroh")}
-    assert review_cases.unused_pairs(pairs, {"janedoe", "janeqdoe", "annroe"}) == [
+    assert author_cases.unused_pairs(pairs, {"janedoe", "janeqdoe", "annroe"}) == [
         ("annroe", "annroh")
     ]
 
@@ -285,7 +285,7 @@ FAR_HEADER = [
 
 
 def far_pairs(decided: set[tuple[str, str]] = frozenset(), **gap: int) -> list[tuple[str, ...]]:
-    table = review_cases.distant_merges(FAR, SIGNED, set(decided), **gap)
+    table = author_cases.distant_merges(FAR, SIGNED, set(decided), **gap)
     return [(row[0], row[4], row[8]) for row in table[1:]]
 
 
@@ -304,7 +304,7 @@ def test_variants_of_an_author_with_years_between_them_are_listed_in_order() -> 
 
 
 def test_a_distant_merge_is_listed_with_the_evidence_of_each_variant() -> None:
-    table = review_cases.distant_merges(FAR, SIGNED, set())
+    table = author_cases.distant_merges(FAR, SIGNED, set())
     assert table[0] == FAR_HEADER
     assert table[2] == [
         *("janedoe", "Jane Doe", "3", "Newsday:3 1990-1992 | First // Second"),
@@ -325,7 +325,7 @@ def test_distant_merges_already_decided_are_not_listed_again() -> None:
 
 def test_a_variant_with_no_dated_article_is_not_listed() -> None:
     undated = SIGNED | {"janeqdoe": [("Newsday", None, "Third")]}
-    table = review_cases.distant_merges(FAR, undated, set())
+    table = author_cases.distant_merges(FAR, undated, set())
     assert not any("janeqdoe" in row for row in table[1:])
 
 

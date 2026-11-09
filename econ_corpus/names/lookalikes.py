@@ -12,9 +12,10 @@ from collections import defaultdict
 from itertools import combinations
 
 from econ_corpus.names import identity
-from econ_corpus.names.authors import Name, fold, one_edit
+from econ_corpus.names.authors import Name
 from econ_corpus.names.identity import Seen
 from econ_corpus.names.name_words import NICKNAMES
+from econ_corpus.names.spelling import fold, one_edit
 
 MIN_KEY = 8  # shorter keys are too easily one letter apart by chance
 MAX_NEIGHBOURS = 20  # ignore spellings shared by more keys than this

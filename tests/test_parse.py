@@ -1,5 +1,6 @@
 """Tests for econ_corpus.raw.parse, using small synthetic records (no real article text)."""
 
+import ast
 from datetime import date
 import hashlib
 from pathlib import Path
@@ -7,7 +8,7 @@ from pathlib import Path
 import pyarrow.parquet as pq
 import pytest
 
-from econ_corpus.raw import parse
+from econ_corpus.raw import labels, layout, parse
 
 SEP = "_" * 60
 FOOTER = (
@@ -62,14 +63,14 @@ def parse_one(chunk: str, index: int = 0) -> dict:
 
 
 def test_split_drops_preamble_and_keeps_footer_as_last_chunk() -> None:
-    chunks = parse.split_records(make_file([make_record(), make_record()]))
+    chunks = layout.split_records(make_file([make_record(), make_record()]))
     assert len(chunks) == 3
     assert "Contáctenos" in chunks[-1]
 
 
 def test_split_handles_lf_and_crlf_the_same() -> None:
     records = [make_record(), make_record()]
-    assert parse.split_records(make_file(records, crlf=True)) == parse.split_records(
+    assert layout.split_records(make_file(records, crlf=True)) == layout.split_records(
         make_file(records, crlf=False)
     )
 
@@ -118,7 +119,7 @@ def test_multiline_body_with_blank_lines_is_fully_counted() -> None:
 
 
 def test_footer_chunk_is_flagged_and_empty() -> None:
-    row = parse_one(parse.split_records(make_file([make_record()]))[-1], index=1)
+    row = parse_one(layout.split_records(make_file([make_record()]))[-1], index=1)
     assert row["is_footer"] is True
     assert row["has_body"] is False
     assert row["doc_id"] is None
@@ -177,7 +178,7 @@ def test_stray_spaces_in_body_are_never_touched() -> None:
 
 
 def test_compact_removes_all_whitespace_and_casefolds() -> None:
-    assert parse.compact(" Per iódicos ") == "periódicos"
+    assert labels.compact(" Per iódicos ") == "periódicos"
 
 
 # --- dates, years, ids -------------------------------------------------------------
@@ -212,9 +213,9 @@ def test_unparseable_id_and_year_are_flagged() -> None:
 
 
 def test_parse_date_helper_cases() -> None:
-    assert parse.parse_date("Nov 9, 2022") == (date(2022, 11, 9), 2022, "ok")
-    assert parse.parse_date(None) == (None, None, "missing")
-    assert parse.parse_date("2019") == (None, 2019, "year_only")
+    assert labels.parse_date("Nov 9, 2022") == (date(2022, 11, 9), 2022, "ok")
+    assert labels.parse_date(None) == (None, None, "missing")
+    assert labels.parse_date("2019") == (None, 2019, "year_only")
 
 
 # --- provenance --------------------------------------------------------------------
@@ -237,7 +238,7 @@ def write_file(tmp_path: Path, name: str, records: list[str], *, footer: bool = 
 
 def test_sanity_check_ok_when_records_match_separators(tmp_path: Path) -> None:
     path = write_file(tmp_path, "a.txt", [make_record()] * 3)
-    result = parse.sanity_check(path)
+    result = layout.sanity_check(path)
     assert result == {
         "source_file": "a.txt",
         "separators": 4,
@@ -250,7 +251,7 @@ def test_sanity_check_ok_when_records_match_separators(tmp_path: Path) -> None:
 
 def test_sanity_check_fails_without_footer(tmp_path: Path) -> None:
     path = write_file(tmp_path, "b.txt", [make_record()] * 2, footer=False)
-    result = parse.sanity_check(path)
+    result = layout.sanity_check(path)
     assert result["footers"] == 0
     assert result["ok"] is False
 
@@ -324,13 +325,13 @@ def test_text_is_the_body_exactly_as_exported() -> None:
 
 
 def test_footer_and_empty_body_have_no_text() -> None:
-    footer = parse_one(parse.split_records(make_file([make_record()]))[-1], index=1)
+    footer = parse_one(layout.split_records(make_file([make_record()]))[-1], index=1)
     assert footer["text"] is None
     assert parse_one(make_record(body="   "))["text"] is None
 
 
 def test_every_extra_label_and_the_text_are_in_the_schema() -> None:
-    assert set(parse.EXTRA_LABELS.values()) <= set(parse.SCHEMA.names)
+    assert set(labels.EXTRA_LABELS.values()) <= set(parse.SCHEMA.names)
     assert parse.SCHEMA.names[-1] == "text"
     assert len(set(parse.SCHEMA.names)) == len(parse.SCHEMA.names)
 
@@ -338,7 +339,7 @@ def test_every_extra_label_and_the_text_are_in_the_schema() -> None:
 def test_underscore_rule_inside_body_is_reported_not_a_failure(tmp_path: Path) -> None:
     body = "Sign here:\n" + "_" * 38 + "\nThanks."
     path = write_file(tmp_path, "c.txt", [make_record(body=body)])
-    result = parse.sanity_check(path)
+    result = layout.sanity_check(path)
     assert result["records"] == 1
     assert result["odd_rules"] == 1
     assert result["ok"] is True
@@ -388,9 +389,9 @@ def test_parse_folder_writes_nothing_when_a_file_fails_the_check(tmp_path: Path)
 
 def test_a_rule_that_is_not_a_clean_separator_fails_the_check() -> None:
     text = make_file([make_record(), make_record()]).replace(
-        parse.SEPARATOR, parse.SEPARATOR + " ", 1
+        layout.SEPARATOR, layout.SEPARATOR + " ", 1
     )
-    result = parse.check_text(text, "a.txt")
+    result = layout.check_text(text, "a.txt")
     assert result["odd_rules"] == 1
     assert result["ok"] is False
 
@@ -409,16 +410,16 @@ def test_a_good_table_survives_a_parse_that_fails(tmp_path: Path) -> None:
 
 
 @pytest.mark.parametrize(
-    "spoiled", [" " + parse.SEPARATOR, parse.SEPARATOR + "_", parse.SEPARATOR + "\u00a0"]
+    "spoiled", [" " + layout.SEPARATOR, layout.SEPARATOR + "_", layout.SEPARATOR + "\u00a0"]
 )
 def test_a_line_that_is_almost_a_separator_fails_the_check(spoiled: str) -> None:
-    text = make_file([make_record(), make_record()]).replace(parse.SEPARATOR, spoiled, 1)
-    assert parse.check_text(text, "a.txt")["ok"] is False
+    text = make_file([make_record(), make_record()]).replace(layout.SEPARATOR, spoiled, 1)
+    assert layout.check_text(text, "a.txt")["ok"] is False
 
 
 def test_a_long_rule_inside_a_body_is_not_a_spoiled_separator() -> None:
     text = make_file([make_record(body="Sign here:\n" + "_" * 68 + "\nThanks.")])
-    assert parse.check_text(text, "a.txt")["ok"] is True
+    assert layout.check_text(text, "a.txt")["ok"] is True
 
 
 def test_the_table_says_which_parser_wrote_it(tmp_path: Path) -> None:
@@ -428,3 +429,43 @@ def test_the_table_says_which_parser_wrote_it(tmp_path: Path) -> None:
     out = tmp_path / "records.parquet"
     parse.parse_folder(raw, out)
     assert pq.read_schema(out).metadata[b"parse"].decode() == parse.code_fingerprint()
+
+
+def _package_imports(module: Path) -> set[str]:
+    """Return the modules of `econ_corpus` that a module imports, as 'folder/name'."""
+    found = set()
+    for node in ast.walk(ast.parse(module.read_text(encoding="utf-8"))):
+        if isinstance(node, ast.Import):
+            names = [alias.name for alias in node.names]
+        elif isinstance(node, ast.ImportFrom):  # the module itself, or a module named in it
+            names = [node.module, *(f"{node.module}.{alias.name}" for alias in node.names)]
+        else:
+            continue
+        for name in names:
+            if name.startswith("econ_corpus."):
+                found.add(name.removeprefix("econ_corpus.").replace(".", "/"))
+    return found
+
+
+def test_the_parser_fingerprint_covers_every_module_the_parser_imports() -> None:
+    package = Path(parse.__file__).parents[1]
+    seen, todo = set(), ["raw/parse"]
+    while todo:
+        name = todo.pop()
+        if name not in seen and (package / f"{name}.py").exists():  # a folder is no module
+            seen.add(name)
+            todo += _package_imports(package / f"{name}.py")
+    assert sorted(f"{name}.py" for name in seen) == list(parse.PARSER_MODULES)
+
+
+def test_the_parser_fingerprint_changes_with_any_of_its_modules(tmp_path: Path) -> None:
+    (tmp_path / "raw").mkdir()
+    for module in parse.PARSER_MODULES:
+        (tmp_path / module).write_text("LIMIT = 1\n", encoding="utf-8")
+    before = parse.code_fingerprint(tmp_path)
+    for module in parse.PARSER_MODULES:
+        (tmp_path / module).write_text("LIMIT = 2\n", encoding="utf-8")
+        edited = parse.code_fingerprint(tmp_path)
+        assert edited != before
+        before = edited
+    assert parse.code_fingerprint() == parse.code_fingerprint(Path(parse.__file__).parents[1])

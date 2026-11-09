@@ -10,7 +10,7 @@ that decides which records to keep (exclusions).
 
 import re
 
-# Publication key prefix (see `parse.compact`) -> display name. These are the 10 newspapers
+# Publication key prefix (see `labels.compact`) -> display name. These are the 10 newspapers
 # of the ProQuest query (the scraper README also lists New York Post, which was dropped);
 # everything else is reported as 'Other'.
 INTENDED_NEWSPAPERS = {

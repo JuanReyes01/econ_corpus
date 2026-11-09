@@ -8,7 +8,7 @@ import pyarrow.parquet as pq
 import pytest
 
 from econ_corpus.names import review
-from econ_corpus.raw import exclusions, language, parse, prose, reasons
+from econ_corpus.raw import exclusions, language, parse, prose, reasons, record_rules, repeats
 from econ_corpus.raw.text_marks import Marks
 from econ_corpus.shared import summaries
 
@@ -339,11 +339,11 @@ def test_a_dated_copy_stays_rather_than_an_undated_one() -> None:
 
 @pytest.mark.parametrize("change", [{"title": "Another title"}, {"pub_date": date(2021, 5, 6)}])
 def test_a_short_body_is_a_copy_only_under_the_same_title_and_date(change: dict) -> None:
-    short = {"body_sha256": "sss", "body_words": exclusions.PLACEHOLDER_WORDS - 1}
+    short = {"body_sha256": "sss", "body_words": repeats.PLACEHOLDER_WORDS - 1}
     first, second = {**short, "doc_id": 1}, {**short, "doc_id": 2, "source_file": LATER}
     assert reasons_of(first, second) == ["kept", "duplicate_text"]
     assert reasons_of(first, {**second, **change}) == ["kept", "kept"]
-    long = {"body_words": exclusions.PLACEHOLDER_WORDS}
+    long = {"body_words": repeats.PLACEHOLDER_WORDS}
     assert reasons_of({**first, **long}, {**second, **long, **change})[1] == "duplicate_text"
 
 
@@ -487,12 +487,12 @@ def test_write_exclusions_reads_the_frame_of_a_poll_from_the_text(tmp_path: Path
 
 
 def test_a_short_page_of_usa_today_that_names_a_comedian_is_a_round_up_of_jokes() -> None:
-    assert summaries.newspaper_family("usatoday") == exclusions.ROUNDUP_PAPER
-    short = {**USA_TODAY, "body_words": exclusions.ROUNDUP_WORDS - 1}
+    assert summaries.newspaper_family("usatoday") == record_rules.ROUNDUP_PAPER
+    short = {**USA_TODAY, "body_words": record_rules.ROUNDUP_WORDS - 1}
     assert reasons_of(short) == ["no_person_author"]
     assert reasons_of({**short, "author": None}) == ["no_author"]
     # A column about a comedian is longer, and other newspapers have no such page.
-    assert reasons_of({**USA_TODAY, "body_words": exclusions.ROUNDUP_WORDS}) == ["kept"]
+    assert reasons_of({**USA_TODAY, "body_words": record_rules.ROUNDUP_WORDS}) == ["kept"]
     assert reasons_of({"title": USA_TODAY["title"], "body_words": 200}) == ["kept"]
     assert reasons_of({**short, "title": "The speech ran long"}) == ["kept"]
 
@@ -670,10 +670,10 @@ def test_reasons_are_refused_for_records_that_changed_since_they_were_computed(
 def test_a_short_body_under_many_titles_is_a_placeholder_however_few_rows() -> None:
     rows = [
         {"doc_id": i, "title": f"Title {i}", "body_sha256": "ppp", "body_words": 60}
-        for i in range(1, exclusions.PLACEHOLDER_ARTICLES + 1)
+        for i in range(1, repeats.PLACEHOLDER_ARTICLES + 1)
     ]
-    assert reasons_of(*rows) == ["no_text"] * exclusions.PLACEHOLDER_ARTICLES
-    assert reasons_of(*rows[:-1]) == ["kept"] * (exclusions.PLACEHOLDER_ARTICLES - 1)
+    assert reasons_of(*rows) == ["no_text"] * repeats.PLACEHOLDER_ARTICLES
+    assert reasons_of(*rows[:-1]) == ["kept"] * (repeats.PLACEHOLDER_ARTICLES - 1)
 
 
 def test_a_long_body_under_many_titles_is_one_text() -> None:
@@ -693,9 +693,9 @@ def test_copies_of_one_article_do_not_make_its_body_a_placeholder() -> None:
 def test_a_short_body_printed_on_many_days_under_one_title_is_a_placeholder() -> None:
     rows = [
         {"doc_id": i, "pub_date": date(2020, 1, i), "body_sha256": "ccc", "body_words": 11}
-        for i in range(1, exclusions.PLACEHOLDER_ARTICLES + 1)
+        for i in range(1, repeats.PLACEHOLDER_ARTICLES + 1)
     ]
-    assert reasons_of(*rows) == ["no_text"] * exclusions.PLACEHOLDER_ARTICLES
+    assert reasons_of(*rows) == ["no_text"] * repeats.PLACEHOLDER_ARTICLES
 
 
 def test_reasons_are_refused_once_the_rules_change(

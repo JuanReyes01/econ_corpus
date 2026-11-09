@@ -1,6 +1,6 @@
 """Tests for econ_corpus.names.identity, using made-up names only."""
 
-from econ_corpus.names import authors, identity, lookalikes
+from econ_corpus.names import authors, identity, lookalikes, spelling
 from econ_corpus.names.identity import Seen
 
 A, B = "Example Daily", "Sample Times"
@@ -12,7 +12,7 @@ def seen(*rows: tuple[str, set[str], int]) -> dict[str, Seen]:
     for written, papers, articles in rows:
         name = authors.parse_name(written)
         assert name is not None
-        out[authors.name_key(name)] = Seen(name, frozenset(papers), articles)
+        out[spelling.name_key(name)] = Seen(name, frozenset(papers), articles)
     return out
 
 

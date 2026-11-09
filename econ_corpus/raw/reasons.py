@@ -157,7 +157,7 @@ def check_parser(records: Path) -> None:
     """Refuse a table of records that this version of the parser did not write."""
     written_by = (pq.read_schema(records).metadata or {}).get(parse.STAMP.encode(), b"").decode()
     if written_by != parse.code_fingerprint():
-        msg = f"{records.name} was written by another version of parse.py: run parse again"
+        msg = f"{records.name} was written by another version of the parser: run parse again"
         raise ValueError(msg)
 
 

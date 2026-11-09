@@ -6,9 +6,9 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 
-from econ_corpus.raw import datasheet, parse
+from econ_corpus.raw import datasheet, headline, parse
 from econ_corpus.raw.reasons import write_reasons
-from econ_corpus.shared import summaries, tables
+from econ_corpus.shared import source_tables, summaries, tables
 
 NYT_ONLINE = "newyorktimes(online);newyork"
 NYT_PRINT = "newyorktimes,lateedition(eastcoast);newyork,n.y."
@@ -224,7 +224,7 @@ def test_facts_report_duplicate_rows_and_unique_ids() -> None:
         {"doc_id": 1, "source_file": "ProQuestDocuments-2024-12-31_1.txt"},
         {"doc_id": 2, "source_file": "ProQuestDocuments-2024-12-31_2.txt"},
     )
-    facts = datasheet.facts(articles)
+    facts = headline.facts(articles)
     assert facts["n_articles"] == "3"
     assert facts["n_unique_ids"] == "2"
     assert facts["n_duplicate_rows"] == "1"
@@ -283,7 +283,9 @@ def test_other_publications_table_uses_commonest_label_and_skips_queried_papers(
         {"publication_key": other, "publication": "La Opi nión; Los Angeles"},
         {"publication_key": NYT_PRINT},
     )
-    assert tables.other_publications_table(articles)[1:] == [["La Opinión; Los Angeles", "3"]]
+    assert source_tables.other_publications_table(articles)[1:] == [
+        ["La Opinión; Los Angeles", "3"]
+    ]
 
 
 def test_download_table_counts_blogs_per_download_date() -> None:
@@ -296,7 +298,7 @@ def test_download_table_counts_blogs_per_download_date() -> None:
         {"source_file": "ProQuestDocuments-2024-12-04_2.txt"},
         {"source_file": "ProQuestDocuments-2024-12-31_1.txt"},
     )
-    assert tables.download_table(articles)[1:] == [
+    assert source_tables.download_table(articles)[1:] == [
         ["2024-12-04", "2", "1", "50.0%", "1990", "2001"],
         ["2024-12-31", "1", "0", "0.0%", "2001", "2001"],
     ]
@@ -379,7 +381,7 @@ def test_facts_count_records_outside_the_three_queried_document_types() -> None:
         {"doc_type": "NEWSPAPER"},
         {"doc_type": None},
     )
-    facts = datasheet.facts(articles)
+    facts = headline.facts(articles)
     assert facts["n_outside_doc_types"] == "2"
     assert facts["outside_doc_types_pct"] == "50.0%"
 
@@ -391,7 +393,7 @@ def test_document_type_labels_are_counted_one_by_one_without_stray_spaces() -> N
         {"doc_type": "Commentary, NEWS"},
         {"doc_type": None},
     )
-    facts = datasheet.facts(articles)
+    facts = headline.facts(articles)
     assert facts["n_doc_type_labels"] == "2"
     assert facts["n_outside_doc_types"] == "0"
 
@@ -430,7 +432,7 @@ def test_facts_derive_the_numbers_quoted_in_the_prose() -> None:
         {"publication_key": "laopinión;la", "doc_type": "Op-Ed", "has_body": False},
         {"publication_key": "dailynews;la", "doc_type": "Op-Ed", "has_body": False},
     )
-    facts = datasheet.facts(articles)
+    facts = headline.facts(articles)
     assert facts["english_only_pct"] == "75.0%"
     assert facts["n_other_publications"] == "2"
     assert facts["n_doc_type_labels"] == "2"
@@ -450,7 +452,7 @@ def test_facts_separate_duplicates_across_files_from_duplicates_inside_a_file() 
         {"doc_id": 2, "source_file": "ProQuestDocuments-2024-11-22_1.txt"},
         {"doc_id": 2, "source_file": "ProQuestDocuments-2024-11-22_1.txt"},
     )
-    facts = datasheet.facts(articles)
+    facts = headline.facts(articles)
     assert facts["n_ids_in_several_files"] == "1"
     assert facts["n_repeats_inside_a_file"] == "1"
 
@@ -463,7 +465,7 @@ def test_online_edition_table_reports_label_and_whether_it_ever_varies() -> None
         {"publication_key": WSJ, "pub_year": 2010, "source_type_key": BLOG},
         {"publication_key": NYT_PRINT},
     )
-    rows = {r[0]: r for r in tables.online_edition_table(articles)[1:]}
+    rows = {r[0]: r for r in source_tables.online_edition_table(articles)[1:]}
     assert rows["New York Times"] == ["New York Times", "2", "1999", "100.0%", "0"]
     assert rows["Wall Street Journal"] == ["Wall Street Journal", "2", "2010", "50.0%", "1"]
     assert "Boston Globe" not in rows
@@ -488,7 +490,7 @@ def test_facts_report_opinion_sections_among_blog_labelled_records() -> None:
         {"source_type_key": BLOG, "section": None},
         {"source_type_key": PAPER, "section": "Opinion"},
     )
-    assert datasheet.facts(articles)["blog_opinion_section_pct"] == "50.0%"
+    assert headline.facts(articles)["blog_opinion_section_pct"] == "50.0%"
 
 
 def test_facts_find_the_year_inflated_by_repeated_downloads() -> None:
@@ -502,7 +504,7 @@ def test_facts_find_the_year_inflated_by_repeated_downloads() -> None:
     articles = make_articles(
         row(2005, 1, 1), row(2005, 1, 2), row(2005, 1, 3), row(2005, 2, 1), row(2006, 3, 1)
     )
-    facts = datasheet.facts(articles)
+    facts = headline.facts(articles)
     assert facts["dup_peak_year"] == "2005"
     assert facts["dup_peak_rows"] == "4"
     assert facts["dup_peak_unique"] == "2"
@@ -516,7 +518,7 @@ def test_facts_count_news_labelled_records_by_opinion_signals() -> None:
         {"doc_type": "News", "section": "Sports"},
         {"doc_type": None, "section": None},
     )
-    facts = datasheet.facts(articles)
+    facts = headline.facts(articles)
     assert facts["news_label_opinion_section_pct"] == "25.0%"
     assert facts["no_opinion_signal_n"] == "2"
     assert facts["no_opinion_signal_pct"] == "50.0%"

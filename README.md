@@ -65,7 +65,8 @@ inputs that do not belong together; `make <step>` runs one alone.
 
 After any change to the code in `econ_corpus/`, run the steps again from step 2: the
 reasons carry a fingerprint of the code and are refused once it changes. After a change to
-`raw/parse.py`, start from step 1: the table carries a fingerprint of the parser.
+the parser (`raw/parse.py` and the modules listed in its `PARSER_MODULES`: `layout.py`,
+`fields.py`, `labels.py`), start from step 1: the table carries a fingerprint of the parser.
 
 Steps 1 to 3b are pipeline 1 (`econ_corpus/raw`) and steps 4 to 6 are pipeline 2
 (`econ_corpus/clean`). `make raw` runs steps 2 to 3b and `make cleaned` runs steps 2 and 4 to 6. `RAW_DIR` defaults
@@ -91,7 +92,7 @@ folder runs the pipeline with no review.
 | Check | Stops |
 |---|---|
 | A file of the exports has no footer, text before its first record, or a line that is almost a separator (59 to 61 underscores once spaces are removed) | step 1, before the table is replaced |
-| The table of step 1 was written by another version of `raw/parse.py` | steps 2 to 7 |
+| The table of step 1 was written by another version of the parser (`raw/parse.py` and the modules in its `PARSER_MODULES`) | steps 2 to 7 |
 | The reasons were computed from other records (a new parse) or by other code | steps 3a to 7 |
 | The reasons were computed with another `byline_parts.csv` | steps 4 to 7 |
 | The cleaned tables were built from other reasons, review files or code, or a table is not the file the build wrote (`manifest.json` holds a fingerprint of each) | steps 5 to 7 |

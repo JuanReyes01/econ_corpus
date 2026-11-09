@@ -24,7 +24,7 @@ import pyarrow.csv as pacsv
 import pyarrow.parquet as pq
 
 from econ_corpus.clean import manifest
-from econ_corpus.names import authors, identity, lookalikes, review
+from econ_corpus.names import identity, lookalikes, review, spelling
 from econ_corpus.names.authors import Name
 from econ_corpus.names.bylines import read_byline
 from econ_corpus.raw import reasons
@@ -51,10 +51,10 @@ def _read_bylines(
     for doc_id, byline, paper in zip(doc_ids, bylines, newspapers, strict=True):
         if byline not in read:
             read[byline] = read_byline(byline, corrections)
-        found = {authors.name_key(name): how for name, how in read[byline]}
+        found = {spelling.name_key(name): how for name, how in read[byline]}
         for name, _ in read[byline]:
-            spellings[authors.name_key(name)][name] += 1
-            papers[authors.name_key(name)].add(paper)
+            spellings[spelling.name_key(name)][name] += 1
+            papers[spelling.name_key(name)].add(paper)
         per_article.append((doc_id, found))
     seen = {
         key: identity.Seen(_commonest(c), frozenset(papers[key]), sum(c.values()))
@@ -102,12 +102,12 @@ def author_tables(
             links.append([str(doc_id), str(author_id), str(position), how])
             articles[author_id] += 1
     variants = Counter(resolved.values())
-    name = {i: authors.display(seen[head].name) for head, i in ids.items()}
+    name = {i: spelling.display(seen[head].name) for head, i in ids.items()}
     people = [[str(i), name[i], str(articles[i]), str(variants[head])] for head, i in ids.items()]
     names = [
         [
             str(ids[resolved[key]]),
-            authors.display(seen[key].name),
+            spelling.display(seen[key].name),
             key,
             str(seen[key].articles),
             _rule(key, resolved, by_rule),

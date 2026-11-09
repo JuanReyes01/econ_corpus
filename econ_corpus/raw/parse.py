@@ -5,140 +5,61 @@ Output: a parquet table with one row per record. Each row has every metadata fie
 the export contains (one column per label), the parsed dates, years and ids, the provenance
 (`source_file`, `record_index`), a hash and word count of the body and the body text itself.
 
-Lives here: splitting files into records, reading fields, normalising metadata values,
-parsing dates, years and ids, the per-file sanity check and the streaming parquet writer.
-Does not live here: deciding which records to keep (exclusions) or describing them (datasheet).
+Lives here: building a row from a record, the schema and the stamp of the table, and the
+streaming parquet writer that replaces the table only when every file passes its check.
+Does not live here: the layout of a file and its check (layout), finding the fields of a
+record (fields), the label tables and the parsing of values (labels), deciding which records
+to keep (exclusions) or describing them (datasheet).
 
 Nothing is dropped silently. A value that cannot be parsed stays in the table with a
 status column ('missing', 'unparseable', ...) so later stages can count it.
 """
 
-from datetime import date
 import hashlib
 from pathlib import Path
-import re
 import sys
 
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-# --- File layout -----------------------------------------------------------------------
-# Files are UTF-8 with CRLF line endings. A line of exactly 60 underscores precedes every
-# record. The last separator is followed by a footer (contact and copyright lines), which
-# is not a record, so a file with N records has N + 1 separators and N + 1 chunks after
-# the first separator.
-SEPARATOR = "_" * 60
-SEPARATOR_RE = re.compile(rf"^{SEPARATOR}$", re.MULTILINE)
-# Underscore rules of any other length appear inside article text; they are counted only
-# to report them, never to split records.
-NEAR_SEPARATOR_RE = re.compile(r"_{59,61}")  # a separator line with a slip in it
-LOOSE_SEPARATOR_RE = re.compile(r"^_{20,}[ \t]*$", re.MULTILINE)
-FOOTER_MARK = "Contáctenos en:"
-
-# A record is: title, header lines, then 'Texto completo:' followed by the body, then a
-# block of 'Label: value' metadata lines separated by blank lines.
-BODY_LABEL = "Texto completo:"
-LABEL_RE = re.compile(r"([^:]{2,60}):\s?(.*)", re.DOTALL)
-
-# English month prefixes, lower-cased: ProQuest writes dates like 'Nov 9, 2022' even though
-# the labels are Spanish.
-MONTHS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"]
-
-# Metadata labels we keep (Spanish label -> column).
-KEPT_LABELS = {
-    "Título": "title",
-    "Autor": "author",
-    "Título de publicación": "publication",
-    "Año de publicación": "year_raw",
-    "Fecha de publicación": "date_raw",
-    "Sección": "section",
-    "Idioma de la publicación": "language",
-    "Tipo de fuente": "source_type",
-    "Tipo de documento": "doc_type",
-    "ID del documento de ProQuest": "id_raw",
-}
-# The other metadata labels (Spanish label -> column). They are kept as exported, unparsed.
-# They must be recognised, otherwise the metadata walk (see `read_metadata`) stops at them and
-# the fields above them are lost into the body. The list was built from the data: the first
-# full run showed which labels were missing.
-EXTRA_LABELS = {
-    "Materia": "subject",
-    "Lugar": "location",
-    "Personas": "people",
-    "Empresa/organización": "organization",
-    "Término de indexación de negocios": "business_index_term",
-    "Identificador / palabra clave": "keyword",
-    "Clasificación": "classification",
-    "Lugar y fecha de origen": "origin_place_date",
-    "Páginas": "pages",
-    "Número de páginas": "page_count",
-    "Primera página": "first_page",
-    "ISSN": "issn",
-    "CODEN": "coden",
-    "Editorial": "publisher",
-    "Lugar de publicación": "publication_place",
-    "País de publicación": "publication_country",
-    "Materia de publicación": "publication_subject",
-    "URL del documento": "document_url",
-    "Copyright": "copyright",
-    "Última actualización": "last_updated",
-    "Base de datos": "database",
-    "Disponibilidad de texto completo": "fulltext_availability",
-    "e-ISSN": "eissn",
-    "columna": "column_name",
-    "Número de acceso": "accession_number",
-    "Fecha del hito": "milestone_date",
-    "Características del documento": "document_features",
-    "Detalles de fuente": "source_details",
-    "Número": "issue",
-    "Autor corporativo/institucional": "corporate_author",
-    "Empresa": "company",
-    "URL": "url",
-    "Historial de publicaciones": "publication_history",
-    "Nombre del producto": "product_name",
-    "Tomo": "volume",
-    "Año": "issue_year",
-    "Etnicidad": "ethnicity",
-    "Duración del clip": "clip_duration",
-}
-# Fields of the header, before 'Texto completo:': the document link is the first line that
-# starts with http; the others are labelled.
-HEADER_LABELS = {"Resumen": "abstract", "Enlaces": "links"}
-HEADER_URL = "header_url"
-# Columns that also get a `<column>_key` copy used to compare categories.
-KEY_COLUMNS = ["language", "source_type", "doc_type", "publication"]
-
-
-def compact(value: str) -> str:
-    """Remove every whitespace character and casefold.
-
-    ProQuest inserts stray spaces inside metadata values ('En glish'), so the compacted
-    form is the safe key for comparing categories.
-    """
-    return re.sub(r"\s+", "", value).casefold()
-
-
-# Labels are matched through `compact` too, so a stray space in a label does not break it.
-LABEL_KEYS = {compact(k): v for k, v in (KEPT_LABELS | EXTRA_LABELS).items()}
-HEADER_KEYS = {compact(k): v for k, v in HEADER_LABELS.items()}
-METADATA_COLS = [*KEPT_LABELS.values(), *EXTRA_LABELS.values()]
+from econ_corpus.raw.fields import BODY_LABEL, read_header, read_metadata
+from econ_corpus.raw.labels import (
+    HEADER_LABELS,
+    HEADER_URL,
+    KEY_COLUMNS,
+    METADATA_COLS,
+    compact,
+    parse_date,
+    parse_int,
+)
+from econ_corpus.raw.layout import FOOTER_MARK, check_text, read_text, split_records
 
 STR_COLS = ["source_file", *METADATA_COLS, *HEADER_LABELS.values(), HEADER_URL]
 STR_COLS += [f"{c}_key" for c in KEY_COLUMNS]
 STR_COLS += ["date_status", "year_status", "id_status", "body_sha256"]
 STAMP = "parse"  # metadata key of the table that says which parser wrote it
+# The modules whose code decides the parsed table, by their path inside the package, sorted.
+PARSER_MODULES = ("raw/fields.py", "raw/labels.py", "raw/layout.py", "raw/parse.py")
 
 
-def code_fingerprint() -> str:
-    """Return a short code that changes whenever this module changes."""
-    return hashlib.sha256(Path(__file__).read_bytes()).hexdigest()[:16]
+def code_fingerprint(package: Path | None = None) -> str:
+    """Return a short code that changes whenever a module of the parser changes.
+
+    Every module of PARSER_MODULES is hashed with its path inside the package, so an edit in
+    any of them, or a module moved, gives another code.
+    """
+    root = package or Path(__file__).parents[1]
+    digest = hashlib.sha256()
+    for module in PARSER_MODULES:
+        digest.update(module.encode() + (root / module).read_bytes())
+    return digest.hexdigest()[:16]
 
 
 def stamp() -> dict[str, str]:
     """Return the metadata a table of records carries: the fingerprint of its parser.
 
-    The later steps refuse a table written by another version of this module, so an edit
-    here cannot leave old records in use.
+    The later steps refuse a table written by another version of the parser (any module of
+    PARSER_MODULES), so an edit there cannot leave old records in use.
     """
     return {STAMP: code_fingerprint()}
 
@@ -151,106 +72,6 @@ SCHEMA = pa.schema(
     + [("pub_date", pa.date32()), ("text", pa.string())],
     metadata=stamp(),
 )
-
-
-def parse_int(raw: str | None, lo: int = 0, hi: int = 10**15) -> tuple[int | None, str]:
-    """Parse a digits-only integer after removing stray spaces.
-
-    Returns (value, status) where status is 'ok', 'missing' or 'unparseable'.
-    """
-    if raw is None:
-        return None, "missing"
-    digits = compact(raw)
-    if digits.isascii() and digits.isdigit() and lo <= int(digits) <= hi:
-        return int(digits), "ok"
-    return None, "unparseable"
-
-
-def parse_date(raw: str | None) -> tuple[date | None, int | None, str]:
-    """Parse a publication date such as 'Nov 9, 2022', or a bare year.
-
-    Returns (date, year, status) where status is 'ok', 'year_only', 'missing' or
-    'unparseable'. A year-only value gives no date but keeps the year.
-    """
-    if raw is None:
-        return None, None, "missing"
-    text = compact(raw)
-    if re.fullmatch(r"\d{4}", text):
-        return None, int(text), "year_only"
-    # After `compact` the date has no spaces: 'Nov 9, 2022' -> 'nov9,2022'.
-    m = re.fullmatch(r"([a-z]{3,9})(\d{1,2}),(\d{4})", text)
-    if m and m[1][:3] in MONTHS:
-        try:
-            parsed = date(int(m[3]), MONTHS.index(m[1][:3]) + 1, int(m[2]))
-        except ValueError:  # impossible day, such as Feb 30
-            return None, None, "unparseable"
-        return parsed, parsed.year, "ok"
-    return None, None, "unparseable"
-
-
-def _chunks(text: str) -> list[str]:
-    return SEPARATOR_RE.split(text.replace("\r\n", "\n"))
-
-
-def split_records(text: str) -> list[str]:
-    """Split a file into chunks, one per record plus the footer as the last one.
-
-    The text before the first separator is dropped; a file should have nothing there.
-    """
-    return _chunks(text)[1:]
-
-
-def _blocks(lines: list[str], floor: int) -> list[tuple[int, int]]:
-    """Return runs of non-blank lines as (start, end) index pairs, from `floor` on."""
-    out, start = [], None
-    for i in range(floor, len(lines)):
-        if lines[i].strip():
-            start = i if start is None else start
-        elif start is not None:
-            out.append((start, i))
-            start = None
-    return out + ([(start, len(lines))] if start is not None else [])
-
-
-def read_metadata(lines: list[str], floor: int) -> tuple[dict[str, str], int]:
-    """Read the metadata block of a record, returning (fields, index of its first line).
-
-    The block is walked backwards from the end, one blank-separated block at a time, for
-    as long as each block starts with a known label. Scanning forward cannot work: the
-    optional 'Materia' line means there is no fixed first label, and body lines such as
-    'Credit: ...' look exactly like labels. Walking back from 'Base de datos', and
-    stopping at the first block without a known label or with a label already read, leaves
-    the body intact.
-    """
-    fields, meta_start = {}, len(lines)
-    for start, end in reversed(_blocks(lines, floor)):
-        m = LABEL_RE.match(lines[start])
-        key = LABEL_KEYS.get(compact(m[1])) if m else None
-        if key is None or key in fields:
-            # A label read twice: the block above is a paragraph of the body that happens to
-            # start like a label, and the real field is the one already read.
-            break
-        fields[key] = _value(m[2], lines[start + 1 : end])
-        meta_start = start
-    return fields, meta_start
-
-
-def _value(first: str, rest: list[str]) -> str:
-    """Join a label's value; lines under the label without a blank line continue it."""
-    return " ".join(p.strip() for p in [first, *rest] if p.strip())
-
-
-def read_header(lines: list[str]) -> dict[str, str]:
-    """Read the header lines above 'Texto completo:': the document link, abstract and links."""
-    fields: dict[str, str] = {}
-    for start, end in _blocks(lines, 0):
-        m = LABEL_RE.match(lines[start])
-        key = HEADER_KEYS.get(compact(m[1])) if m else None
-        if key:
-            fields[key] = _value(m[2], lines[start + 1 : end])
-        elif lines[start].startswith("http"):
-            fields.setdefault(HEADER_URL, _value(lines[start], lines[start + 1 : end]))
-    return fields
 
 
 def empty_row(source_file: str, record_index: int, *, is_footer: bool) -> dict:
@@ -293,49 +114,9 @@ def parse_record(chunk: str, source_file: str, record_index: int) -> dict:
     return row
 
 
-def read_text(path: Path) -> str:
-    """Read a whole export file; 'utf-8-sig' drops a byte-order mark if there is one."""
-    return Path(path).read_text(encoding="utf-8-sig", newline="")
-
-
 def parse_text(text: str, source_file: str) -> list[dict]:
     """Parse the text of one file into rows, numbering records from 0 in file order."""
     return [parse_record(c, source_file, i) for i, c in enumerate(split_records(text))]
-
-
-def check_text(text: str, source_file: str) -> dict:
-    """Check that a file has the shape the splitter relies on.
-
-    A healthy file has exactly one footer, nothing before the first separator, and no line
-    that is almost a separator (59 to 61 underscores once spaces are removed, but not the
-    separator itself): it would not split, and two records would become one. Other rules of
-    underscores (`odd_rules`) belong to article bodies; they are reported and are not
-    failures. The records are not compared with a count from another source: ProQuest
-    states none in the file.
-    """
-    lines = text.replace("\r\n", "\n").split("\n")
-    separators = sum(ln == SEPARATOR for ln in lines)
-    odd_rules = len(LOOSE_SEPARATOR_RE.findall("\n".join(lines))) - separators
-    chunks = _chunks(text)
-    footers = sum(c.strip().startswith(FOOTER_MARK) for c in chunks[1:])
-    records = len(chunks) - 1 - footers
-    bare = ("".join(ln.split()) for ln in lines)  # without spaces, however they are written
-    near = (bool(NEAR_SEPARATOR_RE.fullmatch(text)) for text in bare)
-    spoiled = sum(ln != SEPARATOR and is_near for ln, is_near in zip(lines, near, strict=True))
-    ok = footers == 1 and not chunks[0].strip() and spoiled == 0
-    return {
-        "source_file": source_file,
-        "separators": separators,
-        "records": records,
-        "footers": footers,
-        "odd_rules": odd_rules,
-        "ok": ok,
-    }
-
-
-def sanity_check(path: Path) -> dict:
-    """Run `check_text` on a file on disk."""
-    return check_text(read_text(path), Path(path).name)
 
 
 def write_parquet(paths: list[Path], out: Path) -> list[dict]:

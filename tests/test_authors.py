@@ -2,7 +2,7 @@
 
 import pytest
 
-from econ_corpus.names import authors, bylines, parts
+from econ_corpus.names import authors, bylines, name_lists, name_tokens, parts, spelling
 from econ_corpus.names.authors import Name
 
 # --- splitting a byline into parts -------------------------------------------------
@@ -125,17 +125,17 @@ def test_org_word_as_a_family_name_is_accepted_in_comma_form() -> None:
 
 
 def test_display_puts_given_name_first_and_suffix_last() -> None:
-    assert authors.display(Name("John W", "Doe", "Jr")) == "John W Doe Jr"
+    assert spelling.display(Name("John W", "Doe", "Jr")) == "John W Doe Jr"
 
 
 def test_display_fixes_names_written_in_capitals() -> None:
-    assert authors.display(Name("JANE Q", "O'DOE-ROE", "")) == "Jane Q O'Doe-Roe"
-    assert authors.display(Name("JANE", "del DOE", "")) == "Jane del Doe"
-    assert authors.display(Name("J.Q.", "DOE", "")) == "J.Q. Doe"
+    assert spelling.display(Name("JANE Q", "O'DOE-ROE", "")) == "Jane Q O'Doe-Roe"
+    assert spelling.display(Name("JANE", "del DOE", "")) == "Jane del Doe"
+    assert spelling.display(Name("J.Q.", "DOE", "")) == "J.Q. Doe"
 
 
 def test_display_leaves_mixed_case_names_alone() -> None:
-    assert authors.display(Name("Jane", "McDoe", "")) == "Jane McDoe"
+    assert spelling.display(Name("Jane", "McDoe", "")) == "Jane McDoe"
 
 
 @pytest.mark.parametrize(
@@ -150,27 +150,27 @@ def test_display_leaves_mixed_case_names_alone() -> None:
     ],
 )
 def test_key_is_the_same_for_spelling_variants_of_one_name(part: str) -> None:
-    assert authors.name_key(authors.parse_name(part)) == "janeqdoe"
+    assert spelling.name_key(authors.parse_name(part)) == "janeqdoe"
 
 
 def test_key_joins_initials_however_they_are_spaced() -> None:
     keys = {
-        authors.name_key(authors.parse_name(p))
+        spelling.name_key(authors.parse_name(p))
         for p in ("Doe, EJ, Jr", "Doe, E J, Jr", "E.J. Doe Jr.")
     }
     assert keys == {"ejdoejr"}
 
 
 def test_key_ignores_accents_and_curly_apostrophes() -> None:
-    assert authors.name_key(Name("José", "O\u2019Doe", "")) == authors.name_key(
+    assert spelling.name_key(Name("José", "O\u2019Doe", "")) == spelling.name_key(
         Name("Jose", "O'Doe", "")
     )
 
 
 def test_key_keeps_suffix_and_middle_name_apart() -> None:
-    plain = authors.name_key(Name("John", "Doe", ""))
-    assert authors.name_key(Name("John", "Doe", "Jr")) != plain
-    assert authors.name_key(Name("John W", "Doe", "")) != plain
+    plain = spelling.name_key(Name("John", "Doe", ""))
+    assert spelling.name_key(Name("John", "Doe", "Jr")) != plain
+    assert spelling.name_key(Name("John W", "Doe", "")) != plain
 
 
 # --- people in a byline ------------------------------------------------------------
@@ -230,7 +230,7 @@ def test_is_signed_tells_unsigned_from_any_other_byline(
 )
 def test_a_full_name_followed_by_other_text_is_recovered(part: str) -> None:
     assert authors.parse_name(part) is None
-    assert [authors.name_key(n) for n in parts.recover_names(part)] == ["janedoe"]
+    assert [spelling.name_key(n) for n in parts.recover_names(part)] == ["janedoe"]
 
 
 def test_recovered_name_keeps_middle_initial_and_suffix() -> None:
@@ -241,7 +241,7 @@ def test_recovered_name_keeps_middle_initial_and_suffix() -> None:
 
 def test_a_list_of_names_gives_every_person() -> None:
     names = parts.recover_names("JANE DOE, RICHARD ROE and ANN POE")
-    assert [authors.name_key(n) for n in names] == ["janedoe", "richardroe", "annpoe"]
+    assert [spelling.name_key(n) for n in names] == ["janedoe", "richardroe", "annpoe"]
 
 
 @pytest.mark.parametrize(
@@ -372,7 +372,7 @@ def test_one_word_family_names_that_are_also_institution_words_stay() -> None:
 def test_capitalised_al_is_a_given_name_not_a_particle() -> None:
     assert authors.parse_name("Al Doe") == Name("Al", "Doe", "")
     assert authors.parse_name("Jane Al Doe") == Name("Jane Al", "Doe", "")
-    assert authors.display(Name("AL", "DOE", "")) == "Al Doe"
+    assert spelling.display(Name("AL", "DOE", "")) == "Al Doe"
 
 
 def test_lower_case_particles_still_belong_to_the_family_name() -> None:
@@ -381,10 +381,10 @@ def test_lower_case_particles_still_belong_to_the_family_name() -> None:
 
 
 def test_capitals_fix_handles_particles_and_possessives() -> None:
-    assert authors.display(Name("JANE", "DEL DOE", "")) == "Jane Del Doe"
-    assert authors.display(Name("JANE", "del DOE", "")) == "Jane del Doe"
-    assert authors.display(Name("JANE", "O'DOE", "")) == "Jane O'Doe"
-    assert authors.display(Name("JANE DOE'S", "COLUMN", "")) == "Jane Doe's Column"
+    assert spelling.display(Name("JANE", "DEL DOE", "")) == "Jane Del Doe"
+    assert spelling.display(Name("JANE", "del DOE", "")) == "Jane del Doe"
+    assert spelling.display(Name("JANE", "O'DOE", "")) == "Jane O'Doe"
+    assert spelling.display(Name("JANE DOE'S", "COLUMN", "")) == "Jane Doe's Column"
 
 
 # --- second code review ------------------------------------------------------------
@@ -486,7 +486,7 @@ def test_a_recovered_name_goes_on_through_a_small_first_letter_with_a_capital_in
     ],
 )
 def test_a_degree_after_the_name_is_dropped(part: str) -> None:
-    assert authors.name_key(authors.parse_name(part)) == "janeqdoe"
+    assert spelling.name_key(authors.parse_name(part)) == "janeqdoe"
 
 
 @pytest.mark.parametrize(
@@ -519,12 +519,12 @@ def test_co_authors_scrambled_by_the_export_are_put_back() -> None:
         Name("Ann", "Doe", ""),
     ]
     three = parts.recover_names("Doe, Jane Roe, Al Poe and Ann Q.")
-    assert [authors.name_key(n) for n in three] == ["janeroe", "alpoe", "annqdoe"]
+    assert [spelling.name_key(n) for n in three] == ["janeroe", "alpoe", "annqdoe"]
 
 
 def test_a_given_name_cut_off_and_holding_a_list_is_unscrambled_too() -> None:
     names = bylines.read_byline("Doe; , Jane Roe and Ann")
-    assert [authors.name_key(n) for n, _ in names] == ["janeroe", "anndoe"]
+    assert [spelling.name_key(n) for n, _ in names] == ["janeroe", "anndoe"]
 
 
 def test_a_stray_period_inside_a_name_does_not_cut_it() -> None:
@@ -532,10 +532,10 @@ def test_a_stray_period_inside_a_name_does_not_cut_it() -> None:
 
 
 def test_capitals_fix_knows_mc_and_mac() -> None:
-    assert authors.display(Name("JANE", "McDOE", "")) == "Jane McDoe"
-    assert authors.display(Name("JANE Q", "MacDOE", "")) == "Jane Q MacDoe"
-    assert authors.display(Name("Jane", "McDoe", "")) == "Jane McDoe"
-    assert authors.display(Name("JANE", "MACE", "")) == "Jane Mace"
+    assert spelling.display(Name("JANE", "McDOE", "")) == "Jane McDoe"
+    assert spelling.display(Name("JANE Q", "MacDOE", "")) == "Jane Q MacDoe"
+    assert spelling.display(Name("Jane", "McDoe", "")) == "Jane McDoe"
+    assert spelling.display(Name("JANE", "MACE", "")) == "Jane Mace"
 
 
 # --- findings of the second independent audit ---------------------------------------
@@ -562,7 +562,7 @@ def test_initials_alone_are_never_a_family_name() -> None:
 
 @pytest.mark.parametrize("part", ["Jane St. Doe", "St. Doe, Jane", "Jane St Doe"])
 def test_a_saint_in_the_family_name_is_read(part: str) -> None:
-    assert authors.name_key(authors.parse_name(part)) == "janestdoe"
+    assert spelling.name_key(authors.parse_name(part)) == "janestdoe"
     assert authors.parse_name(part).family.split()[-1] == "Doe"
 
 
@@ -630,16 +630,16 @@ def test_and_still_splits_names_when_text_follows_the_last() -> None:
 
 
 def test_scrambled_co_authors_need_and_before_the_last_given_name() -> None:
-    assert parts.unscrambled("Doe, Jane Roe and Ann") == [
+    assert name_lists.unscrambled("Doe, Jane Roe and Ann") == [
         Name("Jane", "Roe", ""),
         Name("Ann", "Doe", ""),
     ]
-    assert parts.unscrambled("Doe, Jane Roe, Ann") == []
+    assert name_lists.unscrambled("Doe, Jane Roe, Ann") == []
 
 
 def test_scrambled_co_authors_need_a_family_name_alone_before_the_comma() -> None:
-    assert parts.unscrambled("Jane Doe, Richard Roe and Springfield") == []
-    assert parts.unscrambled("van Doe, Jane Roe and Ann")[1] == Name("Ann", "van Doe", "")
+    assert name_lists.unscrambled("Jane Doe, Richard Roe and Springfield") == []
+    assert name_lists.unscrambled("van Doe, Jane Roe and Ann")[1] == Name("Ann", "van Doe", "")
 
 
 @pytest.mark.parametrize(
@@ -668,13 +668,13 @@ def test_more_institutions_are_not_persons(part: str) -> None:
     ],
 )
 def test_display_fixes_single_words_with_odd_capitals(name: Name, shown: str) -> None:
-    assert authors.display(name) == shown
+    assert spelling.display(name) == shown
 
 
 def test_a_title_where_the_family_name_goes_is_told_apart() -> None:
-    assert authors.is_title("Sen")
-    assert authors.is_title("N.J.")
-    assert not authors.is_title("Doe")
+    assert name_tokens.is_title("Sen")
+    assert name_tokens.is_title("N.J.")
+    assert not name_tokens.is_title("Doe")
 
 
 @pytest.mark.parametrize(
@@ -686,7 +686,7 @@ def test_a_title_where_the_family_name_goes_is_told_apart() -> None:
     ],
 )
 def test_display_tells_initials_from_names_in_capitals(name: Name, shown: str) -> None:
-    assert authors.display(name) == shown
+    assert spelling.display(name) == shown
 
 
 def test_text_after_the_end_of_a_sentence_does_not_stop_a_recovered_name() -> None:
@@ -713,8 +713,8 @@ def test_a_town_before_a_name_in_capitals_is_not_a_family_name() -> None:
 
 
 def test_a_small_st_is_not_a_saint() -> None:
-    assert not authors.is_particle("st")
-    assert authors.is_particle("St.")
+    assert not name_tokens.is_particle("st")
+    assert name_tokens.is_particle("St.")
 
 
 @pytest.mark.parametrize("part", ["Jane Doe Guest essay", "Jane Doe Gue st essay"])
@@ -744,7 +744,7 @@ def test_two_names_after_the_end_of_a_sentence_are_both_recovered() -> None:
 @pytest.mark.parametrize("part", ["vacation., Jane Doe", "traveling., JANE DOE", "ill., Jane Doe"])
 def test_a_moved_absence_word_stands_before_the_author_not_the_absent(part: str) -> None:
     # 'Jane Doe; Ann Roe is on vacation.' is exported as 'vacation., Jane Doe; Ann Roe is on'.
-    assert authors.name_key(parts.read_part(part)[0][0]) == "janedoe"
+    assert spelling.name_key(parts.read_part(part)[0][0]) == "janedoe"
 
 
 def test_the_cut_note_after_a_moved_absence_word_names_nobody() -> None:
@@ -782,15 +782,17 @@ def test_these_parts_are_not_a_person(part: str) -> None:
 
 
 def test_capitals_after_a_capitalised_prefix_are_fixed() -> None:
-    assert authors.display(Name("JANE", "El-DOE", "")) == "Jane El-Doe"
+    assert spelling.display(Name("JANE", "El-DOE", "")) == "Jane El-Doe"
 
 
 @pytest.mark.parametrize("part", ["Jane Q.Doe", "JANE Q.DOE", "Doe, J.Q.Jane"])
 def test_an_initial_glued_to_the_next_word_is_set_apart(part: str) -> None:
     names, how = parts.read_part(part)
     assert how == "as_written"
-    assert authors.name_key(names[0]) in {"janeqdoe", "jqjanedoe"}
-    assert all(word.endswith(".") or "." not in word for word in authors.display(names[0]).split())
+    assert spelling.name_key(names[0]) in {"janeqdoe", "jqjanedoe"}
+    assert all(
+        word.endswith(".") or "." not in word for word in spelling.display(names[0]).split()
+    )
 
 
 @pytest.mark.parametrize(
@@ -858,9 +860,9 @@ def test_reader_glued_to_the_name_is_removed() -> None:
 
 
 def test_display_fixes_a_mc_name_in_capitals_and_keeps_numerals() -> None:
-    assert authors.display(Name("Jane", "MCDOE", "")) == "Jane McDoe"
-    assert authors.display(Name("JANE", "MCDOE", "")) == "Jane McDoe"
-    assert authors.display(Name("Jane", "Doe III", "")) == "Jane Doe III"
+    assert spelling.display(Name("Jane", "MCDOE", "")) == "Jane McDoe"
+    assert spelling.display(Name("JANE", "MCDOE", "")) == "Jane McDoe"
+    assert spelling.display(Name("Jane", "Doe III", "")) == "Jane Doe III"
 
 
 @pytest.mark.parametrize(
@@ -878,16 +880,16 @@ def test_names_that_hold_a_word_of_an_institution_or_a_rank(raw: str, expected: 
 
 def test_a_sentence_that_ends_does_not_hide_the_authors_after_it() -> None:
     raw = "Jane Doe. Springfield. Editor's Note: The writer is a teacher.; Roe Shelbyville, Ann"
-    assert [authors.name_key(n) for n in bylines.people(raw)] == ["janedoe", "annroeshelbyville"]
+    assert [spelling.name_key(n) for n in bylines.people(raw)] == ["janedoe", "annroeshelbyville"]
 
 
 def test_an_editors_note_cut_short_does_not_hide_the_next_letter_writers() -> None:
     raw = "Jane Doe. Springfield. Editor's Note: The writer is director of the Example; Roe, Ann"
-    assert [authors.name_key(n) for n in bylines.people(raw)] == ["janedoe", "annroe"]
+    assert [spelling.name_key(n) for n in bylines.people(raw)] == ["janedoe", "annroe"]
 
 
 def test_regressions_found_while_comparing_readings() -> None:
-    assert authors.name_key(authors.parse_name("Do us, Jane")) == "janedous"  # a stray space
+    assert spelling.name_key(authors.parse_name("Do us, Jane")) == "janedous"  # a stray space
     assert bylines.people("Jane Doe Jr., Richard Roe") == [
         Name("Jane", "Doe", "Jr"),
         Name("Richard", "Roe", ""),
@@ -1264,7 +1266,7 @@ CREDITS = {"Roe, Richard": bylines.CREDIT, "Poe, Ann": bylines.CREDIT}
 
 
 def names_of(raw: str) -> list[str]:
-    return [authors.display(name) for name in bylines.people(raw, CREDITS)]
+    return [spelling.display(name) for name in bylines.people(raw, CREDITS)]
 
 
 def test_a_credit_after_the_first_name_of_a_byline_is_not_an_author() -> None:
@@ -1336,5 +1338,5 @@ def test_a_name_that_only_looks_like_the_word_is_a_name() -> None:
     ],
 )
 def test_the_word_compiled_after_an_author_does_not_remove_the_author(byline: str) -> None:
-    assert [authors.display(name) for name in bylines.people(byline)] == ["Jane Doe"]
+    assert [spelling.display(name) for name in bylines.people(byline)] == ["Jane Doe"]
     assert not parts.is_note(byline)

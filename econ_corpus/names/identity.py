@@ -1,7 +1,7 @@
 """Used by step 4 of the pipeline: decide which name keys are the same author.
 
 Input: the names seen in the bylines, each with the newspapers it appears in and its
-number of articles (see `authors` for the names and their keys).
+number of articles (see `authors` for the names and `spelling` for their keys).
 Output: for every name key, the key of the author it belongs to.
 
 Lives here: the rule that merges variants of a name, and how review verdicts bend it. Does
@@ -20,7 +20,8 @@ from collections import defaultdict
 from itertools import combinations
 from typing import NamedTuple
 
-from econ_corpus.names.authors import Name, fold
+from econ_corpus.names.authors import Name
+from econ_corpus.names.spelling import fold
 
 
 class Seen(NamedTuple):

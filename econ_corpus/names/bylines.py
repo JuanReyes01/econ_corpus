@@ -12,8 +12,9 @@ review. Does not live here: reading one part (parts), deciding whether a text is
 import difflib
 import re
 
-from econ_corpus.names import authors
+from econ_corpus.names import authors, name_tokens, spelling
 from econ_corpus.names.authors import Name
+from econ_corpus.names.name_lists import same_given
 from econ_corpus.names.name_words import SUFFIXES
 from econ_corpus.names.parts import (
     JOINER_RE,
@@ -21,7 +22,6 @@ from econ_corpus.names.parts import (
     after_sentence,
     is_note,
     read_part,
-    same_given,
 )
 
 # The end of a note cut short because the export moved its last word to the front of the
@@ -52,9 +52,9 @@ def split_authors(raw: str | None) -> list[str]:
         text = piece.strip()
         if not text:
             continue
-        if authors.abbreviation(text) in SUFFIXES and parts:
-            parts[-1] = f"{parts[-1]}, {SUFFIXES[authors.abbreviation(text)]}"
-        elif text.startswith(",") and parts and authors.WORD_RE.fullmatch(parts[-1]):
+        if name_tokens.abbreviation(text) in SUFFIXES and parts:
+            parts[-1] = f"{parts[-1]}, {SUFFIXES[name_tokens.abbreviation(text)]}"
+        elif text.startswith(",") and parts and name_tokens.WORD_RE.fullmatch(parts[-1]):
             parts[-1] = f"{parts[-1]}{text}"  # 'Doe; , Jane' is 'Doe, Jane' cut in two
         elif "," in text:
             parts.append(text)
@@ -67,7 +67,7 @@ def split_authors(raw: str | None) -> list[str]:
 
 
 def _tokens(name: Name) -> list[str]:
-    return sorted(filter(None, map(authors.fold, f"{name.given} {name.family}".split())))
+    return sorted(filter(None, map(spelling.fold, f"{name.given} {name.family}".split())))
 
 
 def _repeats(name: Name, earlier: Name, part: str) -> str:
@@ -84,7 +84,7 @@ def _repeats(name: Name, earlier: Name, part: str) -> str:
     if new == old:
         # The same words: the earlier part had them the wrong way round ('Jane, Doe'), or
         # it is the same name, and then the earlier reading may hold a suffix.
-        turned = authors.fold(name.given) != authors.fold(earlier.given)
+        turned = spelling.fold(name.given) != spelling.fold(earlier.given)
         fuller = bool(name.suffix) and not earlier.suffix  # only the note gives the suffix
         return "replace" if turned or fuller else "drop"
     if set(new) < set(old):
@@ -92,19 +92,19 @@ def _repeats(name: Name, earlier: Name, part: str) -> str:
         # when its family name is no word of the note's name and the note is not cut at an
         # abbreviation, with the family name right after ('Jane McC.' of 'Jane McC. Roe').
         # Otherwise the note has a shorter form of the name ('Jane Doe' for 'Jane Q Doe').
-        text = authors.fold(authors.BY_RE.sub("", part.strip()))
-        cut = text.startswith(authors.fold(name.given + name.family + earlier.family))
-        town = authors.fold(earlier.family) not in new
+        text = spelling.fold(authors.BY_RE.sub("", part.strip()))
+        cut = text.startswith(spelling.fold(name.given + name.family + earlier.family))
+        town = spelling.fold(earlier.family) not in new
         return "replace" if town and not cut else "drop"
-    close = authors.one_edit(authors.name_key(name), authors.name_key(earlier))
+    close = spelling.one_edit(spelling.name_key(name), spelling.name_key(earlier))
     # The note may also glue a word to the name ('Doeis'), cut it ('Doewo od') or use
     # another form of the given name ('Tim', 'Timothy'): the same family name, or one that
     # starts the other, after a given name that is alike.
-    family, old_family = authors.fold(name.family), authors.fold(earlier.family)
+    family, old_family = spelling.fold(name.family), spelling.fold(earlier.family)
     long_enough = min(len(family), len(old_family)) >= MIN_FAMILY
     starts = family.startswith(old_family) or old_family.startswith(family)
     near = difflib.SequenceMatcher(None, family, old_family).ratio() >= MIN_ALIKE_FAMILY
-    alike = authors.one_edit(family, old_family) or (long_enough and (starts or near))
+    alike = spelling.one_edit(family, old_family) or (long_enough and (starts or near))
     again = set(old) < set(new) or close or (alike and same_given(name, earlier))
     return "drop" if again else ""
 
@@ -127,7 +127,7 @@ def _with(found: Found, before: Found, name: Name, how: str, part: str) -> Found
     `before` holds the names of the parts before this one: a name is compared with those,
     not with its neighbours in a list of names ('Mark Doe, Mary Doe and Ann Roe').
     """
-    key = authors.name_key(name)
+    key = spelling.name_key(name)
     if key in found:
         return found  # the same name again: the first reading stands
     for old_key, (old, _) in before.items():
@@ -195,5 +195,5 @@ def people(raw: str | None, corrections: dict[str, str] | None = None) -> list[N
 def is_signed(raw: str | None) -> bool:
     """Tell whether a byline has anything other than ProQuest's 'Anonymous' marker."""
     return any(
-        p.strip() and authors.lookup(p.strip()) != "anonymous" for p in (raw or "").split(";")
+        p.strip() and name_tokens.lookup(p.strip()) != "anonymous" for p in (raw or "").split(";")
     )
