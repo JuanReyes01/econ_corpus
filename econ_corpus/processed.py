@@ -18,16 +18,18 @@ from collections import Counter, defaultdict
 from pathlib import Path
 
 import pyarrow as pa
+import pyarrow.compute as pc
 import pyarrow.csv as pacsv
 import pyarrow.parquet as pq
 
-from econ_corpus import authors, datasheet, identity, review, summaries
+from econ_corpus import authors, datasheet, identity, reasons, review, summaries
 from econ_corpus.authors import Name
 from econ_corpus.tables import Table
 
 BATCH_SIZE = 20_000  # rows per batch when streaming the articles
 Corrections = dict[str, str]
 Decisions = dict[tuple[str, str], str]
+CAUTION = {"same": 0, "unsure": 1, "different": 2}  # of two verdicts on a pair, the higher stays
 
 
 def _commonest(spellings: Counter) -> Name:
@@ -69,6 +71,25 @@ def _rule(key: str, resolved: dict[str, str], by_rule: dict[str, str]) -> str:
     return "shared_newspaper" if by_rule[key] == by_rule[resolved[key]] else "manual_review"
 
 
+def _reviewed(decisions: Decisions, resolved: dict[str, str]) -> Decisions:
+    """Return the verdict on each pair of authors that the review left apart.
+
+    A pair judged different or unsure that ends up as one author (through the rule or a chain
+    of 'same' verdicts) contradicts the review, so it is refused rather than hidden.
+    """
+    verdicts: Decisions = {}
+    for (a, b), verdict in decisions.items():
+        if a not in resolved or b not in resolved:
+            continue
+        pair = tuple(sorted((resolved[a], resolved[b])))
+        if pair[0] == pair[1] and verdict != "same":
+            msg = f"{a} and {b} were judged {verdict} but are one author: check the review files"
+            raise ValueError(msg)
+        if pair[0] != pair[1] and CAUTION[verdict] > CAUTION[verdicts.get(pair, "same")]:
+            verdicts[pair] = verdict
+    return verdicts
+
+
 def author_tables(
     doc_ids: list[int],
     bylines: list[str | None],
@@ -84,11 +105,7 @@ def author_tables(
     seen, per_article = _read_bylines(doc_ids, bylines, newspapers, corrections)
     by_rule = identity.resolve(seen)
     resolved = identity.resolve(seen, [pair for pair, d in decisions.items() if d == "same"])
-    reviewed = {
-        tuple(sorted((resolved[a], resolved[b]))): decision
-        for (a, b), decision in decisions.items()
-        if a in resolved and b in resolved
-    }
+    reviewed = _reviewed(decisions, resolved)
     ids = {head: i for i, head in enumerate(sorted(set(resolved.values())), start=1)}
     links = [["doc_id", "author_id", "position", "read"]]
     articles: Counter = Counter()
@@ -155,7 +172,7 @@ def _write_articles(records: Path, kept: pa.ChunkedArray, out: Path, batch_size:
 
 def build(
     records: Path,
-    reasons: Path,
+    reasons_file: Path,
     out_dir: Path,
     batch_size: int = BATCH_SIZE,
     review_dir: Path | None = None,
@@ -167,11 +184,13 @@ def build(
     """
     corrections = review.load_parts(review_dir / review.PARTS_FILE) if review_dir else {}
     decisions = review.load_pairs(review_dir / review.PAIRS_FILE) if review_dir else {}
-    codes = pq.read_table(reasons, columns=["reason"])["reason"]
-    kept = pa.compute.equal(codes, "kept")
+    kept = pc.equal(reasons.load(records, reasons_file), "kept")
     rows = pq.read_table(records, columns=["doc_id", "author", "publication_key"]).filter(kept)
     newspapers = [summaries.newspaper_family(k) for k in rows["publication_key"].to_pylist()]
     doc_ids = rows["doc_id"].to_pylist()
+    if None in doc_ids or len(set(doc_ids)) != len(doc_ids):
+        msg = "every kept article needs its own ProQuest id, the key of the cleaned tables"
+        raise ValueError(msg)
     tables = author_tables(doc_ids, rows["author"].to_pylist(), newspapers, corrections, decisions)
     unlinked = len(set(doc_ids)) - len({link[0] for link in tables["article_authors"][1:]})
     if unlinked:

@@ -95,6 +95,17 @@ def resolve(seen: dict[str, Seen], same: list[tuple[str, str]] | None = None) ->
     return resolved
 
 
+def _one_edit(a: str, b: str) -> bool:
+    """Tell whether one letter added, dropped or changed, or two neighbours swapped, gives b."""
+    if len(a) > len(b):
+        a, b = b, a
+    i = next((k for k, (x, y) in enumerate(zip(a, b, strict=False)) if x != y), len(a))
+    if len(a) < len(b):
+        return a[i:] == b[i + 1 :]
+    swapped = a[i : i + 2] == b[i : i + 2][::-1] and a[i + 2 :] == b[i + 2 :]
+    return a[i + 1 :] == b[i + 1 :] or swapped
+
+
 def _near_pairs(seen: dict[str, Seen]) -> set[tuple[str, str]]:
     """Find keys one letter apart (added, dropped, changed or swapped) that share a newspaper."""
     spellings: defaultdict[str, set[str]] = defaultdict(set)
@@ -106,7 +117,9 @@ def _near_pairs(seen: dict[str, Seen]) -> set[tuple[str, str]]:
     for keys in spellings.values():
         if 1 < len(keys) <= MAX_NEIGHBOURS:
             pairs |= {
-                (a, b) for a, b in combinations(sorted(keys), 2) if seen[a].papers & seen[b].papers
+                (a, b)
+                for a, b in combinations(sorted(keys), 2)
+                if seen[a].papers & seen[b].papers and _one_edit(a, b)
             }
     return pairs
 

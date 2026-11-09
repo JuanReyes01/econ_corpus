@@ -128,7 +128,39 @@ def test_a_corrected_part_is_linked_as_manual_review() -> None:
     assert body(tables["article_authors"]) == [["10", "1", "1", "manual_review"]]
 
 
+HAYWOOD = (
+    (10, "Haywood, Alyssa", A),
+    (11, "Haywood, Alyssa Q", A),
+    (12, "Haywoode, Alyssa", A),
+    (13, "Haywoode, Alyssa", A),
+)
+
+
+def test_a_pair_judged_different_that_ends_merged_is_refused() -> None:
+    rows = ((10, "Haywood, Alyssa", A), (11, "Haywoode, Alyssa", A), (12, "Haywooden, Alyssa", A))
+    decisions = {
+        ("alyssahaywood", "alyssahaywoode"): "same",
+        ("alyssahaywoode", "alyssahaywooden"): "same",
+        ("alyssahaywood", "alyssahaywooden"): "different",
+    }
+    with pytest.raises(ValueError, match="alyssahaywooden"):
+        tables_for(*rows, decisions=decisions)
+
+
+def test_two_verdicts_on_one_pair_of_authors_keep_the_most_cautious() -> None:
+    decisions = {
+        ("alyssahaywood", "alyssahaywoode"): "unsure",
+        ("alyssahaywoode", "alyssaqhaywood"): "different",
+    }
+    for order in (decisions, dict(reversed(decisions.items()))):
+        tables = tables_for(*HAYWOOD, decisions=order)
+        assert [row[-1] for row in body(tables["author_candidates"])] == ["different"]
+
+
 # --- files --------------------------------------------------------------------------
+
+
+KEYS = {"source_file": ["a.txt"] * 4, "record_index": [0, 1, 2, 3]}
 
 
 def write_inputs(tmp_path: Path) -> tuple[Path, Path]:
@@ -145,7 +177,7 @@ def write_inputs(tmp_path: Path) -> tuple[Path, Path]:
     pq.write_table(pa.Table.from_pylist(rows, schema=parse.SCHEMA), records, row_group_size=2)
     reasons = tmp_path / "exclusions.parquet"
     codes = ["kept", "no_person_author", "kept", "file_footer"]
-    pq.write_table(pa.table({"reason": codes}), reasons, row_group_size=3)
+    pq.write_table(pa.table({**KEYS, "reason": codes}), reasons, row_group_size=3)
     return records, reasons
 
 
@@ -194,6 +226,28 @@ def test_build_applies_the_review_files_when_they_exist(tmp_path: Path) -> None:
 def test_build_refuses_reasons_that_keep_an_article_without_a_person(tmp_path: Path) -> None:
     records, _ = write_inputs(tmp_path)
     stale = tmp_path / "stale.parquet"
-    pq.write_table(pa.table({"reason": ["kept", "kept", "kept", "file_footer"]}), stale)
+    pq.write_table(pa.table({**KEYS, "reason": ["kept", "kept", "kept", "file_footer"]}), stale)
     with pytest.raises(ValueError, match="exclusions"):
         processed.build(records, stale, tmp_path / "clean")
+
+
+def test_build_refuses_reasons_that_belong_to_other_rows(tmp_path: Path) -> None:
+    records, _ = write_inputs(tmp_path)
+    other = tmp_path / "other.parquet"
+    keys = {"source_file": ["a.txt"] * 4, "record_index": [1, 0, 2, 3]}
+    codes = ["kept", "no_person_author", "kept", "file_footer"]
+    pq.write_table(pa.table({**keys, "reason": codes}), other)
+    with pytest.raises(ValueError, match="rows"):
+        processed.build(records, other, tmp_path / "clean")
+
+
+def test_build_refuses_a_kept_article_without_a_proquest_id(tmp_path: Path) -> None:
+    rows = [parse.empty_row("a.txt", 0, is_footer=False)]
+    rows[0] |= {"author": "Doe, Jane", "publication_key": NYT, "has_body": True}
+    records = tmp_path / "records.parquet"
+    pq.write_table(pa.Table.from_pylist(rows, schema=parse.SCHEMA), records)
+    reasons = tmp_path / "exclusions.parquet"
+    keys = {"source_file": ["a.txt"], "record_index": [0]}
+    pq.write_table(pa.table({**keys, "reason": ["kept"]}), reasons)
+    with pytest.raises(ValueError, match="ProQuest id"):
+        processed.build(records, reasons, tmp_path / "clean")

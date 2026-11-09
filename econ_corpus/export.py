@@ -18,7 +18,7 @@ import pyarrow.compute as pc
 import pyarrow.csv as pacsv
 import pyarrow.parquet as pq
 
-from econ_corpus.reasons import LEFT_OUT
+from econ_corpus.reasons import LEFT_OUT, load
 
 BATCH_SIZE = 20_000  # rows per batch; the parquet is read in pieces so it never has to fit in RAM
 
@@ -29,11 +29,7 @@ def write_csv(parquet: Path, reasons: Path, out: Path, batch_size: int = BATCH_S
     The reasons file has one row per row of the parquet, in the same order.
     """
     source = pq.ParquetFile(parquet)
-    codes = pq.read_table(reasons, columns=["reason"])["reason"]
-    total = source.metadata.num_rows
-    if len(codes) != total:
-        msg = f"{reasons.name} has {len(codes)} rows but {parquet.name} has {total}"
-        raise ValueError(msg)
+    codes = load(parquet, reasons)
     out.parent.mkdir(parents=True, exist_ok=True)
     written = start = 0
     with pacsv.CSVWriter(out, source.schema_arrow) as writer:

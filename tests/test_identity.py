@@ -153,3 +153,16 @@ def test_a_reviewed_pair_takes_the_variants_already_merged_with_it() -> None:
 def test_reviewed_pairs_with_unknown_keys_are_ignored() -> None:
     names = seen(("Doe, Jane", {A}, 5))
     assert identity.resolve(names, same=[("janedoe", "nobodyhere")]) == {"janedoe": "janedoe"}
+
+
+def test_two_edits_that_share_a_shorter_spelling_are_not_one_letter_apart() -> None:
+    # Both keys lose a letter to give 'marklevin', but one edit does not turn one into the other.
+    names = seen(("Levine, Mark", {A}, 3), ("Levin, Mark H", {A}, 3))
+    assert identity.candidates(names, identity.resolve(names)) == []
+
+
+def test_two_swapped_letters_count_as_one_letter_apart() -> None:
+    names = seen(("Schanberg, Sydney", {A}, 9), ("Scahnberg, Sydney", {A}, 1))
+    assert [kind for _, _, kind in identity.candidates(names, identity.resolve(names))] == [
+        "one_letter_apart"
+    ]

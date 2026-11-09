@@ -2,7 +2,7 @@
 
 Input: nothing; this module only holds the table.
 Output: `REASONS`, one entry per reason, and `LEFT_OUT`, the codes of rows that are not part of
-the shared raw table.
+the shared raw table. `load` reads the reasons written by `exclusions` for a records file.
 
 Lives here: the codes, their meaning and the two flags. Does not live here: the rules that
 assign a reason (exclusions) or what is done with the flags (export, datasheet).
@@ -10,6 +10,11 @@ assign a reason (exclusions) or what is done with the flags (export, datasheet).
 `in_raw` says whether a row belongs to the shared raw table (footers and repeats do not);
 `dropped` says whether it leaves the cleaned dataset. Each row gets exactly one reason.
 """
+
+from pathlib import Path
+
+import pyarrow as pa
+import pyarrow.parquet as pq
 
 # The reasons table: code and meaning, in the order the rules are applied.
 REASONS = [
@@ -82,3 +87,18 @@ REASONS = [
 ]
 
 LEFT_OUT = [r["code"] for r in REASONS if not r["in_raw"]]
+
+KEYS = ["source_file", "record_index"]
+
+
+def load(records: Path, reasons: Path) -> pa.ChunkedArray:
+    """Return the reason of every row of `records`, in order.
+
+    The reasons file must hold the same rows in the same order; one written for another parse
+    would put the reasons on the wrong records, so it is refused.
+    """
+    table = pq.read_table(reasons, columns=[*KEYS, "reason"])
+    if not table.select(KEYS).equals(pq.read_table(records, columns=KEYS)):
+        msg = f"the rows of {reasons.name} and {records.name} differ: run the exclusions again"
+        raise ValueError(msg)
+    return table["reason"]

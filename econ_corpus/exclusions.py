@@ -18,6 +18,7 @@ Two flags per reason: `in_raw` says whether the row is part of the shared raw ta
 repeated ids and repeated text are not), `dropped` whether it leaves the cleaned dataset.
 """
 
+from collections.abc import Iterable
 from pathlib import Path
 
 import pyarrow as pa
@@ -76,11 +77,23 @@ def _kept_copies(rows: Articles, order: list[int]) -> dict[int, int]:
     return kept
 
 
+def _mark_repeated_text(groups: Iterable[list[int]], reasons: list[str]) -> None:
+    """Leave one copy of each repeated text and mark the others `duplicate_text`, in place."""
+    for copies in groups:
+        stays = next((i for i in copies if reasons[i] == "kept"), copies[0])
+        for i in copies:
+            if i != stays:
+                reasons[i] = "duplicate_text"
+
+
 def assign_reasons(rows: Articles, corrections: dict[str, str] | None = None) -> list[str]:
-    """Return one reason code per row, with duplicates judged in download order.
+    """Return one reason code per row, with repeats judged in download order.
 
     Of the copies of a ProQuest id, only the one chosen by `_kept_copies` is judged on its
-    merits; the others are `duplicate_id`, so each article is counted once.
+    merits; the others are `duplicate_id`. Of the copies of a text under several ids, the one
+    that stays is the earliest that qualifies for the cleaned dataset, or the earliest of all
+    if none does; the others are `duplicate_text`. So each article is counted once, and a
+    signed copy is never lost to an unsigned one.
     """
     n = len(rows["source_file"])
     file_key = {f: summaries.file_order(f) for f in set(rows["source_file"])}
@@ -88,37 +101,30 @@ def assign_reasons(rows: Articles, corrections: dict[str, str] | None = None) ->
         range(n), key=lambda i: (file_key[rows["source_file"][i]], rows["record_index"][i])
     )
     kept = _kept_copies(rows, order)
-    seen_text: set[tuple] = set()
+    same_text: dict[tuple, list[int]] = {}  # copies of one text, in download order
     by_byline: dict[str | None, str] = {}  # bylines repeat, so each is read once
     reasons = [""] * n
     for i in order:
-        doc_id, sha, title, day = (
-            rows["doc_id"][i],
-            rows["body_sha256"][i],
-            rows["title"][i],
-            rows["pub_date"][i],
-        )
+        doc_id, title = rows["doc_id"][i], rows["title"][i]
         family = summaries.newspaper_family(rows["publication_key"][i])
-        text_key = (sha, title, day, family)
         if rows["is_footer"][i]:
             reasons[i] = "file_footer"
         elif doc_id is not None and kept[doc_id] != i:
             reasons[i] = "duplicate_id"
         elif family == "Other":
             reasons[i] = "not_queried_newspaper"
-        elif sha and title and day and text_key in seen_text:
-            reasons[i] = "duplicate_text"
         else:
             reasons[i] = _opinion_reason(rows["doc_type"][i], rows["section"][i], title)
+            text_key = (rows["body_sha256"][i], title, rows["pub_date"][i], family)
+            if all(text_key[:3]):
+                same_text.setdefault(text_key, []).append(i)
         if reasons[i] == "kept":
             # An opinion piece stays only with text and with a person among its authors.
             byline = rows["author"][i]
             if byline not in by_byline:
                 by_byline[byline] = _author_reason(byline, corrections)
             reasons[i] = by_byline[byline] if rows["body_chars"][i] else "no_text"
-        # A copy that was dropped as a repeated id must not make the kept copy look repeated.
-        if sha and title and day and reasons[i] not in ("file_footer", "duplicate_id"):
-            seen_text.add(text_key)
+    _mark_repeated_text(same_text.values(), reasons)
     return reasons
 
 

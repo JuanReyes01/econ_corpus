@@ -227,6 +227,30 @@ def test_same_text_title_date_and_newspaper_under_another_id_is_a_duplicate() ->
     assert reasons_of(first, second) == ["kept", "duplicate_text"]
 
 
+LATER = "ProQuestDocuments-2024-11-23_1.txt"
+
+
+def test_repeated_text_keeps_the_copy_that_qualifies_even_if_it_is_later() -> None:
+    unsigned = {"doc_id": 1, "author": None}
+    signed = {"doc_id": 2, "source_file": LATER}
+    assert reasons_of(unsigned, signed) == ["duplicate_text", "kept"]
+    news = {"doc_id": 1, "doc_type": "NEWSPAPER", "section": "Sports"}
+    assert reasons_of(news, signed) == ["duplicate_text", "kept"]
+
+
+def test_repeated_text_keeps_the_earliest_copy_when_none_qualifies() -> None:
+    first = {"doc_id": 1, "author": None}
+    second = {"doc_id": 2, "author": None, "source_file": LATER}
+    assert reasons_of(first, second) == ["no_author", "duplicate_text"]
+
+
+def test_repeated_text_keeps_the_earliest_of_the_copies_that_qualify() -> None:
+    first, second, third = {"doc_id": 1, "author": None}, {"doc_id": 2}, {"doc_id": 3}
+    second, third = {**second, "source_file": LATER}, {**third, "source_file": LATER}
+    third["record_index"] = 1
+    assert reasons_of(first, second, third) == ["duplicate_text", "kept", "duplicate_text"]
+
+
 def test_same_text_with_another_title_is_not_an_obvious_duplicate() -> None:
     first = {"doc_id": 1}
     second = {"doc_id": 2, "title": "Another title"}
