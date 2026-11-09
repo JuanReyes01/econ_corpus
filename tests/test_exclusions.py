@@ -422,6 +422,24 @@ def test_which_copy_of_a_text_stays_does_not_depend_on_the_cartoon_label() -> No
     ]
 
 
+# --- compiled pages -----------------------------------------------------------------
+
+
+@pytest.mark.parametrize("title", ["Punchlines", "IN OTHER WORDS: A sampling of opinions"])
+def test_a_page_under_the_heading_of_a_compiled_page_has_no_author(title: str) -> None:
+    assert reasons_of({"title": title}) == ["no_person_author"]
+    assert reasons_of({"title": title, "body_words": 10}) == ["no_person_author"]
+    assert reasons_of({"title": title, "author": None}) == ["no_author"]
+    assert reasons_of({"title": title, "body_chars": 0}) == ["no_text"]
+
+
+def test_which_copy_of_a_text_stays_does_not_depend_on_the_compiled_heading() -> None:
+    # The raw table must be the same with or without this rule.
+    labelled = {"doc_id": 1, "title": "Punchlines"}
+    plain = {"doc_id": 2, "source_file": LATER}
+    assert reasons_of(labelled, plain) == ["no_person_author", "duplicate_text"]
+
+
 # --- texts in another language -----------------------------------------------------
 
 LOW, HIGH = language.MIN_ENGLISH / 2, language.MIN_ENGLISH * 5

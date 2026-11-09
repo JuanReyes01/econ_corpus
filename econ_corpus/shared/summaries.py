@@ -63,7 +63,15 @@ OPINION_TITLE_STARTS = (
 OPINION_TITLE_TAGS = ("(editorial)", "[op-ed", "[editorial", "[letter", "[commentary")
 # Headings a newspaper prints before the title of a cartoon ('TOON-OP; ...'), without
 # the hyphen, which is not always there.
-CARTOON_TITLE_STARTS = ("toonop", "opcomic")
+CARTOON_TITLE_STARTS = ("toonop", "opcomic", "paneldiscussion;")
+# Headings of pages put together from the words of others: jokes of the week, quotes from
+# other newspapers ('Punchlines', 'Best of Late Night', 'IN OTHER WORDS: A sampling of
+# opinions', 'EDITORIALS ELSEWHERE; ...').
+COMPILED_TITLE_STARTS = ("punchlines", "bestoflatenight", "editorialselsewhere;")
+COMPILED_TITLE_TAGS = ("asamplingofopinions", "asamplingofotheropinions")
+# The same headings at the end of a title: '...: Punchlines' (cut short as '...: Punchline'),
+# '... in Best of Late Night'.
+COMPILED_TITLE_END_RE = re.compile(r"(?:[:?.!]punchlines?|bestoflatenight)[.!]?$")
 
 
 def newspaper_family(publication_key: str | None) -> str | None:
@@ -150,3 +158,11 @@ def is_cartoon_title(title: str | None) -> bool:
     """Tell whether a title starts with the heading of a cartoon."""
     squeezed = re.sub(r"[\s-]+", "", title or "").casefold()
     return squeezed.startswith(CARTOON_TITLE_STARTS)
+
+
+def is_compiled_title(title: str | None) -> bool:
+    """Tell whether a title carries the heading of a page compiled from the words of others."""
+    squeezed = re.sub(r"\s+", "", title or "").casefold()
+    tagged = any(tag in squeezed for tag in COMPILED_TITLE_TAGS)
+    headed = squeezed.startswith(COMPILED_TITLE_STARTS) or COMPILED_TITLE_END_RE.search(squeezed)
+    return bool(headed) or tagged

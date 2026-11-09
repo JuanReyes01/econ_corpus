@@ -155,10 +155,12 @@ def assign_reasons(
     "Signed" means any byline other than Anonymous: the choice must not depend on how names
     are read or on the manual review, because these rows also leave the shared raw table. A
     short body carried by many different articles is a placeholder ("text not available"), not
-    text (see `_placeholders`). A piece that passes every rule is still left out of the cleaned
-    dataset as `short_or_cartoon` under MIN_WORDS words or under the heading of a cartoon, and
-    as `not_english` when `english` (see `language.shares_of`; None skips the rule) gives its
-    text a share of common English words under `language.MIN_ENGLISH`.
+    text (see `_placeholders`). A page under the heading of a compiled page (jokes, quotes of
+    others) has no author, whoever signs it. A piece that passes every rule is still left
+    out of the cleaned dataset as `short_or_cartoon` under MIN_WORDS words or under the
+    heading of a cartoon, and as `not_english` when `english` (see `language.shares_of`; None
+    skips the rule) gives its text a share of common English words under
+    `language.MIN_ENGLISH`.
     """
     n = len(rows["source_file"])
     file_key = {f: summaries.file_order(f) for f in set(rows["source_file"])}
@@ -185,6 +187,8 @@ def assign_reasons(
                 by_byline[byline] = _author_reason(byline, corrections)
             has_text = rows["body_chars"][i] and sha not in placeholders
             reasons[i] = by_byline[byline] if has_text else "no_text"
+            if reasons[i] == "kept" and summaries.is_compiled_title(title):
+                reasons[i] = "no_person_author"  # whoever compiled a page is not its author
             if reasons[i] not in ("no_text", "no_author"):
                 qualifies.add(i)
             # Decided last and outside `qualifies`, so the raw table does not depend on it.

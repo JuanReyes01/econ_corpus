@@ -604,3 +604,52 @@ def test_more_opinion_page_headings_in_titles(title: str) -> None:
 
 def test_letters_to_another_desk_are_not_the_opinion_page() -> None:
     assert not summaries.is_opinion_title("LETTERS TO THE SPORTS EDITOR:  [FINAL Edition ]")
+
+
+@pytest.mark.parametrize(
+    "title",
+    [
+        "Punchlines",
+        "PUNCHLINES: \xa0 [NASSAU AND SUFFOLK Edition ]",
+        "Punchlines: Did anyone read the bill?",
+        "IN OTHER WORDS: A sampling of opinions",
+        "In Other Words A sampling of other opinions: \xa0 [Chicago Edition ]",
+        "IN OTHER WORDS; A sam pling of opinions",
+        "IN OTHER WORDS: A\xa0sampling of opinions",
+        "Jane Doe and Richard Roe on the new move: Punchlines",
+        "Late-night comics on the week in Washington: Punchline",
+        "Did you play? Punchlines",
+        "Best of Late Night: Comics say enough",
+        "Politics and social media do not mix: Best of Late Night",
+        "Jane Doe examines the week in Washington in Best of Late Night",
+        "Jane Doe has an idea in Best of Late Night.",
+        "EDITORIALS ELSEWHERE; Death and taxes: \xa0 [HOME EDITION ]",
+    ],
+)
+def test_headings_of_compiled_pages_are_recognised(title: str) -> None:
+    assert summaries.is_compiled_title(title)
+
+
+@pytest.mark.parametrize(
+    "title",
+    [
+        "The punchline that hid a murder",
+        "These appointments are punchlines to a joke",
+        "In Other Words, That's Life",
+        "IN OTHER WORDS . . .",
+        "A sample of opinion",
+        "What is so funny? Nothing.: \xa0 Punchlines about punching are no joke",
+        "LOCAL PUNCHLINES: COMEDIANS GIVE THEIR TWO CENTS",
+        "The best of late night television is behind us",
+        "Editorials elsewhere said the same",
+        None,
+    ],
+)
+def test_other_titles_are_not_compiled_pages(title: str | None) -> None:
+    assert not summaries.is_compiled_title(title)
+
+
+@pytest.mark.parametrize("title", ["PANEL DISCUSSION; War Baby", "Panel Discussion; x"])
+def test_the_heading_of_a_page_of_cartoons_is_a_cartoon_label(title: str) -> None:
+    assert summaries.is_cartoon_title(title)
+    assert not summaries.is_cartoon_title("Panel discussion on trade was useful")

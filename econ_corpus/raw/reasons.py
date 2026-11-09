@@ -80,7 +80,7 @@ REASONS = [
     },
     {
         "code": "no_person_author",
-        "description": "Byline names no person (an institution, or text with no full name)",
+        "description": "No person as author: an institution, no full name, or a compiled page",
         "in_raw": True,
         "dropped": True,
     },
