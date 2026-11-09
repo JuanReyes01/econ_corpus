@@ -23,7 +23,7 @@ documented here.
 
 The dataset supports the study of how economists communicate with the public through
 newspaper opinion pieces. It keeps only what that study needs: opinion pieces, from the
-queried newspapers, with a text of at least 50 words, signed by a person.
+queried newspapers, with an English text of at least 50 words, signed by a person.
 
 | | |
 |---|---|
@@ -63,6 +63,11 @@ give the shared raw table; the others leave only the cleaned dataset (Figure 1).
 - **A text to read:** a signed opinion piece with a body under 50 words (a cartoon stored
   as its caption, a teaser, a cut text) or with a title that starts with a cartoon heading
   (`TOON-OP`, `Op-Comic`) is left out (`short_or_cartoon`).
+- **English:** ProQuest labels every article English, but some online editions carry
+  translations. A text is not English (`not_english`) when fewer than 5% of the words in
+  its first 2,000 characters are among 39 common English words (`the`, `of`, `and` ...);
+  in English prose they are a fifth to a third. Most of these texts are in Spanish; the
+  rest are in Portuguese, French, Turkish, Arabic, Persian, Russian and other languages.
 
 ### 2.2 Reading the bylines
 
@@ -305,8 +310,10 @@ Pairs of authors that look alike and are not merged.
 - **One text, one article:** records of different articles that carry the same text are
   one article. Known case: 32 instalments of a weekly poll column of the Chicago Tribune,
   stored only as their fixed introduction.
-- **Language:** a small share of the articles (about 0.4%, estimated once from the text) is
-  in Spanish, mostly from online editions, although ProQuest labels them English.
+- **Language:** the rule reads only the start of a text and counts English words, so a
+  text that mixes languages can fall on either side. A listing of the cases near the limit
+  found three texts in Spanish with English passages that stay and two English captions
+  left out.
 - **Cartoons** have no label in ProQuest. They are left out when stored as a caption under
   50 words or under a cartoon heading; a cartoon with a longer caption and no heading
   stays.

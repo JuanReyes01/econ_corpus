@@ -9,7 +9,7 @@ Two datasets come out of it, each with a datasheet:
 - **Raw table** (`docs/datasheet_raw.md`): every exported record with all its metadata and
   text, repeats removed.
 - **Cleaned dataset** (`docs/datasheet_clean.md`): opinion articles from the ten queried
-  newspapers signed by a person, with at least 50 words of text and no cartoons, in
+  newspapers signed by a person, with at least 50 words of English text and no cartoons, in
   separate article, author and link tables.
 
 Every rule and its evidence are logged in `docs/decisions.md`.
