@@ -189,3 +189,5 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+# Datasheet PDFs are rendered by `make pdf` for the delivery folder
+/docs/*.pdf
