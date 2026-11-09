@@ -171,20 +171,21 @@ PARSED_FACTS = [
 ]  # fmt: skip
 
 
-def repeat_facts(parsed: Articles, shared: Articles) -> dict[str, str]:
-    """Return the parsed size, the rows removed as repeated ids and the ids with an empty copy.
+def repeat_facts(parsed: Articles, removed: Counter) -> dict[str, str]:
+    """Return the parsed size, the repeats removed and the ids with an empty copy.
 
-    An id has an empty copy when one of its copies has no body next to a copy that has one.
+    `removed` counts the rows of the parsed table per exclusion reason. An id has an empty copy
+    when one of its copies has no body next to a copy that has one.
     """
     copies: defaultdict[int, list[bool]] = defaultdict(list)
     for doc_id, has_body in zip(parsed["doc_id"], parsed["has_body"], strict=True):
         if doc_id is not None:
             copies[doc_id].append(has_body)
     mixed = sum(len(h) > 1 and any(h) and not all(h) for h in copies.values())
-    n_parsed, n_shared = len(parsed["title"]), len(shared["title"])
     return {
-        "n_parsed": summaries.num(n_parsed),
-        "n_repeats_removed": summaries.num(n_parsed - n_shared),
+        "n_parsed": summaries.num(len(parsed["title"])),
+        "n_repeats_removed": summaries.num(removed["duplicate_id"]),
+        "n_text_repeats_removed": summaries.num(removed["duplicate_text"]),
         "n_ids_with_empty_copy": summaries.num(mixed),
     }
 
@@ -227,7 +228,7 @@ def build(  # noqa: PLR0913 (one argument per input or output file)
     values = (
         facts(articles)
         | as_parsed
-        | repeat_facts(parsed, articles)
+        | repeat_facts(parsed, Counter(codes.to_pylist()))
         | footers
         | {name: tables.md_table(rows) for name, rows in described.items()}
     )

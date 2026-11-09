@@ -11,7 +11,7 @@ The table holds {{n_articles}} records exported from ProQuest US Newsstream for 
 newspapers with the highest circulation, published {{year_min}}–{{year_max}}, one record per
 ProQuest id. Each record keeps every metadata field of the export, the article text, parsed
 dates, years and identifiers with explicit quality flags, its file of origin, and a hash and
-word count of the text. Apart from repeated ids and file footers, nothing was removed or
+word count of the text. Apart from repeated records and file footers, nothing was removed or
 corrected, so the table documents the source as delivered, including news items and
 publications outside the query. A companion table assigns every record one exclusion reason. This descriptor
 reports how the data were collected and parsed, what they contain, and where they depart from
@@ -26,7 +26,7 @@ kept raw so that other researchers can derive their own samples from it.
 | | |
 |---|---|
 | Records | {{n_articles}}, one per ProQuest id |
-| Removed from the parsed table | {{n_repeats_removed}} repeated ProQuest ids and {{n_footer_rows}} file footers (section 2.4) |
+| Removed from the parsed table | {{n_repeats_removed}} repeated ProQuest ids, {{n_text_repeats_removed}} repeats of the same text under another id and {{n_footer_rows}} file footers (section 2.4) |
 | Export files | {{n_files}} |
 | Publication years | {{year_min}}–{{year_max}} |
 | Newspapers queried | {{n_queried_newspapers}} |
@@ -88,7 +88,8 @@ kept raw so that other researchers can derive their own samples from it.
 | Hash, word count and character count of the text | columns added | Integrity checks |
 | File footers removed | {{n_footer_rows}} rows | Not records |
 | Repeated ProQuest ids removed; the copy with the longest body is kept, the earliest download on ties | {{n_repeats_removed}} rows | Overlapping downloads (section 5.2) |
-| Nothing else removed or edited | news items, publications outside the query, repeated text under another id | Left for the cleaned dataset (section 3.2) |
+| Repeated text removed: same body, title, date and queried newspaper under another id; the earliest download is kept | {{n_text_repeats_removed}} rows | The same article downloaded under two ids (section 5.2) |
+| Nothing else removed or edited | news items, publications outside the query | Left for the cleaned dataset (section 3.2) |
 
 ## 3. Data records
 
@@ -130,7 +131,7 @@ read the CSV with a data-analysis library instead.
 ### 3.2 Companion files
 
 - `data/interim/exclusions.parquet`: `source_file`, `record_index` and one exclusion `reason`
-  per row of the parsed table, footers and repeated ids included (section 6).
+  per row of the parsed table, footers and repeats included (section 6).
 - `reports/tables/raw_by_year.csv` and `reports/tables/raw_by_download_date.csv`: records and
   distinct ids per year, and counts and publication-year range per download date, all as
   parsed, before repeated ids were removed.
@@ -208,7 +209,7 @@ The blog label:
 - {{blog_opinion_section_pct}} sit in an opinion or editorial section (section 4.3). The content
   is news opinion, not casual blog posts.
 
-### 5.2 Repeated ids
+### 5.2 Repeats
 
 Of {{n_parsed}} parsed records, {{n_duplicate_rows}} ({{dup_pct}}) repeat a ProQuest id;
 {{n_unique_ids}} ids are distinct. {{n_ids_in_several_files}} ids appear in more than one file and
@@ -223,6 +224,11 @@ document type. In {{n_ids_with_empty_copy}} ids one copy has no body next to a c
 so the copy kept is the one with the longest body, and the earliest download if they tie. The
 others are removed from the shared table.
 
+A second kind of repeat has another id but the same body, title, date and queried newspaper
+(editions of one newspaper count as one): {{n_text_repeats_removed}} records. The earliest download
+is kept and the others are removed. Publications outside the query are judged only as not queried,
+so repeats among them stay.
+
 ### 5.3 News and opinion
 
 Document type is not a reliable marker of opinion. {{news_label_opinion_section_pct}} of
@@ -234,9 +240,8 @@ the raw table.
 
 - **Exclusion reasons:** the companion table gives every parsed row one reason: file footer,
   repeated id, publication not queried, repeated text (same body, title, date and newspaper),
-  missing metadata, not opinion, unclear opinion, or kept. Only the first two leave the shared
-  table; the others are flags for the cleaned dataset, so repeated text under another id stays
-  in the table. Records flagged `unclear_opinion` (no section, generic type, no opinion title)
+  missing metadata, not opinion, unclear opinion, or kept. Only file footer, repeated id and
+  repeated text leave the shared table; the others are flags for the cleaned dataset. Records flagged `unclear_opinion` (no section, generic type, no opinion title)
   are not dropped and are left to the user to judge. Counts:
   `reports/tables/exclusion_counts.csv`.
 - **Subtler duplicates** (reprints, edited versions under another title) are not detected.

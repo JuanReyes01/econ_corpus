@@ -281,20 +281,22 @@ def test_build_describes_the_shared_table_and_counts_what_was_removed(tmp_path: 
         {"doc_id": 1},
         {"doc_id": 1, "has_body": False, "source_file": "ProQuestDocuments-2024-11-23_1.txt"},
         {"doc_id": 2},
+        {"doc_id": 3},
     )
-    columns = {**articles, "is_footer": [False, False, False]}
+    columns = {**articles, "is_footer": [False, False, False, False]}
     footer = {k: [None] for k in columns} | {"is_footer": [True]}
     merged = {k: columns[k] + footer[k] for k in columns}
     parquet = tmp_path / "records.parquet"
     pq.write_table(pa.table(merged), parquet)
     reasons = tmp_path / "exclusions.parquet"
-    codes = ["kept", "duplicate_id", "kept", "file_footer"]
+    codes = ["kept", "duplicate_id", "kept", "duplicate_text", "file_footer"]
     pq.write_table(pa.table({"reason": codes}), reasons)
     template = tmp_path / "template.md"
     template.write_text(
         "Articles: {{n_articles}}\nParsed: {{n_parsed}}\nRemoved: {{n_repeats_removed}}\n"
         "Footers: {{n_footer_rows}}\nEmpty copies: {{n_ids_with_empty_copy}}\n"
-        "Repeats: {{n_duplicate_rows}}\nFiles: {{n_files}}\nFirst: {{download_first}}\n"
+        "Repeats: {{n_duplicate_rows}}\nSame text: {{n_text_repeats_removed}}\n"
+        "Files: {{n_files}}\nFirst: {{download_first}}\n"
         "Last: {{download_last}}\n\n{{newspapers}}\n",
         encoding="utf-8",
     )
@@ -310,7 +312,8 @@ def test_build_describes_the_shared_table_and_counts_what_was_removed(tmp_path: 
     )
     text = values.read_text(encoding="utf-8")
     head = (
-        "Articles: 2\nParsed: 3\nRemoved: 1\nFooters: 1\nEmpty copies: 1\nRepeats: 1\nFiles: 2\n"
+        "Articles: 2\nParsed: 4\nRemoved: 1\nFooters: 1\nEmpty copies: 1\nRepeats: 1\n"
+        "Same text: 1\nFiles: 2\n"
     )
     assert text.startswith(head)
     assert "First: 2024-11-22\nLast: 2024-11-23\n" in text
@@ -318,7 +321,7 @@ def test_build_describes_the_shared_table_and_counts_what_was_removed(tmp_path: 
     assert (tmp_path / "figures" / "records_by_year.svg").read_text().startswith("<svg")
     # Years and downloads describe the table as parsed, so the repeated rows still show.
     by_year = (tmp_path / "tables" / "raw_by_year.csv").read_text().splitlines()
-    assert by_year[1].startswith("2001,3,2,")
+    assert by_year[1].startswith("2001,4,3,")
     assert (tmp_path / "tables" / "raw_by_download_date.csv").exists()
 
 
