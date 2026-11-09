@@ -8,7 +8,7 @@ Data descriptor, version 1.1 (2026-11-09). Companion to the cleaned dataset deri
 
 ## Abstract
 
-The table holds 1,226,856 records exported from ProQuest US Newsstream for ten U.S.
+The table holds 1,192,522 records exported from ProQuest US Newsstream for ten U.S.
 newspapers with the highest circulation, published 1980–2024, with no ProQuest id
 repeated. Each record keeps every metadata field of the export, the article text, parsed
 dates, years and identifiers with explicit quality flags, its file of origin, and a hash and
@@ -26,13 +26,13 @@ kept raw so that other researchers can derive their own samples from it.
 
 | | |
 |---|---|
-| Records | 1,226,856, no ProQuest id repeated |
-| Removed from the parsed table | 145,118 repeated ProQuest ids, 2,991 repeats of the same text under another id and 2,801 file footers (section 2.4) |
+| Records | 1,192,522, no ProQuest id repeated |
+| Removed from the parsed table | 145,118 repeated ProQuest ids, 37,325 repeats of the same text under another id and 2,801 file footers (section 2.4) |
 | Export files | 2,801 |
 | Publication years | 1980–2024 |
 | Newspapers queried | 10 |
-| Distinct ProQuest ids | 1,225,974 |
-| Records with a named author | 527,772 (43.0%) |
+| Distinct ProQuest ids | 1,191,640 |
+| Records with a named author | 523,327 (43.9%) |
 
 ## 2. Methods
 
@@ -92,7 +92,7 @@ kept raw so that other researchers can derive their own samples from it.
 | Hash, word count and character count of the text | columns added | Integrity checks |
 | File footers removed | 2,801 rows | Not records |
 | Repeated ProQuest ids removed; the copy with the longest body is kept, the earliest download on ties | 145,118 rows | Overlapping downloads (section 5.2) |
-| Repeated text removed: same body, title, date and queried newspaper under another id, titles compared without spaces or case; the copy kept is the earliest that is a signed opinion piece with text, or the earliest of all | 2,991 rows | The same article downloaded under two ids (section 5.2) |
+| Repeated text removed: same body in the same queried newspaper under another id, whatever the title and date; a body under 100 words must also share title and date (titles compared without spaces or case). The copy kept is a signed opinion piece with text if there is one, then the first published, then the earliest download | 37,325 rows | One text under several ids: print and online editions, texts posted again (section 5.2) |
 | Nothing else removed or edited | news items, publications outside the query | Left for the cleaned dataset (section 3.2) |
 
 ## 3. Data records
@@ -152,41 +152,41 @@ read the CSV with a data-analysis library instead.
 
 | Newspaper | Records | Print | Online | Pre-1997 | Blog/podcast/website | With author |
 |---|---|---|---|---|---|---|
-| New York Times | 387,610 | 148,077 | 239,533 | 0 | 239,533 | 32.9% |
-| Washington Post | 275,422 | 129,755 | 94,982 | 50,685 | 94,982 | 45.2% |
-| Wall Street Journal | 121,396 | 45,199 | 76,197 | 0 | 0 | 40.2% |
-| Los Angeles Times | 144,566 | 82,026 | 15,182 | 47,358 | 15,182 | 49.9% |
-| Boston Globe | 103,429 | 57,427 | 8,685 | 37,317 | 0 | 51.2% |
-| Chicago Tribune | 72,908 | 26,214 | 23,006 | 23,688 | 23,006 | 45.0% |
-| USA Today | 36,918 | 13,494 | 19,248 | 4,176 | 0 | 69.3% |
-| Newsday | 51,387 | 51,387 | 0 | 0 | 0 | 56.2% |
-| Tampa Bay Times | 12,921 | 9,985 | 2,936 | 0 | 2,936 | 22.5% |
-| Star Tribune | 7,001 | 7,001 | 0 | 0 | 0 | 69.2% |
+| New York Times | 372,101 | 147,586 | 224,515 | 0 | 224,515 | 34.2% |
+| Washington Post | 263,869 | 124,969 | 88,231 | 50,669 | 88,231 | 46.5% |
+| Wall Street Journal | 116,314 | 43,876 | 72,438 | 0 | 0 | 41.1% |
+| Los Angeles Times | 144,281 | 81,972 | 14,977 | 47,332 | 14,977 | 49.9% |
+| Boston Globe | 103,216 | 57,243 | 8,663 | 37,310 | 0 | 51.2% |
+| Chicago Tribune | 72,062 | 26,141 | 22,323 | 23,598 | 22,323 | 44.9% |
+| USA Today | 36,200 | 13,490 | 18,535 | 4,175 | 0 | 68.8% |
+| Newsday | 51,313 | 51,313 | 0 | 0 | 0 | 56.2% |
+| Tampa Bay Times | 12,874 | 9,938 | 2,936 | 0 | 2,936 | 22.5% |
+| Star Tribune | 6,994 | 6,994 | 0 | 0 | 0 | 69.1% |
 | Other | 12,413 | 11,870 | 530 | 13 | 797 | 54.3% |
 | No metadata | 885 | 0 | 0 | 0 | 0 | 0.0% |
-| Total | 1,226,856 | 582,435 | 480,299 | 163,237 | 376,436 | 43.0% |
+| Total | 1,192,522 | 575,392 | 453,148 | 163,097 | 353,779 | 43.9% |
 
 ### 4.2 Online editions and the blog label
 
 | Newspaper | Online records | First year | Labelled blog/podcast/website | Years with both labels |
 |---|---|---|---|---|
-| New York Times | 239,533 | 1996 | 100.0% | 0 |
-| Washington Post | 94,982 | 2011 | 100.0% | 0 |
-| Wall Street Journal | 76,197 | 2010 | 0.0% | 0 |
-| Los Angeles Times | 15,182 | 2017 | 100.0% | 0 |
-| Boston Globe | 8,685 | 2006 | 0.0% | 0 |
-| Chicago Tribune | 23,006 | 2017 | 100.0% | 0 |
-| USA Today | 19,248 | 2014 | 0.0% | 0 |
+| New York Times | 224,515 | 1996 | 100.0% | 0 |
+| Washington Post | 88,231 | 2011 | 100.0% | 0 |
+| Wall Street Journal | 72,438 | 2010 | 0.0% | 0 |
+| Los Angeles Times | 14,977 | 2017 | 100.0% | 0 |
+| Boston Globe | 8,663 | 2006 | 0.0% | 0 |
+| Chicago Tribune | 22,323 | 2017 | 100.0% | 0 |
+| USA Today | 18,535 | 2014 | 0.0% | 0 |
 | Tampa Bay Times | 2,936 | 2017 | 100.0% | 0 |
 
 ### 4.3 Blog-labelled records by document type
 
 | Document type | Blog-labelled records | Share of blog-labelled |
 |---|---|---|
-| News | 187,645 | 49.8% |
-| Opinions | 143,115 | 38.0% |
-| Commentary | 52,955 | 14.1% |
-| Editorial | 50,133 | 13.3% |
+| News | 175,550 | 49.6% |
+| Opinions | 138,263 | 39.1% |
+| Commentary | 51,142 | 14.5% |
+| Editorial | 44,090 | 12.5% |
 | Letter To The Editor | 244 | 0.1% |
 | Obituary | 73 | 0.0% |
 
@@ -198,11 +198,11 @@ read the CSV with a data-analysis library instead.
 
 | Decade | Records | With author |
 |---|---|---|
-| 1980s | 119,028 | 47.0% |
-| 1990s | 204,934 | 40.5% |
-| 2000s | 349,144 | 29.7% |
-| 2010s | 377,225 | 42.4% |
-| 2020s | 175,619 | 71.2% |
+| 1980s | 118,927 | 47.0% |
+| 1990s | 197,936 | 41.8% |
+| 2000s | 339,672 | 30.5% |
+| 2010s | 361,612 | 43.5% |
+| 2020s | 173,469 | 71.3% |
 | Unknown year | 906 | 1.9% |
 
 ### 4.5 Document types and authorship
@@ -212,18 +212,18 @@ op-eds mostly signed.
 
 | Document type | Records | With author |
 |---|---|---|
-| News | 335,173 | 33.3% |
-| Editorial | 285,685 | 12.0% |
-| NEWSPAPER | 267,133 | 44.0% |
-| Opinions | 237,026 | 57.6% |
-| Commentary | 212,803 | 87.9% |
-| Op-Ed | 18,370 | 93.0% |
-| Opinion | 5,402 | 86.2% |
-| Opinion Piece | 3,495 | 98.1% |
-| Letter To The Editor | 2,687 | 0.1% |
-| EPG | 1,568 | 24.6% |
-| Column | 1,558 | 88.3% |
-| OP | 659 | 98.0% |
+| News | 318,658 | 34.4% |
+| Editorial | 273,934 | 12.3% |
+| NEWSPAPER | 266,229 | 44.0% |
+| Opinions | 231,127 | 58.3% |
+| Commentary | 210,454 | 88.4% |
+| Op-Ed | 18,297 | 93.0% |
+| Opinion | 5,388 | 86.1% |
+| Opinion Piece | 3,494 | 98.1% |
+| Letter To The Editor | 2,684 | 0.1% |
+| EPG | 1,567 | 24.6% |
+| Column | 1,555 | 88.2% |
+| OP | 658 | 98.0% |
 
 ### 4.6 Sections
 
@@ -231,24 +231,24 @@ Top labels, grouped ignoring case. Each newspaper names its sections differently
 
 | Section | Records | Share |
 |---|---|---|
-| opinion | 384,412 | 31.3% |
-| EDITORIAL | 112,591 | 9.2% |
-| A | 108,337 | 8.8% |
-| EDITORIAL-OPINION | 98,272 | 8.0% |
-| Opinions | 52,476 | 4.3% |
-| OP/ED | 36,993 | 3.0% |
-| NEWS | 32,594 | 2.7% |
-| EDITORIAL PAGE | 22,915 | 1.9% |
-| Op-Ed | 20,369 | 1.7% |
-| California Metro; Part B; Editorial Pages Desk | 16,533 | 1.3% |
-| Main News; Part A; Editorial Desk | 12,599 | 1.0% |
-| SPORTS | 11,769 | 1.0% |
+| opinion | 365,237 | 30.6% |
+| EDITORIAL | 111,753 | 9.4% |
+| A | 107,989 | 9.1% |
+| EDITORIAL-OPINION | 89,029 | 7.5% |
+| Opinions | 51,178 | 4.3% |
+| OP/ED | 36,971 | 3.1% |
+| NEWS | 32,532 | 2.7% |
+| EDITORIAL PAGE | 22,870 | 1.9% |
+| Op-Ed | 20,355 | 1.7% |
+| California Metro; Part B; Editorial Pages Desk | 16,532 | 1.4% |
+| Main News; Part A; Editorial Desk | 12,598 | 1.1% |
+| Main News; Part A; Editorial Pages Desk | 11,729 | 1.0% |
 
 ### 4.7 Language
 
 | Language | Records | Share |
 |---|---|---|
-| English only | 1,224,710 | 99.8% |
+| English only | 1,190,376 | 99.8% |
 | Includes Spanish | 1,261 | 0.1% |
 | Missing | 885 | 0.1% |
 
@@ -257,9 +257,9 @@ Top labels, grouped ignoring case. Each newspaper names its sections differently
 | Field | Missing | Share |
 |---|---|---|
 | Title | 888 | 0.1% |
-| Author | 629,809 | 51.3% |
-| Section | 48,953 | 4.0% |
-| Full publication date | 20,516 | 1.7% |
+| Author | 603,834 | 50.6% |
+| Section | 47,498 | 4.0% |
+| Full publication date | 15,508 | 1.3% |
 | Document id | 882 | 0.1% |
 | Body text | 1,622 | 0.1% |
 
@@ -289,8 +289,8 @@ Most common first. These are removed in the cleaned dataset (reason `not_queried
 | Filter | Result | Section |
 |---|---|---|
 | Newspapers | 296 publications outside the list also appear. Queried newspapers with no records: none | 4.1, 4.9 |
-| Source type | Not newspapers only, by design: 376,436 records (30.7%) are online editions that ProQuest labels `Blog, podcast o sitio web` | 4.1–4.3 |
-| Document type | 117 distinct labels; 402,716 records (32.8%) carry none of Commentary, Editorial or News | 4.5 |
+| Source type | Not newspapers only, by design: 353,779 records (29.7%) are online editions that ProQuest labels `Blog, podcast o sitio web` | 4.1–4.3 |
+| Document type | 117 distinct labels; 398,809 records (33.4%) carry none of Commentary, Editorial or News | 4.5 |
 | English | 99.8% English only; the rest bilingual or unlabelled | 4.7 |
 | Dates | 1980–2024 | 4.4 |
 
@@ -299,7 +299,7 @@ The blog label:
 - 99.9% of blog-labelled records are `(Online)` editions, mostly New York Times, Washington Post, Los Angeles Times, Chicago Tribune, Tampa Bay Times.
 - It belongs to the publication edition, not the article or date: per newspaper, all online
   records carry it or none do, in every year (section 4.2, last column).
-- 95.1% sit in an opinion or editorial section (section 4.3). The content
+- 95.0% sit in an opinion or editorial section (section 4.3). The content
   is news opinion, not casual blog posts.
 
 ### 5.2 Repeats
@@ -322,29 +322,37 @@ document type. In 878 ids one copy has no body next to a copy with text,
 so the copy kept is the one with the longest body, and the earliest download if they tie. The
 others are removed from the shared table.
 
-A second kind of repeat has another id but the same body, title, date and queried newspaper
-(editions of one newspaper count as one): 2,991 records. The copy kept
-is the earliest one that qualifies as a signed opinion piece with text, or the earliest of all if none
-does; the others are removed. Publications outside the query are judged only as not queried,
-so repeats among them stay.
+A second kind of repeat has another id but the same body in the same queried newspaper
+(editions of one newspaper count as one): 37,325 records. Most are the
+print and the online edition of one article, under another title or a date a few days apart;
+the rest are texts posted again later and editorials reprinted every year. A body under 100
+words can be a caption or an introduction shared by different articles, so it is a repeat
+only under the same title and date. The copy kept is a signed opinion piece with text if
+there is one, then the first published, then the earliest download; the others are removed.
+Publications outside the query are judged only as not queried, so repeats among them stay.
 
 ### 5.3 News and opinion
 
-Document type is not a reliable marker of opinion. 36.5% of
-records have a non-opinion label but sit in an opinion section, and 148,622
-(12.1%) have neither an opinion label nor an opinion section. All are kept in
+Document type is not a reliable marker of opinion. 36.2% of
+records have a non-opinion label but sit in an opinion section, and 147,445
+(12.4%) have neither an opinion label nor an opinion section. All are kept in
 the raw table.
 
 ## 6. Usage notes and limitations
 
 - **Exclusion reasons:** the companion table gives every parsed row one reason: file footer,
-  repeated id, publication not queried, repeated text (same body, title, date and newspaper),
+  repeated id, publication not queried, repeated text (same body in the same newspaper),
   missing metadata, not opinion, unclear opinion, no text, no author, no person among the
   authors, or kept. Only file footer, repeated id and repeated text leave the shared table;
   the others say which records the cleaned dataset leaves out and do not change this table.
   Counts: `exclusion_counts.csv`.
-- **Subtler duplicates** (reprints, edited versions under another title) are not detected.
-- **Authors:** 527,772 records (43.0%) name an author; ProQuest's
+- **Subtler duplicates** are not detected: edited versions of one article, whose text
+  differs; the same text in two newspapers; and repeats of a body under 100 words under
+  another title or date (about 1,600 rows).
+- **One text, one row:** records of different articles that carry the same text are kept
+  once per newspaper: an editorial reprinted every year, a weekly poll column stored only
+  as its fixed introduction (32 signed instalments).
+- **Authors:** 523,327 records (43.9%) name an author; ProQuest's
   `Anonymous` is not counted as one. Unsigned pieces,
   mostly editorials, cannot be linked to a person.
 - **No body text:** 1,622 records, all in 5 files.

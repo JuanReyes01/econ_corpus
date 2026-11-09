@@ -92,7 +92,7 @@ kept raw so that other researchers can derive their own samples from it.
 | Hash, word count and character count of the text | columns added | Integrity checks |
 | File footers removed | {{n_footer_rows}} rows | Not records |
 | Repeated ProQuest ids removed; the copy with the longest body is kept, the earliest download on ties | {{n_repeats_removed}} rows | Overlapping downloads (section 5.2) |
-| Repeated text removed: same body, title, date and queried newspaper under another id, titles compared without spaces or case; the copy kept is the earliest that is a signed opinion piece with text, or the earliest of all | {{n_text_repeats_removed}} rows | The same article downloaded under two ids (section 5.2) |
+| Repeated text removed: same body in the same queried newspaper under another id, whatever the title and date; a body under 100 words must also share title and date (titles compared without spaces or case). The copy kept is a signed opinion piece with text if there is one, then the first published, then the earliest download | {{n_text_repeats_removed}} rows | One text under several ids: print and online editions, texts posted again (section 5.2) |
 | Nothing else removed or edited | news items, publications outside the query | Left for the cleaned dataset (section 3.2) |
 
 ## 3. Data records
@@ -235,11 +235,14 @@ document type. In {{n_ids_with_empty_copy}} ids one copy has no body next to a c
 so the copy kept is the one with the longest body, and the earliest download if they tie. The
 others are removed from the shared table.
 
-A second kind of repeat has another id but the same body, title, date and queried newspaper
-(editions of one newspaper count as one): {{n_text_repeats_removed}} records. The copy kept
-is the earliest one that qualifies as a signed opinion piece with text, or the earliest of all if none
-does; the others are removed. Publications outside the query are judged only as not queried,
-so repeats among them stay.
+A second kind of repeat has another id but the same body in the same queried newspaper
+(editions of one newspaper count as one): {{n_text_repeats_removed}} records. Most are the
+print and the online edition of one article, under another title or a date a few days apart;
+the rest are texts posted again later and editorials reprinted every year. A body under 100
+words can be a caption or an introduction shared by different articles, so it is a repeat
+only under the same title and date. The copy kept is a signed opinion piece with text if
+there is one, then the first published, then the earliest download; the others are removed.
+Publications outside the query are judged only as not queried, so repeats among them stay.
 
 ### 5.3 News and opinion
 
@@ -251,12 +254,17 @@ the raw table.
 ## 6. Usage notes and limitations
 
 - **Exclusion reasons:** the companion table gives every parsed row one reason: file footer,
-  repeated id, publication not queried, repeated text (same body, title, date and newspaper),
+  repeated id, publication not queried, repeated text (same body in the same newspaper),
   missing metadata, not opinion, unclear opinion, no text, no author, no person among the
   authors, or kept. Only file footer, repeated id and repeated text leave the shared table;
   the others say which records the cleaned dataset leaves out and do not change this table.
   Counts: `exclusion_counts.csv`.
-- **Subtler duplicates** (reprints, edited versions under another title) are not detected.
+- **Subtler duplicates** are not detected: edited versions of one article, whose text
+  differs; the same text in two newspapers; and repeats of a body under 100 words under
+  another title or date (about 1,600 rows).
+- **One text, one row:** records of different articles that carry the same text are kept
+  once per newspaper: an editorial reprinted every year, a weekly poll column stored only
+  as its fixed introduction (32 signed instalments).
 - **Authors:** {{n_with_author}} records ({{with_author_pct}}) name an author; ProQuest's
   `Anonymous` is not counted as one. Unsigned pieces,
   mostly editorials, cannot be linked to a person.

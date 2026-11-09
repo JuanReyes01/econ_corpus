@@ -9,9 +9,9 @@ Data descriptor, version 1.0 (2026-11-09). Derived from the raw table described 
 
 ## Abstract
 
-The dataset holds 406,300 opinion articles signed by at least one person, published
+The dataset holds 402,638 opinion articles signed by at least one person, published
 1980–2024 in ten U.S. newspapers with the highest circulation, and the
-87,112 authors who signed them. Articles and authors are separate tables joined by a
+87,108 authors who signed them. Articles and authors are separate tables joined by a
 link table, since an article can have several authors and an author many articles. The
 dataset is derived from 1,377,766 rows parsed from ProQuest US Newsstream exports by a
 sequence of exclusions, each row leaving for exactly one reason. Authors were read from the
@@ -27,13 +27,13 @@ queried newspapers, with text, signed by a person.
 
 | | |
 |---|---|
-| Articles | 406,300 |
-| Authors | 87,112 |
-| Article–author links | 455,172 |
+| Articles | 402,638 |
+| Authors | 87,108 |
+| Article–author links | 451,232 |
 | Newspapers | 10 |
 | Publication years | 1980–2024 |
 | Articles with one author | 93.2% |
-| Authors with one article | 51,598 (59.2%) |
+| Authors with one article | 51,833 (59.5%) |
 
 ## 2. Methods
 
@@ -51,19 +51,23 @@ give the shared raw table; the others leave only the cleaned dataset (Figure 1).
 | Rows parsed |  |  | 1,377,766 |
 | file_footer | Row is the footer of an export file, not an article | 2,801 | 1,374,965 |
 | duplicate_id | Repeats a ProQuest id; the copy with the longest body is the one kept | 145,118 | 1,229,847 |
-| duplicate_text | Same body, title, date and newspaper as another record, which stays | 2,991 | 1,226,856 |
-| not_queried_newspaper | Publication is not one of the queried newspapers | 12,413 | 1,214,443 |
-| missing_metadata | No publication, no id, or no document type and section: unclassifiable | 885 | 1,213,558 |
-| not_opinion | A news section, and neither an opinion document type nor an opinion title | 120,057 | 1,093,501 |
-| unclear_opinion | Generic document type, no section and no opinion title: may be opinion | 11,149 | 1,082,352 |
-| no_text | Opinion piece with no text, or only a notice shared by several articles | 4,420 | 1,077,932 |
-| no_author | Opinion piece that is unsigned or marked Anonymous | 660,479 | 417,453 |
-| no_person_author | Byline names no person (an institution, or text with no full name) | 11,153 | 406,300 |
+| duplicate_text | Same text in the same newspaper as another record, which stays | 37,325 | 1,192,522 |
+| not_queried_newspaper | Publication is not one of the queried newspapers | 12,413 | 1,180,109 |
+| missing_metadata | No publication, no id, or no document type and section: unclassifiable | 885 | 1,179,224 |
+| not_opinion | A news section, and neither an opinion document type nor an opinion title | 118,978 | 1,060,246 |
+| unclear_opinion | Generic document type, no section and no opinion title: may be opinion | 11,079 | 1,049,167 |
+| no_text | Opinion piece with no text, or only a notice shared by several articles | 4,420 | 1,044,747 |
+| no_author | Opinion piece that is unsigned or marked Anonymous | 631,192 | 413,555 |
+| no_person_author | Byline names no person (an institution, or text with no full name) | 10,917 | 402,638 |
 
 - **Opinion:** a record is opinion if its document type, its section or its title marks it
   as commentary, editorial, op-ed or letters. Records with no such mark are left out, either
   as news (`not_opinion`) or, when they have no section, as undecided (`unclear_opinion`).
 - **Newspapers:** the ten queried newspapers, print and online editions.
+- **One text, one article:** a text found under several ids in one newspaper (print and
+  online editions under another title or date, texts posted again) is kept once
+  (`duplicate_text`): the signed copy published first. A body under 100 words is a repeat
+  only under the same title and date.
 - **Text and author:** an article needs body text and a byline that names at least one person.
   A body under 100 words carried by five or more different articles (a title on a date) is a
   notice or a credit ("text not available", a cartoon caption), not text (`no_text`). ProQuest's "Anonymous" and missing bylines are unsigned (`no_author`);
@@ -104,8 +108,8 @@ give the shared raw table; the others leave only the cleaned dataset (Figure 1).
   author is a piece of that sentence. A name followed by a small word that may be a piece
   of it cut off by a stray space (`Jane Do e Roe`, `Jane Do rgan`) is not read: it goes
   to the manual review.
-- Of 455,172 links, 432,953 (95.1%) were read as
-  written, 16,934 were recovered and 5,285 come from the manual
+- Of 451,232 links, 429,059 (95.1%) were read as
+  written, 16,913 were recovered and 5,260 come from the manual
   review (section 2.4). Each link records how it was read.
 
 ### 2.3 Deciding that two names are one author
@@ -121,9 +125,9 @@ give the shared raw table; the others leave only the cleaned dataset (Figure 1).
   initial of the other, compared name by name) and they are linked through shared newspapers
   (two variants can be joined by a third that shares a newspaper with each). One
   contradiction among such names stops every merge among them.
-- **Result:** 91,216 name variants for 87,112 authors; 3,214 variants
+- **Result:** 91,211 name variants for 87,108 authors; 3,213 variants
   were merged by the rule and 890 by the manual review.
-- **Not merged:** 7,188 pairs of look-alike authors are listed, not merged
+- **Not merged:** 7,185 pairs of look-alike authors are listed, not merged
   (section 3.5).
 
 ### 2.4 Manual review by a large language model
@@ -228,75 +232,75 @@ Pairs of authors that look alike and are not merged.
 
 | Newspaper | Articles | Print | Online | Pre-1997 | Share |
 |---|---|---|---|---|---|
-| Washington Post | 108,908 | 50,152 | 47,783 | 10,973 | 26.8% |
-| New York Times | 96,834 | 67,012 | 29,822 | 0 | 23.8% |
-| Los Angeles Times | 58,741 | 33,161 | 10,115 | 15,465 | 14.5% |
-| Boston Globe | 41,369 | 23,398 | 5,804 | 12,167 | 10.2% |
-| Wall Street Journal | 38,217 | 1,963 | 36,254 | 0 | 9.4% |
-| Newsday | 20,697 | 20,697 | 0 | 0 | 5.1% |
-| Chicago Tribune | 20,352 | 4,324 | 12,552 | 3,476 | 5.0% |
-| USA Today | 19,181 | 2,891 | 16,287 | 3 | 4.7% |
+| Washington Post | 107,328 | 49,875 | 46,486 | 10,967 | 26.7% |
+| New York Times | 96,732 | 66,911 | 29,821 | 0 | 24.0% |
+| Los Angeles Times | 58,548 | 33,145 | 9,940 | 15,463 | 14.5% |
+| Boston Globe | 41,297 | 23,340 | 5,792 | 12,165 | 10.3% |
+| Wall Street Journal | 37,402 | 1,943 | 35,459 | 0 | 9.3% |
+| Newsday | 20,679 | 20,679 | 0 | 0 | 5.1% |
+| Chicago Tribune | 19,924 | 4,323 | 12,136 | 3,465 | 4.9% |
+| USA Today | 18,727 | 2,890 | 15,834 | 3 | 4.7% |
 | Tampa Bay Times | 1,525 | 98 | 1,427 | 0 | 0.4% |
 | Star Tribune | 476 | 476 | 0 | 0 | 0.1% |
-| Total | 406,300 | 204,172 | 160,044 | 42,084 | 100.0% |
+| Total | 402,638 | 203,680 | 156,895 | 42,063 | 100.0% |
 
 ### 4.2 Decades
 
 | Decade | Articles | Share |
 |---|---|---|
-| 1980s | 30,939 | 7.6% |
-| 1990s | 49,181 | 12.1% |
-| 2000s | 74,930 | 18.4% |
-| 2010s | 134,767 | 33.2% |
-| 2020s | 116,468 | 28.7% |
+| 1980s | 30,921 | 7.7% |
+| 1990s | 49,059 | 12.2% |
+| 2000s | 74,913 | 18.6% |
+| 2010s | 132,517 | 32.9% |
+| 2020s | 115,213 | 28.6% |
 | Unknown year | 15 | 0.0% |
 
 ### 4.3 Authors per article
 
 | Authors | Articles | Share |
 |---|---|---|
-| 1 | 378,484 | 93.2% |
-| 2 | 19,869 | 4.9% |
-| 3 | 3,013 | 0.7% |
-| 4 | 1,734 | 0.4% |
-| 5 or more | 3,200 | 0.8% |
+| 1 | 375,059 | 93.2% |
+| 2 | 19,666 | 4.9% |
+| 3 | 2,983 | 0.7% |
+| 4 | 1,733 | 0.4% |
+| 5 or more | 3,197 | 0.8% |
 
 ### 4.4 Articles per author
 
 | Articles | Authors | Share |
 |---|---|---|
-| 1 | 51,598 | 59.2% |
-| 2 to 9 | 30,743 | 35.3% |
-| 10 to 99 | 4,361 | 5.0% |
-| 100 or more | 410 | 0.5% |
+| 1 | 51,833 | 59.5% |
+| 2 to 9 | 30,550 | 35.1% |
+| 10 to 99 | 4,317 | 5.0% |
+| 100 or more | 408 | 0.5% |
 
 ### 4.5 Most frequent authors
 
 | Author | Articles |
 |---|---|
-| Jennifer Rubin | 5,072 |
-| George F Will | 3,881 |
+| Jennifer Rubin | 5,056 |
+| George F Will | 3,875 |
 | Paul Krugman | 3,514 |
-| EJ Dionne Jr | 3,080 |
-| David Ignatius | 2,739 |
-| Ellen Goodman | 2,573 |
-| Nicholas Kristof | 2,374 |
+| EJ Dionne Jr | 3,060 |
+| David Ignatius | 2,695 |
+| Ellen Goodman | 2,568 |
+| Nicholas Kristof | 2,373 |
 | Thomas L Friedman | 2,366 |
-| Jeff Jacoby | 2,355 |
-| James Freeman | 2,303 |
-| Maureen Dowd | 2,302 |
-| Richard Cohen | 2,273 |
-| David S Broder | 2,228 |
-| Paul Waldman | 2,154 |
-| Joan Vennochi | 2,147 |
+| Jeff Jacoby | 2,351 |
+| Maureen Dowd | 2,301 |
+| James Freeman | 2,292 |
+| Richard Cohen | 2,272 |
+| David S Broder | 2,225 |
+| Joan Vennochi | 2,144 |
+| Paul Waldman | 2,140 |
 
 ### 4.6 How the names were read
 
 | Read | Count | Share |
 |---|---|---|
-| as_written | 432,953 | 95.1% |
-| recovered | 16,934 | 3.7% |
-| manual_review | 5,285 | 1.2% |
+| as_written | 429,059 | 95.1% |
+| recovered | 16,913 | 3.7% |
+| manual_review | 5,260 | 1.2% |
 
 ## 5. Technical validation
 
@@ -323,10 +327,10 @@ Pairs of authors that look alike and are not merged.
 | nickname / not_reviewed | 2,207 | 30.7% |
 | conflicting_names / not_reviewed | 1,663 | 23.1% |
 | no_shared_newspaper / not_reviewed | 1,216 | 16.9% |
-| one_letter_apart / not_reviewed | 705 | 9.8% |
+| one_letter_apart / not_reviewed | 702 | 9.8% |
 | nickname / different | 303 | 4.2% |
 | conflicting_names / different | 297 | 4.1% |
-| nickname / unsure | 212 | 2.9% |
+| nickname / unsure | 212 | 3.0% |
 | conflicting_names / unsure | 192 | 2.7% |
 | one_letter_apart / different | 187 | 2.6% |
 | no_shared_newspaper / unsure | 82 | 1.1% |
@@ -340,12 +344,12 @@ Pairs of authors that look alike and are not merged.
 
 ## 6. Usage notes and limitations
 
-- **Unsigned opinion is absent:** 660,479 opinion pieces have no author, mostly
+- **Unsigned opinion is absent:** 631,192 opinion pieces have no author, mostly
   editorials. They are in the raw table.
-- **Bylines that name nobody:** 11,153 articles, signed by an editorial
+- **Bylines that name nobody:** 10,917 articles, signed by an editorial
   board, a publication or a role.
-- **Authors may still be split:** of the 7,188 look-alike pairs,
-  5,814 were not reviewed: one of the two authors has a single
+- **Authors may still be split:** of the 7,185 look-alike pairs,
+  5,811 were not reviewed: one of the two authors has a single
   article and the other fewer than twenty. 530 were reviewed and left unsure.
 - **Authors may be wrongly merged:** the rule needs a shared newspaper and compatible names,
   which two people with a common name can meet, across decades too (a father and a son, one
@@ -373,8 +377,11 @@ Pairs of authors that look alike and are not merged.
 - **One word is never a name:** pen names of one word and bylines cut to one word are lost.
 - **The name key ignores spaces**, because the export puts stray spaces inside names: `Jane
   C Hu` and `Jane Chu` are one author. An audit found four such pairs.
-- **Subtler duplicates** (reprints, edited versions under another title, the print and
-  online editions of one article under different titles or dates) are not detected.
+- **Subtler duplicates** are not detected: edited versions of one article, whose text
+  differs, and the same text in two newspapers.
+- **One text, one article:** records of different articles that carry the same text are
+  one article. Known case: 32 instalments of a weekly poll column of the Chicago Tribune,
+  stored only as their fixed introduction.
 - **Language:** a small share of the articles (about 0.4%, estimated once from the text) is
   in Spanish, mostly from online editions, although ProQuest labels them English.
 - **Cartoons and very short items** signed by a person are kept when their body is not a

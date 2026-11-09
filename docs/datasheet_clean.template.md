@@ -52,6 +52,10 @@ give the shared raw table; the others leave only the cleaned dataset (Figure 1).
   as commentary, editorial, op-ed or letters. Records with no such mark are left out, either
   as news (`not_opinion`) or, when they have no section, as undecided (`unclear_opinion`).
 - **Newspapers:** the ten queried newspapers, print and online editions.
+- **One text, one article:** a text found under several ids in one newspaper (print and
+  online editions under another title or date, texts posted again) is kept once
+  (`duplicate_text`): the signed copy published first. A body under 100 words is a repeat
+  only under the same title and date.
 - **Text and author:** an article needs body text and a byline that names at least one person.
   A body under 100 words carried by five or more different articles (a title on a date) is a
   notice or a credit ("text not available", a cartoon caption), not text (`no_text`). ProQuest's "Anonymous" and missing bylines are unsigned (`no_author`);
@@ -293,8 +297,11 @@ Pairs of authors that look alike and are not merged.
 - **One word is never a name:** pen names of one word and bylines cut to one word are lost.
 - **The name key ignores spaces**, because the export puts stray spaces inside names: `Jane
   C Hu` and `Jane Chu` are one author. An audit found four such pairs.
-- **Subtler duplicates** (reprints, edited versions under another title, the print and
-  online editions of one article under different titles or dates) are not detected.
+- **Subtler duplicates** are not detected: edited versions of one article, whose text
+  differs, and the same text in two newspapers.
+- **One text, one article:** records of different articles that carry the same text are
+  one article. Known case: 32 instalments of a weekly poll column of the Chicago Tribune,
+  stored only as their fixed introduction.
 - **Language:** a small share of the articles (about 0.4%, estimated once from the text) is
   in Spanish, mostly from online editions, although ProQuest labels them English.
 - **Cartoons and very short items** signed by a person are kept when their body is not a

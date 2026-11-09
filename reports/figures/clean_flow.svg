@@ -16,42 +16,42 @@
 <text x="145.0" y="199" text-anchor="middle" fill="#333333">1,229,847</text>
 <line x1="145.0" x2="145.0" y1="214" y2="236" stroke="#333333"/>
 <line x1="145.0" x2="322" y1="225" y2="225" stroke="#333333"/>
-<text class="removed" x="330" y="229"><tspan fill="#f58518" font-weight="bold">− 2,991</tspan>  duplicate_text: Same body, title, date and newspaper as another record, which stays</text>
+<text class="removed" x="330" y="229"><tspan fill="#f58518" font-weight="bold">− 37,325</tspan>  duplicate_text: Same text in the same newspaper as another record, which stays</text>
 <rect class="remaining" x="30" y="236" width="230" height="40" fill="#4c78a8" stroke="#4c78a8"/>
-<text x="145.0" y="261" text-anchor="middle" fill="#ffffff">Shared raw table: 1,226,856</text>
+<text x="145.0" y="261" text-anchor="middle" fill="#ffffff">Shared raw table: 1,192,522</text>
 <line x1="145.0" x2="145.0" y1="276" y2="298" stroke="#333333"/>
 <line x1="145.0" x2="322" y1="287" y2="287" stroke="#333333"/>
 <text class="removed" x="330" y="291"><tspan fill="#f58518" font-weight="bold">− 12,413</tspan>  not_queried_newspaper: Publication is not one of the queried newspapers</text>
 <rect class="remaining" x="30" y="298" width="230" height="40" fill="#ffffff" stroke="#4c78a8"/>
-<text x="145.0" y="323" text-anchor="middle" fill="#333333">1,214,443</text>
+<text x="145.0" y="323" text-anchor="middle" fill="#333333">1,180,109</text>
 <line x1="145.0" x2="145.0" y1="338" y2="360" stroke="#333333"/>
 <line x1="145.0" x2="322" y1="349" y2="349" stroke="#333333"/>
 <text class="removed" x="330" y="353"><tspan fill="#f58518" font-weight="bold">− 885</tspan>  missing_metadata: No publication, no id, or no document type and section: unclassifiable</text>
 <rect class="remaining" x="30" y="360" width="230" height="40" fill="#ffffff" stroke="#4c78a8"/>
-<text x="145.0" y="385" text-anchor="middle" fill="#333333">1,213,558</text>
+<text x="145.0" y="385" text-anchor="middle" fill="#333333">1,179,224</text>
 <line x1="145.0" x2="145.0" y1="400" y2="422" stroke="#333333"/>
 <line x1="145.0" x2="322" y1="411" y2="411" stroke="#333333"/>
-<text class="removed" x="330" y="415"><tspan fill="#f58518" font-weight="bold">− 120,057</tspan>  not_opinion: A news section, and neither an opinion document type nor an opinion title</text>
+<text class="removed" x="330" y="415"><tspan fill="#f58518" font-weight="bold">− 118,978</tspan>  not_opinion: A news section, and neither an opinion document type nor an opinion title</text>
 <rect class="remaining" x="30" y="422" width="230" height="40" fill="#ffffff" stroke="#4c78a8"/>
-<text x="145.0" y="447" text-anchor="middle" fill="#333333">1,093,501</text>
+<text x="145.0" y="447" text-anchor="middle" fill="#333333">1,060,246</text>
 <line x1="145.0" x2="145.0" y1="462" y2="484" stroke="#333333"/>
 <line x1="145.0" x2="322" y1="473" y2="473" stroke="#333333"/>
-<text class="removed" x="330" y="477"><tspan fill="#f58518" font-weight="bold">− 11,149</tspan>  unclear_opinion: Generic document type, no section and no opinion title: may be opinion</text>
+<text class="removed" x="330" y="477"><tspan fill="#f58518" font-weight="bold">− 11,079</tspan>  unclear_opinion: Generic document type, no section and no opinion title: may be opinion</text>
 <rect class="remaining" x="30" y="484" width="230" height="40" fill="#ffffff" stroke="#4c78a8"/>
-<text x="145.0" y="509" text-anchor="middle" fill="#333333">1,082,352</text>
+<text x="145.0" y="509" text-anchor="middle" fill="#333333">1,049,167</text>
 <line x1="145.0" x2="145.0" y1="524" y2="546" stroke="#333333"/>
 <line x1="145.0" x2="322" y1="535" y2="535" stroke="#333333"/>
 <text class="removed" x="330" y="539"><tspan fill="#f58518" font-weight="bold">− 4,420</tspan>  no_text: Opinion piece with no text, or only a notice shared by several articles</text>
 <rect class="remaining" x="30" y="546" width="230" height="40" fill="#ffffff" stroke="#4c78a8"/>
-<text x="145.0" y="571" text-anchor="middle" fill="#333333">1,077,932</text>
+<text x="145.0" y="571" text-anchor="middle" fill="#333333">1,044,747</text>
 <line x1="145.0" x2="145.0" y1="586" y2="608" stroke="#333333"/>
 <line x1="145.0" x2="322" y1="597" y2="597" stroke="#333333"/>
-<text class="removed" x="330" y="601"><tspan fill="#f58518" font-weight="bold">− 660,479</tspan>  no_author: Opinion piece that is unsigned or marked Anonymous</text>
+<text class="removed" x="330" y="601"><tspan fill="#f58518" font-weight="bold">− 631,192</tspan>  no_author: Opinion piece that is unsigned or marked Anonymous</text>
 <rect class="remaining" x="30" y="608" width="230" height="40" fill="#ffffff" stroke="#4c78a8"/>
-<text x="145.0" y="633" text-anchor="middle" fill="#333333">417,453</text>
+<text x="145.0" y="633" text-anchor="middle" fill="#333333">413,555</text>
 <line x1="145.0" x2="145.0" y1="648" y2="670" stroke="#333333"/>
 <line x1="145.0" x2="322" y1="659" y2="659" stroke="#333333"/>
-<text class="removed" x="330" y="663"><tspan fill="#f58518" font-weight="bold">− 11,153</tspan>  no_person_author: Byline names no person (an institution, or text with no full name)</text>
+<text class="removed" x="330" y="663"><tspan fill="#f58518" font-weight="bold">− 10,917</tspan>  no_person_author: Byline names no person (an institution, or text with no full name)</text>
 <rect class="remaining" x="30" y="670" width="230" height="40" fill="#4c78a8" stroke="#4c78a8"/>
-<text x="145.0" y="695" text-anchor="middle" fill="#ffffff">Cleaned dataset: 406,300</text>
+<text x="145.0" y="695" text-anchor="middle" fill="#ffffff">Cleaned dataset: 402,638</text>
 </svg>
