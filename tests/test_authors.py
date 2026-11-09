@@ -955,8 +955,37 @@ def test_more_titles_before_a_name_are_dropped(part: str) -> None:
     assert bylines.people(part) == [JANE]
 
 
-def test_bank_is_a_family_name() -> None:
-    assert bylines.people("By Jane Bank") == [Name("Jane", "Bank", "")]
+def test_a_bank_after_a_name_is_not_a_given_name() -> None:
+    assert bylines.people("Jane Doe, World Bank") == [JANE]
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        ("Doe, Jane Q; Jane Doe is a professor.", [Name("Jane Q", "Doe", "")]),
+        ("Doe, Jane, Jr.; Jane Doe is a professor.", [Name("Jane", "Doe", "Jr")]),
+        ("Roe, Mary Ann; Ann Roe is her daughter.", [Name("Mary Ann", "Roe", "")]),
+    ],
+)
+def test_a_shorter_name_in_the_note_does_not_replace_the_fuller_one(
+    raw: str, expected: list
+) -> None:
+    assert bylines.people(raw) == expected
+
+
+def test_father_and_son_in_one_byline_are_two_people() -> None:
+    assert bylines.people("Doe, John, Sr.; John Doe Jr. is a student.") == [
+        Name("John", "Doe", "Sr"),
+        Name("John", "Doe", "Jr"),
+    ]
+
+
+def test_names_listed_together_are_not_compared_with_each_other() -> None:
+    assert [n.given for n in bylines.people("Mark Doe, Mary Doe and Ann Roe")] == [
+        "Mark",
+        "Mary",
+        "Ann",
+    ]
 
 
 def test_a_note_that_spells_the_author_the_same_way_changes_nothing() -> None:
@@ -983,3 +1012,44 @@ def test_a_family_name_cut_before_is_starts_no_sentence() -> None:
 
 def test_a_note_cut_after_lives_still_names_its_author() -> None:
     assert bylines.read_part("Jane Doe lives") == ([JANE], "recovered")
+
+
+@pytest.mark.parametrize(
+    "raw",
+    [
+        "Springfield., JANE DOEWOOD; Jnae Doewood lives in",  # two letters in the given name
+        "Doewood, Jane; Jane Doewoodis host of a programme.",  # 'is' glued to the family name
+        "Doewood, Jane; Jane Doewo od is a teacher.",  # the family name cut by a stray space
+        "Doewood, Jan; Janet Doewood is a teacher.",  # a short form of the given name
+    ],
+)
+def test_a_note_that_misspells_the_author_adds_no_second_author(raw: str) -> None:
+    assert len(bylines.people(raw)) == 1
+
+
+def test_and_or_by_before_a_name_in_any_part_is_dropped() -> None:
+    assert bylines.people("Doe, Jane; And Richard Roe") == [JANE, Name("Richard", "Roe", "")]
+    assert bylines.people("By Richard Roe, Jr.") == [Name("Richard", "Roe", "Jr")]
+
+
+def test_two_people_with_one_family_name_and_initial_are_two_people() -> None:
+    raw = "JANE DOE AND JOHN DOE. Jane and John Doe live in Springfield."
+    assert [n.given for n in bylines.people(raw)] == ["JANE", "JOHN"]
+
+
+def test_a_family_name_written_again_after_the_given_names_is_read_once() -> None:
+    assert authors.parse_name("Doe, Jane Q. Doe") == Name("Jane Q.", "Doe", "")
+
+
+def test_a_role_after_a_name_is_not_a_given_name() -> None:
+    assert bylines.people("By Jane Q Doe, Publisher") == [Name("Jane Q", "Doe", "")]
+
+
+def test_a_part_that_starts_with_a_comma_names_nobody() -> None:
+    assert authors.parse_name(", Jane Doe") is None
+
+
+def test_an_abbreviated_mc_name_does_not_end_the_name() -> None:
+    expected = [Name("Jane McC.", "Roe", "Jr")]
+    assert bylines.read_part("Jane McC. Roe Jr. is a senator from Springfield.")[0] == expected
+    assert authors.parse_name("Roe, Jane McC., Jr") == Name("Jane McC.", "Roe", "Jr")

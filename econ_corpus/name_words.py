@@ -56,9 +56,9 @@ ORG_WORDS = {
     "community", "institution", "corporation", "police", "veterans", "llp",
     # Roles, bodies and column rubrics read as names in the third audit.
     "coordinator", "reporter", "correspondent", "professor", "captain", "supreme", "army",
-    "navy", "health", "federation", "comptroller", "initiative", "relations",
+    "navy", "health", "federation", "comptroller", "initiative", "bank", "relations",
     "republicans", "democrats", "legal", "defense", "exception", "sketch", "myths", "topic",
-    "surgeon", "ceo",
+    "surgeon", "ceo", "enquirer", "publisher",
 }  # fmt: skip
 # In 'Family, Given' form a one-word family name can be an ORG_WORD ('Press, Jane'), so only
 # these words rule a part out when they stand alone before the comma.
@@ -95,7 +95,8 @@ WATCH_WORDS = {
     "freeport", "levittown", "hicksville", "merrick", "bellmore", "wantagh", "plainview",
     "commack", "patchogue", "riverhead", "oceanside", "jericho", "amityville", "copiague",
     "lindenhurst", "farmingdale", "bethpage", "woodmere", "northport", "setauket", "greenlawn",
-    "whitestone", "sunnyside", "albany", "evanston", "naperville",
+    "whitestone", "sunnyside", "albany", "evanston", "naperville", "woodbury", "westbury",
+    "roslyn", "holbrook", "astoria",
 }  # fmt: skip
 
 # Short forms of first names that are not simply their beginning ('Tim' for 'Timothy' needs

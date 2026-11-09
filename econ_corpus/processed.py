@@ -193,7 +193,7 @@ def build(
     for name, table in tables.items():
         datasheet.write_csv(table, out_dir / f"{name}.csv")
     _write_articles(records, kept, out_dir / "articles.csv", batch_size)
-    manifest.write(out_dir, reasons_file, review_dir)
+    manifest.write(out_dir, records, reasons_file, review_dir)
     counts = {name: len(table) - 1 for name, table in tables.items() if name != "author_names"}
     return {"articles": rows.num_rows, **counts}
 

@@ -24,7 +24,7 @@ from pathlib import Path
 
 import pyarrow.parquet as pq
 
-from econ_corpus import bylines, datasheet, parse, review, summaries
+from econ_corpus import bylines, datasheet, export, parse, review, summaries
 from econ_corpus.reasons import INPUTS, REASONS, check_parser, write_reasons
 from econ_corpus.tables import Articles, Table
 
@@ -195,13 +195,16 @@ def write_exclusions(
 
 
 def main() -> None:
-    """Assign reasons to the parsed table at its default location and save the counts."""
-    reasons = write_exclusions(
-        Path("data/interim/records.parquet"),
-        Path("data/interim/exclusions.parquet"),
-        review.load_parts(review.folder(Path("data/review")) / review.PARTS_FILE),
-    )
+    """Assign reasons to the parsed table at its default location.
+
+    The counts per reason and the reasons of the rows of the raw table are saved too: they
+    are the two files delivered next to that table.
+    """
+    records, out = Path("data/interim/records.parquet"), Path("data/interim/exclusions.parquet")
+    corrections = review.load_parts(review.folder(Path("data/review")) / review.PARTS_FILE)
+    reasons = write_exclusions(records, out, corrections)
     datasheet.write_csv(reason_counts(reasons), Path("reports/tables/exclusion_counts.csv"))
+    export.write_reasons(records, out, Path("data/processed/econ_corpus_raw_reasons.csv"))
 
 
 if __name__ == "__main__":

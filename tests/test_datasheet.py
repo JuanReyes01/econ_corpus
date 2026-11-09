@@ -574,3 +574,19 @@ def test_anonymous_is_not_an_author_in_the_tables() -> None:
     articles = make_articles({"author": "Anonymous"}, {"author": "Doe, Jane"}, {"author": None})
     assert tables.doc_type_table(articles)[1] == ["Commentary", "3", "33.3%"]
     assert tables.newspaper_table(articles)[-1][-1] == "33.3%"
+
+
+@pytest.mark.parametrize("section", ["Currents", "CURRENTS & BOOKS", "Ideas"])
+def test_opinion_sections_of_newsday(section: str) -> None:
+    assert summaries.is_opinion_section(section)
+
+
+@pytest.mark.parametrize(
+    "title", ["opinion exchange: A sample", "LETTERS:  [NASSAU Edition ]", "Letters"]
+)
+def test_more_opinion_page_headings_in_titles(title: str) -> None:
+    assert summaries.is_opinion_title(title)
+
+
+def test_letters_to_another_desk_are_not_the_opinion_page() -> None:
+    assert not summaries.is_opinion_title("LETTERS TO THE SPORTS EDITOR:  [FINAL Edition ]")

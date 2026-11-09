@@ -42,7 +42,8 @@ MC_RE = re.compile(r"(Ma?c|De|Di|Du|La|Le|[A-Z]?[a-z]+['\u2019\-])([A-Z][A-Z'\u2
 POSSESSIVES = ("'s", "\u2019s")
 MIN_SHOUTED = 3  # letters a word in capitals needs to be a name, not initials ('JD')
 VOWELS = set("aeiouy")
-INITIALS_RE = re.compile(r"(?:[^\W\d_]\.)+")  # 'J.' or 'J.Q.R.'
+# 'J.' or 'J.Q.R.', and a name cut to 'McC.': a period that ends no sentence.
+INITIALS_RE = re.compile(r"(?:[^\W\d_]\.)+|Ma?c[A-Z]\.")
 MAX_NATURAL, MAX_FAMILY, MAX_GIVEN = 5, 3, 4  # most words a name, or one side of it, may have
 
 
@@ -151,6 +152,11 @@ def _family_first(family: str, given: str, suffix: str) -> Name | None:
             return given_first(given, suffix)
     # 'Doe, John Jr.': the suffix follows the given names. Not in 'Jane Doe, Richard Roe Jr.',
     # two names, where more than a family name stands before the comma.
+    twice = len(given_words) > 1 and [lookup(given_words[-1])] == list(
+        map(lookup, family_words[-1:])
+    )
+    if twice:  # 'Doe, Jane Doe': the family name written again after the given names
+        given_words = given_words[:-1]
     alone = all(is_particle(word) for word in family_words[:-1])
     last = abbreviation(given_words[-1]) if len(given_words) > 1 else ""
     if not suffix and alone and last in SUFFIXES:

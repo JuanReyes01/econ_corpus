@@ -23,6 +23,7 @@ import tempfile
 from econ_corpus import (
     datasheet,
     datasheet_clean,
+    exclusions,
     export,
     manifest,
     reasons,
@@ -46,13 +47,14 @@ class Paths:
     clean_md: Path
     tables: Path
     figures: Path
+    raw_reasons: Path
 
 
 def stale(paths: Paths) -> list[str]:
     """Return what is wrong with the outputs, one line each; nothing when they belong together."""
     try:
-        reasons.load(paths.records, paths.reasons)
-        manifest.check(paths.clean, paths.reasons, paths.review)
+        codes = reasons.load(paths.records, paths.reasons)
+        manifest.check(paths.clean, paths.records, paths.reasons, paths.review)
     except ValueError as error:
         return [str(error)]  # nothing after this can be compared
     problems = []
@@ -78,13 +80,24 @@ def stale(paths: Paths) -> list[str]:
             if (paths.review / name).exists():
                 shutil.copy(paths.review / name, work / "review" / name)
         review_cases.build(paths.records, paths.reasons, paths.clean, work / "review")
+        # The two files that step 2 writes for the delivery of the raw table.
+        counts = exclusions.reason_counts(codes.to_pylist())
+        datasheet.write_csv(counts, work / "tables" / "exclusion_counts.csv")
+        export.write_reasons(paths.records, paths.reasons, work / paths.raw_reasons.name)
         built = [(raw, paths.raw_md), (clean, paths.clean_md)]
+        built.append((work / paths.raw_reasons.name, paths.raw_reasons))
         for folder, on_disk in (
             (work / "tables", paths.tables),
             (work / "figures", paths.figures),
             (work / "review" / "cases", paths.review / "cases"),
         ):
-            built += [(file, on_disk / file.name) for file in sorted(folder.glob("*"))]
+            names = sorted(file.name for file in folder.glob("*"))
+            built += [(folder / name, on_disk / name) for name in names]
+            kept = {f.name for f in on_disk.glob("*") if f.is_file() and f.name[0] != "."}
+            problems += [
+                f"{name} is written by no step any more: remove it"
+                for name in sorted(kept - set(names))
+            ]
         for new, old in built:
             if not old.exists() or new.read_bytes() != old.read_bytes():
                 problems.append(f"{old.name} is not what the data gives now: build it again")
@@ -106,6 +119,7 @@ def main() -> None:
             clean_md=Path("docs/datasheet_clean.md"),
             tables=Path("reports/tables"),
             figures=Path("reports/figures"),
+            raw_reasons=Path("data/processed/econ_corpus_raw_reasons.csv"),
         )
     )
     if problems:

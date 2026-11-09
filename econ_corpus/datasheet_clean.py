@@ -135,7 +135,7 @@ def read_inputs(clean: Path, records: Path, reasons_file: Path, review_dir: Path
     Otherwise the datasheet would mix two states of the pipeline.
     """
     review.same_review(reasons_file, review.load_parts(review_dir / review.PARTS_FILE))
-    manifest.check(clean, reasons_file, review_dir)
+    manifest.check(clean, records, reasons_file, review_dir)
     codes = load(records, reasons_file).to_pylist()
     columns = ["newspaper", "edition", "pub_year"]
     art = pacsv.read_csv(

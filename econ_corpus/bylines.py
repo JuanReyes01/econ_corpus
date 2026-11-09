@@ -13,6 +13,7 @@ part with no full name (an institution, a sentence) names nobody, and so does a 
 someone did not write ('Jane Doe is on vacation').
 """
 
+import difflib
 import re
 
 from econ_corpus import authors
@@ -44,6 +45,11 @@ CREDIT_RE = re.compile(r"\bcontributed (?:reporting|research)\b", re.IGNORECASE)
 # A period glued to the word after it ('Jane Q.Doe', "Jane Q.O'Doe", 'Jane Doe.These are'),
 # but not the periods between initials ('J.Q.', 'M.D').
 PERIOD_GLUED_RE = re.compile(r"(?<=[^\W\d_]\.)(?=[^\W\d_](?:[^\W\d_]|['\u2019]))")
+LEAD_RE = re.compile(
+    r"^(?:(?:and|&)\s+)?(?:by\s+)?", re.IGNORECASE
+)  # 'And Jane Doe', 'By Jane Doe'
+MIN_FAMILY = 4  # letters a family name needs to count as the start of a longer one
+MIN_ALIKE = 0.8  # share of letters two given names must share to be one name misspelt
 BIO_RE = re.compile(r"\b(?:is|was|are|were|has|had)\b")  # the verb of a sentence about someone
 # The same verb with words after it; 'Do is, Jane' is a family name cut by a stray space.
 GOES_ON_RE = re.compile(r"\b(?:is|was|are|were|has|had)\s+\w")
@@ -205,7 +211,7 @@ def recover_names(part: str) -> list[Name]:
 
 def read_part(part: str) -> tuple[list[Name], str]:
     """Return the persons a part names and how they were read: 'as_written' or 'recovered'."""
-    part = PERIOD_GLUED_RE.sub(" ", GLUED_RE.sub("", part)).strip()
+    part = LEAD_RE.sub("", PERIOD_GLUED_RE.sub(" ", GLUED_RE.sub("", part)).strip())
     if _is_note(part):
         return [], ""
     name = authors.parse_name(part)
@@ -219,6 +225,17 @@ def _tokens(name: Name) -> list[str]:
     return sorted(filter(None, map(authors.fold, f"{name.given} {name.family}".split())))
 
 
+def _same_given(name: Name, earlier: Name) -> bool:
+    """Tell whether two first given names are forms or misspellings of one name.
+
+    One starts the other ('Tim', 'Timothy') or most of their letters agree ('Thmas',
+    'Thomas'). 'Jane' and 'John' are two people of one family.
+    """
+    one, other = (authors.fold(n.given.split()[0]) for n in (name, earlier))
+    alike = difflib.SequenceMatcher(None, one, other).ratio() >= MIN_ALIKE
+    return one.startswith(other) or other.startswith(one) or alike
+
+
 def _repeats(name: Name, earlier: Name, part: str) -> str:
     """Say what a name recovered from a note is to a name read before it in the byline.
 
@@ -227,18 +244,34 @@ def _repeats(name: Name, earlier: Name, part: str) -> str:
     ('Jane Doe lives in ...') repeats the author, and a difference in spelling would make
     two authors of one.
     """
+    if name.suffix and earlier.suffix and name.suffix != earlier.suffix:
+        return ""  # a father and a son
     new, old = _tokens(name), _tokens(earlier)
     if new == old:
-        return "replace"  # the earlier part had given and family name the wrong way round
+        # The same words: the earlier part had them the wrong way round ('Jane, Doe'), or
+        # it is the same name, and then the earlier reading may hold a suffix.
+        turned = authors.fold(name.given) != authors.fold(earlier.given)
+        return "replace" if turned else "drop"
     if set(new) < set(old):
-        # Either the note is cut at an abbreviation ('Jane McC.' of 'Jane McC. Roe'), and
-        # the family name follows; or the earlier part has a town where the family name
-        # goes ('Springfield, Jane Doe'), and the note has the name alone.
+        # The earlier part has a town where the family name goes ('Springfield, Jane Doe')
+        # when its family name is no word of the note's name and the note is not cut at an
+        # abbreviation, with the family name right after ('Jane McC.' of 'Jane McC. Roe').
+        # Otherwise the note has a shorter form of the name ('Jane Doe' for 'Jane Q Doe').
         text = authors.fold(authors.BY_RE.sub("", part.strip()))
         cut = text.startswith(authors.fold(name.given + name.family + earlier.family))
-        return "drop" if cut else "replace"
+        town = authors.fold(earlier.family) not in new
+        return "replace" if town and not cut else "drop"
     close = authors.one_edit(authors.name_key(name), authors.name_key(earlier))
-    return "drop" if set(old) < set(new) or close else ""
+    # The note may also glue a word to the name ('Doeis'), cut it ('Doewo od') or use
+    # another form of the given name ('Tim', 'Timothy'): the same family name, or one that
+    # starts the other, after a given name that is alike.
+    family, old_family = authors.fold(name.family), authors.fold(earlier.family)
+    alike = authors.one_edit(family, old_family) or (
+        min(len(family), len(old_family)) >= MIN_FAMILY
+        and (family.startswith(old_family) or old_family.startswith(family))
+    )
+    again = set(old) < set(new) or close or (alike and _same_given(name, earlier))
+    return "drop" if again else ""
 
 
 def _piece_of_note(part: str, *, in_sentence: bool, moved: bool) -> bool:
@@ -251,13 +284,17 @@ def _piece_of_note(part: str, *, in_sentence: bool, moved: bool) -> bool:
 Found = dict[str, tuple[Name, str]]
 
 
-def _with(found: Found, name: Name, how: str, part: str) -> Found:
-    """Return the names read so far with one more, unless it repeats one of them."""
+def _with(found: Found, before: Found, name: Name, how: str, part: str) -> Found:
+    """Return the names read so far with one more, unless it repeats one of them.
+
+    `before` holds the names of the parts before this one: a name is compared with those,
+    not with its neighbours in a list of names ('Mark Doe, Mary Doe and Ann Roe').
+    """
     key = authors.name_key(name)
     if key in found:
         return found  # the same name again: the first reading stands
-    for old_key, (old, _) in found.items():
-        verdict = _repeats(name, old, part) if how == "recovered" else ""
+    for old_key, (old, _) in before.items():
+        verdict = _repeats(name, old, part) if how == "recovered" and old_key in found else ""
         if verdict == "replace":  # the new reading takes the place of the earlier one
             return {
                 (key if k == old_key else k): ((name, how) if k == old_key else v)
@@ -302,8 +339,9 @@ def read_byline(
             in_sentence = False
         elif GOES_ON_RE.search(unfinished) and not (_is_note(part) or WRITER_NOTE_RE.search(part)):
             in_sentence = True
+        before = dict(found)
         for name in names:
-            found = _with(found, name, how, part)
+            found = _with(found, before, name, how, part)
     return list(found.values())
 
 

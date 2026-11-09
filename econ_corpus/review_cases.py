@@ -208,7 +208,7 @@ def build(records: Path, reasons_file: Path, clean: Path, review_dir: Path) -> d
     The cleaned tables must have been built from these reasons and review files: cases listed
     from older tables would repeat decided ones or miss new ones.
     """
-    manifest.check(clean, reasons_file, review_dir)
+    manifest.check(clean, records, reasons_file, review_dir)
     columns = ["doc_id", "newspaper", "pub_year", "title", "author"]
     options = pacsv.ConvertOptions(include_columns=columns, column_types={"doc_id": pa.string()})
     parse = pacsv.ParseOptions(newlines_in_values=True)

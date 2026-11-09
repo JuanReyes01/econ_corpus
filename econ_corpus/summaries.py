@@ -42,6 +42,9 @@ OPINION_SECTION_WORDS = (
 # the Washington Post, and the others are opinion blogs of the Post and the New York Times.
 OPINION_SECTIONS = {"epg", "outlook", "plum-line", "right-turn", "kristof", "post-partisan"}
 OPINION_SECTIONS |= {"posteverything", "volokh-conspiracy"}
+# The opinion and ideas sections of Newsday ('Ideas', 'Currents', 'Currents & Books') and of
+# the Boston Globe ('Ideas'). Their book reviews come in with them.
+OPINION_SECTIONS |= {"ideas", "currents", "currents&books"}
 
 # A document-type label containing one of these words is treated as an opinion label.
 OPINION_LABEL_WORDS = ("opinion", "editorial", "commentary", "op-ed", "op/ed", "letter", "column")
@@ -55,7 +58,7 @@ OPINION_TITLE_STARTS = (
     # Headings of opinion pages printed before the title ('LONG ISLAND OPINION; ...').
     "opinion;", "op-ed;", "op-ed:", "commentary;", "commentary:", "longislandopinion;",
     "westchesteropinion;", "newjerseyopinion;", "connecticutopinion;", "connecitcutopinion;",
-    "conneticutopinion;",
+    "conneticutopinion;", "opinionexchange:", "letters:", "letters;",
 )  # fmt: skip
 OPINION_TITLE_TAGS = ("(editorial)", "[op-ed", "[editorial", "[letter", "[commentary")
 
@@ -136,6 +139,5 @@ def is_opinion_title(title: str | None) -> bool:
     if title is None:
         return False
     squeezed = re.sub(r"\s+", "", title).casefold()
-    return squeezed.startswith(OPINION_TITLE_STARTS) or any(
-        tag in squeezed for tag in OPINION_TITLE_TAGS
-    )
+    heading = squeezed.startswith(OPINION_TITLE_STARTS) or squeezed == "letters"
+    return heading or any(tag in squeezed for tag in OPINION_TITLE_TAGS)

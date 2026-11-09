@@ -116,9 +116,19 @@ def test_an_export_edited_in_place_is_not_current(tmp_path: Path) -> None:
 
 def test_the_reasons_of_the_raw_table_are_written_next_to_it(tmp_path: Path) -> None:
     records, reasons = write_tables(tmp_path, ["kept", "duplicate_id", "not_opinion"])
-    out = tmp_path / "raw.csv"
-    export.write_csv(records, reasons, out)
+    export.write_reasons(records, reasons, tmp_path / "raw_reasons.csv")
     rows = read_back(tmp_path / "raw_reasons.csv")
     found = [(r["record_index"], r["reason"]) for r in rows]
     assert found == [("0", "kept"), ("2", "not_opinion")]
     assert set(rows[0]) == {"source_file", "record_index", "doc_id", "reason"}
+
+
+def test_an_export_is_not_current_once_any_column_of_the_records_changes(tmp_path: Path) -> None:
+    records, reasons = write_tables(tmp_path, ["kept", "kept"])
+    out = tmp_path / "raw.csv"
+    export.write_csv(records, reasons, out)
+    table = pq.read_table(records)
+    urls = pa.array(["https://example.test/y"] * table.num_rows)
+    changed = table.set_column(table.schema.get_field_index("url"), "url", urls)
+    pq.write_table(changed, records)  # a column no reason depends on
+    assert not export.is_current(records, reasons, out)
