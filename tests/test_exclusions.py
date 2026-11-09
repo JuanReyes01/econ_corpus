@@ -174,6 +174,14 @@ def test_text_and_author_reasons_are_the_last_before_kept() -> None:
     assert codes[-4:] == ["no_text", "no_author", "no_person_author", "kept"]
 
 
+def test_a_reviewed_byline_decides_whether_a_person_signed() -> None:
+    row = make_rows({"author": "Doe Roe, Ann"})
+    assert exclusions.assign_reasons(row) == ["kept"]
+    assert exclusions.assign_reasons(row, {"Doe Roe, Ann": ""}) == ["no_person_author"]
+    board = make_rows({"author": "Example Board, The"})
+    assert exclusions.assign_reasons(board, {"Example Board, The": "Doe, Jane"}) == ["kept"]
+
+
 # --- duplicates --------------------------------------------------------------------
 
 

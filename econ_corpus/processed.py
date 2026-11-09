@@ -7,26 +7,27 @@ linked it), `article_authors.csv` (the many-to-many link, with the position in t
 and `author_candidates.csv` (pairs of authors that look alike and were not merged).
 
 Lives here: building the tables and writing them. Does not live here: which records are kept
-(exclusions), how a byline is read (authors) or which names are one author (identity).
+(exclusions), how a byline is read (authors), which names are one author (identity) or the
+decisions of the manual review (review), which are applied here when their files exist.
 
 Articles are keyed by ProQuest id. Author ids are numbered in the order of the name keys, so
 the same input gives the same ids.
 """
 
 from collections import Counter, defaultdict
-from functools import cache
 from pathlib import Path
 
 import pyarrow as pa
 import pyarrow.csv as pacsv
 import pyarrow.parquet as pq
 
-from econ_corpus import authors, datasheet, identity, summaries
+from econ_corpus import authors, datasheet, identity, review, summaries
 from econ_corpus.authors import Name
 from econ_corpus.tables import Table
 
 BATCH_SIZE = 20_000  # rows per batch when streaming the articles
-read_part = cache(authors.read_part)  # bylines repeat, so each distinct part is read once
+Corrections = dict[str, str]
+Decisions = dict[tuple[str, str], str]
 
 
 def _commonest(spellings: Counter) -> Name:
@@ -35,23 +36,20 @@ def _commonest(spellings: Counter) -> Name:
 
 
 def _read_bylines(
-    doc_ids: list[int], bylines: list[str | None], newspapers: list[str]
+    doc_ids: list[int], bylines: list[str | None], newspapers: list[str], corrections: Corrections
 ) -> tuple[dict[str, identity.Seen], list[tuple[int, dict[str, str]]]]:
     """Read every byline; return the names seen and, per article, its name keys in order."""
     spellings: defaultdict[str, Counter] = defaultdict(Counter)
     papers: defaultdict[str, set[str]] = defaultdict(set)
     per_article = []
+    read: dict[str | None, list] = {}  # bylines repeat, so each distinct one is read once
     for doc_id, byline, paper in zip(doc_ids, bylines, newspapers, strict=True):
-        found: dict[str, str] = {}  # name key -> how it was read, in byline order
-        for part in authors.split_authors(byline):
-            names, how = read_part(part)
-            for name in names:
-                key = authors.name_key(name)
-                if key not in found:
-                    found[key] = how
-                    spellings[key][name] += 1
-        for key in found:
-            papers[key].add(paper)
+        if byline not in read:
+            read[byline] = authors.read_byline(byline, corrections)
+        found = {authors.name_key(name): how for name, how in read[byline]}
+        for name, _ in read[byline]:
+            spellings[authors.name_key(name)][name] += 1
+            papers[authors.name_key(name)].add(paper)
         per_article.append((doc_id, found))
     seen = {
         key: identity.Seen(_commonest(c), frozenset(papers[key]), sum(c.values()))
@@ -64,12 +62,33 @@ def _author_cells(author_id: int, name: dict[int, str], articles: Counter) -> li
     return [str(author_id), name[author_id], str(articles[author_id])]
 
 
+def _rule(key: str, resolved: dict[str, str], by_rule: dict[str, str]) -> str:
+    """Say what linked a name key to its author: nothing, the rule or the manual review."""
+    if resolved[key] == key:
+        return "main"
+    return "shared_newspaper" if by_rule[key] == by_rule[resolved[key]] else "manual_review"
+
+
 def author_tables(
-    doc_ids: list[int], bylines: list[str | None], newspapers: list[str]
+    doc_ids: list[int],
+    bylines: list[str | None],
+    newspapers: list[str],
+    corrections: Corrections,
+    decisions: Decisions,
 ) -> dict[str, Table]:
-    """Build the author, name, link and candidate tables from the bylines of the articles."""
-    seen, per_article = _read_bylines(doc_ids, bylines, newspapers)
-    resolved = identity.resolve(seen)
+    """Build the author, name, link and candidate tables from the bylines of the articles.
+
+    `corrections` and `decisions` come from the manual review: corrected byline parts, and
+    pairs of name keys judged 'same', 'different' or 'unsure'.
+    """
+    seen, per_article = _read_bylines(doc_ids, bylines, newspapers, corrections)
+    by_rule = identity.resolve(seen)
+    resolved = identity.resolve(seen, [pair for pair, d in decisions.items() if d == "same"])
+    reviewed = {
+        tuple(sorted((resolved[a], resolved[b]))): decision
+        for (a, b), decision in decisions.items()
+        if a in resolved and b in resolved
+    }
     ids = {head: i for i, head in enumerate(sorted(set(resolved.values())), start=1)}
     links = [["doc_id", "author_id", "position", "read"]]
     articles: Counter = Counter()
@@ -89,12 +108,16 @@ def author_tables(
             authors.display(seen[key].name),
             key,
             str(seen[key].articles),
-            "main" if resolved[key] == key else "shared_newspaper",
+            _rule(key, resolved, by_rule),
         ]
         for key in sorted(seen, key=lambda k: (ids[resolved[k]], resolved[k] != k, k))
     ]
     doubts = [
-        [*(cell for key in (a, b) for cell in _author_cells(ids[key], name, articles)), kind]
+        [
+            *(cell for key in (a, b) for cell in _author_cells(ids[key], name, articles)),
+            kind,
+            reviewed.get((a, b), "not_reviewed"),
+        ]
         for a, b, kind in identity.candidates(seen, resolved)
     ]
     side = ["author_id", "name", "articles"]
@@ -103,7 +126,7 @@ def author_tables(
         "author_names": [["author_id", "name", "name_key", "articles", "rule"], *names],
         "article_authors": links,
         "author_candidates": [
-            [f"{c}_a" for c in side] + [f"{c}_b" for c in side] + ["kind"],
+            [f"{c}_a" for c in side] + [f"{c}_b" for c in side] + ["kind", "review"],
             *doubts,
         ],
     }
@@ -131,14 +154,29 @@ def _write_articles(records: Path, kept: pa.ChunkedArray, out: Path, batch_size:
 
 
 def build(
-    records: Path, reasons: Path, out_dir: Path, batch_size: int = BATCH_SIZE
+    records: Path,
+    reasons: Path,
+    out_dir: Path,
+    batch_size: int = BATCH_SIZE,
+    review_dir: Path | None = None,
 ) -> dict[str, int]:
-    """Write the cleaned tables into `out_dir`; return the number of rows of each."""
+    """Write the cleaned tables into `out_dir`; return the number of rows of each.
+
+    The review files in `review_dir`, if any, must be the ones `exclusions` was run with:
+    otherwise an article could be kept without a person among its authors, which is refused.
+    """
+    corrections = review.load_parts(review_dir / review.PARTS_FILE) if review_dir else {}
+    decisions = review.load_pairs(review_dir / review.PAIRS_FILE) if review_dir else {}
     codes = pq.read_table(reasons, columns=["reason"])["reason"]
     kept = pa.compute.equal(codes, "kept")
     rows = pq.read_table(records, columns=["doc_id", "author", "publication_key"]).filter(kept)
     newspapers = [summaries.newspaper_family(k) for k in rows["publication_key"].to_pylist()]
-    tables = author_tables(rows["doc_id"].to_pylist(), rows["author"].to_pylist(), newspapers)
+    doc_ids = rows["doc_id"].to_pylist()
+    tables = author_tables(doc_ids, rows["author"].to_pylist(), newspapers, corrections, decisions)
+    unlinked = len(set(doc_ids)) - len({link[0] for link in tables["article_authors"][1:]})
+    if unlinked:
+        msg = f"{unlinked} kept articles name no person: run exclusions again with these reviews"
+        raise ValueError(msg)
     out_dir.mkdir(parents=True, exist_ok=True)
     for name, table in tables.items():
         datasheet.write_csv(table, out_dir / f"{name}.csv")
@@ -153,6 +191,7 @@ def main() -> None:
         Path("data/interim/records.parquet"),
         Path("data/interim/exclusions.parquet"),
         Path("data/processed/clean"),
+        review_dir=Path("data/review"),
     )
     print(", ".join(f"{name}: {n:,}" for name, n in counts.items()))  # noqa: T201
 

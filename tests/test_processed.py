@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pyarrow as pa
 import pyarrow.parquet as pq
+import pytest
 
 from econ_corpus import parse, processed
 
@@ -12,10 +13,16 @@ A, B = "Example Daily", "Sample Times"
 NYT = "newyorktimes,lateedition(eastcoast);newyork,n.y."
 
 
-def tables_for(*rows: tuple[int, str, str]) -> dict[str, list[list[str]]]:
+def tables_for(
+    *rows: tuple[int, str, str],
+    corrections: dict[str, str] | None = None,
+    decisions: dict[tuple[str, str], str] | None = None,
+) -> dict[str, list[list[str]]]:
     """Build the author tables from (doc id, byline, newspaper) rows."""
     ids, bylines, papers = zip(*rows, strict=True)
-    return processed.author_tables(list(ids), list(bylines), list(papers))
+    return processed.author_tables(
+        list(ids), list(bylines), list(papers), corrections or {}, decisions or {}
+    )
 
 
 def body(table: list[list[str]]) -> list[list[str]]:
@@ -80,9 +87,45 @@ def test_parts_that_name_nobody_leave_no_link() -> None:
 def test_doubtful_pairs_are_listed_with_names_and_article_counts() -> None:
     tables = tables_for((10, "Doe, Jane", A), (11, "Doe, Jane", A), (12, "Doe, Jane Q", B))
     assert tables["author_candidates"] == [
-        ["author_id_a", "name_a", "articles_a", "author_id_b", "name_b", "articles_b", "kind"],
-        ["1", "Jane Doe", "2", "2", "Jane Q Doe", "1", "no_shared_newspaper"],
+        [
+            "author_id_a",
+            "name_a",
+            "articles_a",
+            "author_id_b",
+            "name_b",
+            "articles_b",
+            "kind",
+            "review",
+        ],
+        ["1", "Jane Doe", "2", "2", "Jane Q Doe", "1", "no_shared_newspaper", "not_reviewed"],
     ]
+
+
+# --- manual review ------------------------------------------------------------------
+
+PAIR = ("janedoe", "janeqdoe")
+APART = ((10, "Doe, Jane", A), (11, "Doe, Jane", A), (12, "Doe, Jane Q", B))
+
+
+def test_a_pair_reviewed_as_the_same_is_one_author_with_the_rule_recorded() -> None:
+    tables = tables_for(*APART, decisions={PAIR: "same"})
+    assert body(tables["authors"]) == [["1", "Jane Doe", "3", "2"]]
+    assert [row[4] for row in body(tables["author_names"])] == ["main", "manual_review"]
+    assert body(tables["author_candidates"]) == []
+
+
+def test_a_pair_reviewed_as_different_or_unsure_stays_apart_and_says_so() -> None:
+    for decision in ("different", "unsure"):
+        tables = tables_for(*APART, decisions={PAIR: decision})
+        assert len(body(tables["authors"])) == 2
+        assert [row[-1] for row in body(tables["author_candidates"])] == [decision]
+
+
+def test_a_corrected_part_is_linked_as_manual_review() -> None:
+    corrections = {"Jane Doe, Springfield": "Doe, Jane"}
+    tables = tables_for((10, "Jane Doe, Springfield", A), corrections=corrections)
+    assert body(tables["authors"]) == [["1", "Jane Doe", "1", "1"]]
+    assert body(tables["article_authors"]) == [["10", "1", "1", "manual_review"]]
 
 
 # --- files --------------------------------------------------------------------------
@@ -134,3 +177,23 @@ def test_build_links_only_articles_and_authors_that_exist(tmp_path: Path) -> Non
     assert {link["author_id"] for link in links} == people
     assert (out / "author_names.csv").exists()
     assert (out / "author_candidates.csv").exists()
+
+
+def test_build_applies_the_review_files_when_they_exist(tmp_path: Path) -> None:
+    records, reasons = write_inputs(tmp_path)
+    review_dir = tmp_path / "review"
+    review_dir.mkdir()
+    (review_dir / "byline_parts.csv").write_text(
+        'part,replacement,reason\n"Roe, Richard","Rowe, Richard",spelling\n', encoding="utf-8"
+    )
+    processed.build(records, reasons, tmp_path / "clean", review_dir=review_dir)
+    names = {a["name"] for a in read_csv(tmp_path / "clean" / "authors.csv")}
+    assert names == {"Jane Doe", "Richard Rowe"}
+
+
+def test_build_refuses_reasons_that_keep_an_article_without_a_person(tmp_path: Path) -> None:
+    records, _ = write_inputs(tmp_path)
+    stale = tmp_path / "stale.parquet"
+    pq.write_table(pa.table({"reason": ["kept", "kept", "kept", "file_footer"]}), stale)
+    with pytest.raises(ValueError, match="exclusions"):
+        processed.build(records, stale, tmp_path / "clean")

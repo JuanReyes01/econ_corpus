@@ -132,3 +132,24 @@ def test_short_names_one_letter_apart_are_not_candidates() -> None:
 def test_merged_variants_are_not_candidates() -> None:
     names = seen(("Doe, Jane", {A}, 50), ("Doe, Jane Q", {A}, 2))
     assert identity.candidates(names, identity.resolve(names)) == []
+
+
+# --- decisions from the manual review ----------------------------------------------
+
+
+def test_a_pair_reviewed_as_the_same_person_is_merged() -> None:
+    names = seen(("Haywood, Alyssa", {A}, 1), ("Haywoode, Alyssa", {A}, 11))
+    resolved = identity.resolve(names, same=[("alyssahaywood", "alyssahaywoode")])
+    assert set(resolved.values()) == {"alyssahaywoode"}
+    assert identity.candidates(names, resolved) == []
+
+
+def test_a_reviewed_pair_takes_the_variants_already_merged_with_it() -> None:
+    names = seen(("Doe, Jane", {A}, 50), ("Doe, Jane Q", {A}, 2), ("Dow, Jane", {A}, 3))
+    resolved = identity.resolve(names, same=[("janeqdoe", "janedow")])
+    assert set(resolved.values()) == {"janedoe"}
+
+
+def test_reviewed_pairs_with_unknown_keys_are_ignored() -> None:
+    names = seen(("Doe, Jane", {A}, 5))
+    assert identity.resolve(names, same=[("janedoe", "nobodyhere")]) == {"janedoe": "janedoe"}

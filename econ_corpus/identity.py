@@ -72,14 +72,24 @@ def _linked(keys: list[str], seen: dict[str, Seen]) -> list[list[str]]:
     return groups
 
 
-def resolve(seen: dict[str, Seen]) -> dict[str, str]:
+def resolve(seen: dict[str, Seen], same: list[tuple[str, str]] | None = None) -> dict[str, str]:
     """Return, for every name key, the key of its author.
 
-    An author is named by its variant with most articles; the longest name decides ties.
+    `same` lists pairs of keys that a manual review found to be one person; they are merged
+    after the rule, together with the variants each already has. An author is named by its
+    variant with most articles; the longest name decides ties.
     """
-    resolved = {}
+    group_of: dict[str, list[str]] = {}
     for keys, consistent in _buckets(seen):
         for group in _linked(keys, seen) if consistent else [[k] for k in keys]:
+            group_of |= dict.fromkeys(group, group)
+    for a, b in same or []:
+        if a in group_of and b in group_of and group_of[a] is not group_of[b]:
+            merged = group_of[a] + group_of[b]
+            group_of |= dict.fromkeys(merged, merged)
+    resolved = {}
+    for key, group in group_of.items():
+        if key not in resolved:
             head = max(group, key=lambda k: (seen[k].articles, len(k), k))
             resolved |= dict.fromkeys(group, head)
     return resolved

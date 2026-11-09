@@ -18,13 +18,12 @@ Two flags per reason: `in_raw` says whether the row is part of the shared raw ta
 repeated ids and repeated text are not), `dropped` whether it leaves the cleaned dataset.
 """
 
-from functools import cache
 from pathlib import Path
 
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from econ_corpus import authors, datasheet, summaries
+from econ_corpus import authors, datasheet, review, summaries
 from econ_corpus.reasons import REASONS
 from econ_corpus.tables import Articles, Table
 
@@ -51,12 +50,11 @@ def _opinion_reason(doc_type: str | None, section: str | None, title: str | None
     return "unclear_opinion" if section is None else "not_opinion"
 
 
-@cache
-def _author_reason(byline: str | None) -> str:
+def _author_reason(byline: str | None, corrections: dict[str, str] | None) -> str:
     """Return the reason for an opinion piece with text, given its byline."""
     if not authors.is_signed(byline):
         return "no_author"
-    return "kept" if authors.people(byline) else "no_person_author"
+    return "kept" if authors.people(byline, corrections) else "no_person_author"
 
 
 def _kept_copies(rows: Articles, order: list[int]) -> dict[int, int]:
@@ -78,7 +76,7 @@ def _kept_copies(rows: Articles, order: list[int]) -> dict[int, int]:
     return kept
 
 
-def assign_reasons(rows: Articles) -> list[str]:
+def assign_reasons(rows: Articles, corrections: dict[str, str] | None = None) -> list[str]:
     """Return one reason code per row, with duplicates judged in download order.
 
     Of the copies of a ProQuest id, only the one chosen by `_kept_copies` is judged on its
@@ -91,6 +89,7 @@ def assign_reasons(rows: Articles) -> list[str]:
     )
     kept = _kept_copies(rows, order)
     seen_text: set[tuple] = set()
+    by_byline: dict[str | None, str] = {}  # bylines repeat, so each is read once
     reasons = [""] * n
     for i in order:
         doc_id, sha, title, day = (
@@ -113,8 +112,10 @@ def assign_reasons(rows: Articles) -> list[str]:
             reasons[i] = _opinion_reason(rows["doc_type"][i], rows["section"][i], title)
         if reasons[i] == "kept":
             # An opinion piece stays only with text and with a person among its authors.
-            has_text = bool(rows["body_chars"][i])
-            reasons[i] = _author_reason(rows["author"][i]) if has_text else "no_text"
+            byline = rows["author"][i]
+            if byline not in by_byline:
+                by_byline[byline] = _author_reason(byline, corrections)
+            reasons[i] = by_byline[byline] if rows["body_chars"][i] else "no_text"
         # A copy that was dropped as a repeated id must not make the kept copy look repeated.
         if sha and title and day and reasons[i] not in ("file_footer", "duplicate_id"):
             seen_text.add(text_key)
@@ -143,10 +144,12 @@ def reason_counts(reasons: list[str]) -> Table:
     return [header, *body, total_row]
 
 
-def write_exclusions(parquet: Path, out: Path) -> list[str]:
+def write_exclusions(
+    parquet: Path, out: Path, corrections: dict[str, str] | None = None
+) -> list[str]:
     """Assign a reason to every row of the raw table and write them next to their keys."""
     rows = pq.read_table(parquet, columns=COLUMNS).to_pydict()
-    reasons = assign_reasons(rows)
+    reasons = assign_reasons(rows, corrections)
     out.parent.mkdir(parents=True, exist_ok=True)
     keys = {k: rows[k] for k in ("source_file", "record_index")}
     pq.write_table(pa.table({**keys, "reason": reasons}), out)
@@ -156,7 +159,9 @@ def write_exclusions(parquet: Path, out: Path) -> list[str]:
 def main() -> None:
     """Assign reasons to the raw table at its default location and save the counts."""
     reasons = write_exclusions(
-        Path("data/interim/records.parquet"), Path("data/interim/exclusions.parquet")
+        Path("data/interim/records.parquet"),
+        Path("data/interim/exclusions.parquet"),
+        review.load_parts(Path("data/review") / review.PARTS_FILE),
     )
     datasheet.write_csv(reason_counts(reasons), Path("reports/tables/exclusion_counts.csv"))
 

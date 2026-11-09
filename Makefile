@@ -58,7 +58,7 @@ export:
 	uv run python -m econ_corpus.export
 
 
-## Write the cleaned tables: articles, authors and their links (needs records.parquet and exclusions.parquet)
+## Write the cleaned tables: articles, authors and their links (run `make exclusions` first; both apply data/review)
 .PHONY: processed
 processed:
 	uv run python -m econ_corpus.processed
