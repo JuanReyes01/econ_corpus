@@ -1,8 +1,12 @@
 """Stage 2 of the pipeline: describe the raw table and write its datasheet.
 
-Input: the parquet written by `parse` and a prose template with {{placeholders}}.
+Input: the parquet written by `parse`, the reasons written by `exclusions` and a prose
+template with {{placeholders}}.
 Output: a markdown datasheet whose numbers all come from the data, plus yearly and
 per-download tables as CSV, so every figure in the text can be reproduced.
+
+The shared raw table leaves out footers and repeated ids, so the tables describe that table;
+the repeats, the yearly counts and the download dates describe the table as parsed.
 
 Lives here: the headline numbers, the template filling and the file writing. Does not
 live here: the tables themselves (tables), the prose (the template, in docs/) or any
@@ -14,10 +18,12 @@ import csv
 from pathlib import Path
 import re
 
+import pyarrow as pa
 import pyarrow.compute as pc
 import pyarrow.parquet as pq
 
 from econ_corpus import figures, summaries, tables
+from econ_corpus.reasons import LEFT_OUT
 from econ_corpus.tables import Articles, Table
 
 COLUMNS = [
@@ -157,6 +163,32 @@ def facts(articles: Articles) -> dict[str, str]:
     )
 
 
+# Facts that describe the table as parsed, before repeated ids were removed.
+PARSED_FACTS = [
+    "n_duplicate_rows", "n_ids_in_several_files", "n_repeats_inside_a_file", "dup_pct",
+    "dup_peak_year", "dup_peak_rows", "dup_peak_unique", "dup_peak_multi_file_pct",
+    "n_files", "download_first", "download_last",
+]  # fmt: skip
+
+
+def repeat_facts(parsed: Articles, shared: Articles) -> dict[str, str]:
+    """Return the parsed size, the rows removed as repeated ids and the ids with an empty copy.
+
+    An id has an empty copy when one of its copies has no body next to a copy that has one.
+    """
+    copies: defaultdict[int, list[bool]] = defaultdict(list)
+    for doc_id, has_body in zip(parsed["doc_id"], parsed["has_body"], strict=True):
+        if doc_id is not None:
+            copies[doc_id].append(has_body)
+    mixed = sum(len(h) > 1 and any(h) and not all(h) for h in copies.values())
+    n_parsed, n_shared = len(parsed["title"]), len(shared["title"])
+    return {
+        "n_parsed": summaries.num(n_parsed),
+        "n_repeats_removed": summaries.num(n_parsed - n_shared),
+        "n_ids_with_empty_copy": summaries.num(mixed),
+    }
+
+
 def write_csv(rows: Table, path: Path) -> None:
     """Write a table to a CSV file, creating the folder if needed."""
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -164,12 +196,21 @@ def write_csv(rows: Table, path: Path) -> None:
         csv.writer(handle).writerows(rows)
 
 
-def build(
-    parquet: Path, template: Path, out_md: Path, tables_dir: Path, figures_dir: Path
+def build(  # noqa: PLR0913 (one argument per input or output file)
+    parquet: Path,
+    reasons: Path,
+    template: Path,
+    out_md: Path,
+    *,
+    tables_dir: Path,
+    figures_dir: Path,
 ) -> None:
     """Read the parquet, fill the template and write the datasheet and the CSV tables."""
     table = pq.read_table(parquet, columns=COLUMNS)
-    articles = table.filter(pc.invert(table["is_footer"])).to_pydict()
+    codes = pq.read_table(reasons, columns=["reason"])["reason"]
+    in_raw = pc.invert(pc.is_in(codes, value_set=pa.array(LEFT_OUT)))
+    parsed = table.filter(pc.invert(table["is_footer"])).to_pydict()
+    articles = table.filter(in_raw).to_pydict()
     described = {
         "newspapers": tables.newspaper_table(articles),
         "online_editions": tables.online_edition_table(articles),
@@ -181,17 +222,20 @@ def build(
         "missing": tables.missing_table(articles),
         "other_publications": tables.other_publications_table(articles),
     }
+    as_parsed = {k: v for k, v in facts(parsed).items() if k in PARSED_FACTS}
     footers = {"n_footer_rows": summaries.num(pc.sum(table["is_footer"]).as_py())}
     values = (
         facts(articles)
+        | as_parsed
+        | repeat_facts(parsed, articles)
         | footers
         | {name: tables.md_table(rows) for name, rows in described.items()}
     )
     out_md.write_text(fill(template.read_text(encoding="utf-8"), values), encoding="utf-8")
-    write_csv(tables.year_table(articles), tables_dir / "raw_by_year.csv")
-    write_csv(tables.download_table(articles), tables_dir / "raw_by_download_date.csv")
+    write_csv(tables.year_table(parsed), tables_dir / "raw_by_year.csv")
+    write_csv(tables.download_table(parsed), tables_dir / "raw_by_download_date.csv")
     figures_dir.mkdir(parents=True, exist_ok=True)
-    chart = figures.year_chart_svg(tables.year_table(articles))
+    chart = figures.year_chart_svg(tables.year_table(parsed))
     (figures_dir / "records_by_year.svg").write_text(chart, encoding="utf-8")
 
 
@@ -199,10 +243,11 @@ def main() -> None:
     """Build the datasheet of the raw table from the repo's default locations."""
     build(
         Path("data/interim/records.parquet"),
+        Path("data/interim/exclusions.parquet"),
         Path("docs/datasheet_raw.template.md"),
         Path("docs/datasheet_raw.md"),
-        Path("reports/tables"),
-        Path("reports/figures"),
+        tables_dir=Path("reports/tables"),
+        figures_dir=Path("reports/figures"),
     )
 
 

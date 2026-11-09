@@ -8,11 +8,12 @@ Data descriptor, version 1.0 (2026-11-02). Companion to the cleaned dataset deri
 ## Abstract
 
 The table holds {{n_articles}} records exported from ProQuest US Newsstream for ten U.S.
-newspapers with the highest circulation, published {{year_min}}–{{year_max}}. Each record keeps
-every metadata field of the export, the article text, parsed dates, years and identifiers with
-explicit quality flags, its file of origin, and a hash and word count of the text. Nothing was removed or corrected,
-so the table documents the source as delivered, including duplicates, news items and publications
-outside the query. A companion table assigns every record one exclusion reason. This descriptor
+newspapers with the highest circulation, published {{year_min}}–{{year_max}}, one record per
+ProQuest id. Each record keeps every metadata field of the export, the article text, parsed
+dates, years and identifiers with explicit quality flags, its file of origin, and a hash and
+word count of the text. Apart from repeated ids and file footers, nothing was removed or
+corrected, so the table documents the source as delivered, including news items and
+publications outside the query. A companion table assigns every record one exclusion reason. This descriptor
 reports how the data were collected and parsed, what they contain, and where they depart from
 the intended design.
 
@@ -24,7 +25,8 @@ kept raw so that other researchers can derive their own samples from it.
 
 | | |
 |---|---|
-| Records | {{n_articles}} (plus {{n_footer_rows}} file-footer rows, one per export file) |
+| Records | {{n_articles}}, one per ProQuest id |
+| Removed from the parsed table | {{n_repeats_removed}} repeated ProQuest ids and {{n_footer_rows}} file footers (section 2.4) |
 | Export files | {{n_files}} |
 | Publication years | {{year_min}}–{{year_max}} |
 | Newspapers queried | {{n_queried_newspapers}} |
@@ -50,7 +52,7 @@ kept raw so that other researchers can derive their own samples from it.
 ### 2.2 Parsing
 
 - Each export file is split at lines of exactly 60 underscores. The last separator is followed
-  by a footer, kept as a row with `is_footer` set.
+  by a footer (contact and copyright lines), which is not a record.
 - A record is a header, the body (after `Texto completo:`) and a block of `Label: value`
   metadata lines. The block is read backwards from its last line, one blank-separated block at a
   time, for as long as the block starts with a known label. This is needed because the optional
@@ -76,12 +78,25 @@ kept raw so that other researchers can derive their own samples from it.
 - Tests use synthetic records only, and every rule is logged with its evidence in
   `docs/decisions.md`.
 
+### 2.4 Changes applied to the export
+
+| Change | Rows or fields affected | Reason |
+|---|---|---|
+| Each file split into records, one row per record | all records | A file holds hundreds of records |
+| One column per metadata label, with English names, and the header fields kept | all records | Every field that exists is kept |
+| Dates, years and ids parsed, with a status column; space-free `*_key` copies of categories | columns added; exported values unchanged | Comparing categories despite stray spaces |
+| Hash, word count and character count of the text | columns added | Integrity checks |
+| File footers removed | {{n_footer_rows}} rows | Not records |
+| Repeated ProQuest ids removed; the copy with the longest body is kept, the earliest download on ties | {{n_repeats_removed}} rows | Overlapping downloads (section 5.2) |
+| Nothing else removed or edited | news items, publications outside the query, repeated text under another id | Left for the cleaned dataset (section 3.2) |
+
 ## 3. Data records
 
 ### 3.1 Raw table
 
-One row per record, as `econ_corpus_raw.csv` (UTF-8, comma-separated) and as the parquet it is
-written from, `data/interim/records.parquet`. The text is ProQuest-licensed and the license
+One row per record, as `econ_corpus_raw.csv` (UTF-8, comma-separated). It is written from
+`data/interim/records.parquet`, which also holds the file footers and the repeated ids. The
+text is ProQuest-licensed and the license
 allows sharing it for internal use only, so the table is distributed among the project's
 researchers and is not published. Spreadsheet programs truncate cells above 32,767 characters;
 read the CSV with a data-analysis library instead.
@@ -90,7 +105,7 @@ read the CSV with a data-analysis library instead.
 |---|---|---|
 | `source_file` | string | Export file the record comes from |
 | `record_index` | integer | Position in the file, from 0; the footer is last |
-| `is_footer` | boolean | Row is the file footer, not an article |
+| `is_footer` | boolean | Row is a file footer; false in every row of the shared table |
 | `title`, `author`, `publication`, `section` | string | Metadata as exported; multi-line values joined |
 | `language`, `source_type`, `doc_type` | string | Metadata as exported |
 | `year_raw`, `date_raw`, `id_raw` | string | Publication year, publication date and ProQuest id as exported |
@@ -115,9 +130,10 @@ read the CSV with a data-analysis library instead.
 ### 3.2 Companion files
 
 - `data/interim/exclusions.parquet`: `source_file`, `record_index` and one exclusion `reason`
-  per row (section 6).
-- `reports/tables/raw_by_year.csv` and `reports/tables/raw_by_download_date.csv`: yearly counts,
-  and counts and publication-year range per download date.
+  per row of the parsed table, footers and repeated ids included (section 6).
+- `reports/tables/raw_by_year.csv` and `reports/tables/raw_by_download_date.csv`: records and
+  distinct ids per year, and counts and publication-year range per download date, all as
+  parsed, before repeated ids were removed.
 - `reports/figures/records_by_year.svg`: Figure 1.
 
 ## 4. Contents
@@ -140,7 +156,8 @@ read the CSV with a data-analysis library instead.
 
 ![Records and distinct ids per publication year](../reports/figures/records_by_year.svg)
 
-*Figure 1.* Records and distinct ProQuest ids per publication year.
+*Figure 1.* Records and distinct ProQuest ids per publication year, as parsed, before repeated
+ids were removed.
 
 {{decades}}
 
@@ -191,15 +208,20 @@ The blog label:
 - {{blog_opinion_section_pct}} sit in an opinion or editorial section (section 4.3). The content
   is news opinion, not casual blog posts.
 
-### 5.2 Duplicates
+### 5.2 Repeated ids
 
-{{n_duplicate_rows}} records ({{dup_pct}}) repeat a ProQuest id; {{n_unique_ids}} ids are
-distinct. {{n_ids_in_several_files}} ids appear in more than one file and
+Of {{n_parsed}} parsed records, {{n_duplicate_rows}} ({{dup_pct}}) repeat a ProQuest id;
+{{n_unique_ids}} ids are distinct. {{n_ids_in_several_files}} ids appear in more than one file and
 {{n_repeats_inside_a_file}} repeat inside a file, which points to overlapping downloads.
 {{dup_peak_year}} stands out in Figure 1: {{dup_peak_rows}} records but only
 {{dup_peak_unique}} distinct ids, because its articles were downloaded repeatedly
 ({{dup_peak_multi_file_pct}} of its ids appear in 3 or more files). The peak is duplication,
-not more articles. Duplicates are kept in the raw table.
+not more articles.
+
+Apart from stray spaces, the copies of an id agree on date, newspaper, author, section and
+document type. In {{n_ids_with_empty_copy}} ids one copy has no body next to a copy with text,
+so the copy kept is the one with the longest body, and the earliest download if they tie. The
+others are removed from the shared table.
 
 ### 5.3 News and opinion
 
@@ -210,11 +232,13 @@ the raw table.
 
 ## 6. Usage notes and limitations
 
-- **Exclusion reasons:** the companion table gives every record one reason: file footer,
-  publication not queried, repeated id, repeated text (same title, date and newspaper),
-  missing metadata, not opinion, unclear opinion, or kept. Records flagged `unclear_opinion`
-  (no section, generic type, no opinion title) are not dropped and are left to the user to
-  judge. Counts: `reports/tables/exclusion_counts.csv`.
+- **Exclusion reasons:** the companion table gives every parsed row one reason: file footer,
+  repeated id, publication not queried, repeated text (same body, title, date and newspaper),
+  missing metadata, not opinion, unclear opinion, or kept. Only the first two leave the shared
+  table; the others are flags for the cleaned dataset, so repeated text under another id stays
+  in the table. Records flagged `unclear_opinion` (no section, generic type, no opinion title)
+  are not dropped and are left to the user to judge. Counts:
+  `reports/tables/exclusion_counts.csv`.
 - **Subtler duplicates** (reprints, edited versions under another title) are not detected.
 - **Authors:** {{n_with_author}} records ({{with_author_pct}}) name an author. Unsigned pieces,
   mostly editorials, cannot be linked to a person.
@@ -230,7 +254,7 @@ the raw table.
 ## 7. Code availability
 
 The pipeline is in the private repository `econ_corpus` [2]: `parse` (exports to table),
-`export` (table to CSV), `exclusions` (reasons), `tables`, `figures` and `datasheet` (this
+`export` (table to CSV), `reasons` and `exclusions`, `tables`, `figures` and `datasheet` (this
 document). Every rule and its evidence are in `docs/decisions.md`. `make datasheet`
 regenerates this document from the table. The repository holds code and documentation only;
 the data are not in it.

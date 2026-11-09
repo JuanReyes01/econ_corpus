@@ -276,26 +276,49 @@ def test_download_table_counts_blogs_per_download_date() -> None:
     ]
 
 
-def test_build_writes_datasheet_and_csv_tables(tmp_path: Path) -> None:
-    articles = make_articles({"doc_id": 1}, {"doc_id": 2})
-    columns = {**articles, "is_footer": [False, False]}
+def test_build_describes_the_shared_table_and_counts_what_was_removed(tmp_path: Path) -> None:
+    articles = make_articles(
+        {"doc_id": 1},
+        {"doc_id": 1, "has_body": False, "source_file": "ProQuestDocuments-2024-11-23_1.txt"},
+        {"doc_id": 2},
+    )
+    columns = {**articles, "is_footer": [False, False, False]}
     footer = {k: [None] for k in columns} | {"is_footer": [True]}
     merged = {k: columns[k] + footer[k] for k in columns}
     parquet = tmp_path / "records.parquet"
     pq.write_table(pa.table(merged), parquet)
+    reasons = tmp_path / "exclusions.parquet"
+    codes = ["kept", "duplicate_id", "kept", "file_footer"]
+    pq.write_table(pa.table({"reason": codes}), reasons)
     template = tmp_path / "template.md"
     template.write_text(
-        "Articles: {{n_articles}}\nFooters: {{n_footer_rows}}\n\n{{newspapers}}\n",
+        "Articles: {{n_articles}}\nParsed: {{n_parsed}}\nRemoved: {{n_repeats_removed}}\n"
+        "Footers: {{n_footer_rows}}\nEmpty copies: {{n_ids_with_empty_copy}}\n"
+        "Repeats: {{n_duplicate_rows}}\nFiles: {{n_files}}\nFirst: {{download_first}}\n"
+        "Last: {{download_last}}\n\n{{newspapers}}\n",
         encoding="utf-8",
     )
     values = tmp_path / "out" / "datasheet.md"
     values.parent.mkdir()
-    datasheet.build(parquet, template, values, tmp_path / "tables", tmp_path / "figures")
+    datasheet.build(
+        parquet,
+        reasons,
+        template,
+        values,
+        tables_dir=tmp_path / "tables",
+        figures_dir=tmp_path / "figures",
+    )
     text = values.read_text(encoding="utf-8")
-    assert text.startswith("Articles: 2\nFooters: 1\n")
-    assert (tmp_path / "figures" / "records_by_year.svg").read_text().startswith("<svg")
+    head = (
+        "Articles: 2\nParsed: 3\nRemoved: 1\nFooters: 1\nEmpty copies: 1\nRepeats: 1\nFiles: 2\n"
+    )
+    assert text.startswith(head)
+    assert "First: 2024-11-22\nLast: 2024-11-23\n" in text
     assert "| New York Times | 2 |" in text
-    assert (tmp_path / "tables" / "raw_by_year.csv").exists()
+    assert (tmp_path / "figures" / "records_by_year.svg").read_text().startswith("<svg")
+    # Years and downloads describe the table as parsed, so the repeated rows still show.
+    by_year = (tmp_path / "tables" / "raw_by_year.csv").read_text().splitlines()
+    assert by_year[1].startswith("2001,3,2,")
     assert (tmp_path / "tables" / "raw_by_download_date.csv").exists()
 
 
