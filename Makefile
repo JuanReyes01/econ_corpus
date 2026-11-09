@@ -64,6 +64,12 @@ processed:
 	uv run python -m econ_corpus.processed
 
 
+## List the author cases that need a manual review (run `make processed` first)
+.PHONY: review-cases
+review-cases:
+	uv run python -m econ_corpus.review_cases
+
+
 ## Run tests
 .PHONY: test
 test:

@@ -2,6 +2,8 @@
 
 from pathlib import Path
 
+import pytest
+
 from econ_corpus import review
 
 
@@ -49,3 +51,29 @@ def test_pairs_are_keyed_in_sorted_order_with_their_decision(tmp_path: Path) -> 
         ("annpoe", "annpoh"): "different",
         ("richardroe", "richardrowe"): "unsure",
     }
+
+
+def test_markers_are_read_whatever_their_case(tmp_path: Path) -> None:
+    path = write(
+        tmp_path / "parts.csv",
+        'part,replacement,reason\n"Van Doe, Jane",keep,\n"Doe Roe, Jane",Unsure,\n'
+        '"Example Board, The",nobody,\n',
+    )
+    assert review.load_parts(path) == {"Example Board, The": ""}
+
+
+def test_a_replacement_that_is_not_a_readable_byline_is_refused(tmp_path: Path) -> None:
+    path = write(
+        tmp_path / "parts.csv",
+        'part,replacement,reason\n"Jane Doe, Springfield",ask the editor,\n',
+    )
+    with pytest.raises(ValueError, match="Jane Doe, Springfield"):
+        review.load_parts(path)
+
+
+def test_verdicts_are_normalised_and_unknown_ones_refused(tmp_path: Path) -> None:
+    good = write(tmp_path / "pairs.csv", "key_a,key_b,decision,reason\njanedoe,janeqdoe, Same ,\n")
+    assert review.load_pairs(good) == {("janedoe", "janeqdoe"): "same"}
+    bad = write(tmp_path / "bad.csv", "key_a,key_b,decision,reason\njanedoe,janeqdoe,maybe,\n")
+    with pytest.raises(ValueError, match="maybe"):
+        review.load_pairs(bad)

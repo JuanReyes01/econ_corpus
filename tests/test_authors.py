@@ -337,3 +337,52 @@ def test_a_suffix_after_a_full_name_is_still_a_suffix() -> None:
     assert authors.parse_name("John Doe, Jr.") == Name("John", "Doe", "Jr")
     assert authors.parse_name("Doe, John, JR") == Name("John", "Doe", "Jr")
     assert authors.split_authors("Doe, John; J.R.") == ["Doe, John", "J.R."]
+
+
+# --- institutions, particles and capitals (found in code review) -------------------
+
+
+@pytest.mark.parametrize(
+    "part",
+    [
+        "The Times, London",  # an institution word in a family name of several words
+        "Example Times, Springfield",
+        "Southtown, Daily",
+        "Advertiser, Springfield Daily",
+        "Affairs, International",
+        "Today, Springfield",
+        "Democrat, Springfield",
+        "Le Monde",  # an article is not a given name
+        "El Example",
+        "Der Example",
+        "Springfield Daily",
+        "International Affairs",
+    ],
+)
+def test_institutions_are_not_persons(part: str) -> None:
+    assert authors.parse_name(part) is None
+    assert authors.recover_names(part) == []
+
+
+def test_one_word_family_names_that_are_also_institution_words_stay() -> None:
+    assert authors.parse_name("Post, Jane") == Name("Jane", "Post", "")
+    assert authors.parse_name("Pollard-Post, Jane") == Name("Jane", "Pollard-Post", "")
+    assert authors.parse_name("Record, Jane") == Name("Jane", "Record", "")
+
+
+def test_capitalised_al_is_a_given_name_not_a_particle() -> None:
+    assert authors.parse_name("Al Doe") == Name("Al", "Doe", "")
+    assert authors.parse_name("Jane Al Doe") == Name("Jane Al", "Doe", "")
+    assert authors.display(Name("AL", "DOE", "")) == "Al Doe"
+
+
+def test_lower_case_particles_still_belong_to_the_family_name() -> None:
+    assert authors.parse_name("Jane al Doe") == Name("Jane", "al Doe", "")
+    assert authors.parse_name("Jane Van Doe") == Name("Jane", "Van Doe", "")
+
+
+def test_capitals_fix_handles_particles_and_possessives() -> None:
+    assert authors.display(Name("JANE", "DEL DOE", "")) == "Jane Del Doe"
+    assert authors.display(Name("JANE", "del DOE", "")) == "Jane del Doe"
+    assert authors.display(Name("JANE", "O'DOE", "")) == "Jane O'Doe"
+    assert authors.display(Name("JANE DOE'S", "COLUMN", "")) == "Jane Doe's Column"

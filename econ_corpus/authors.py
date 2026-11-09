@@ -17,6 +17,17 @@ import re
 from typing import NamedTuple
 import unicodedata
 
+from econ_corpus.name_words import (
+    ARTICLES,
+    DEGREES,
+    GIVEN_WHEN_CAPITAL,
+    HONORIFICS,
+    ORG_WORDS,
+    PARTICLES,
+    ROLE_WORDS,
+    SUFFIXES,
+)
+
 
 class Name(NamedTuple):
     """A person's name as written, split into its pieces."""
@@ -25,35 +36,6 @@ class Name(NamedTuple):
     family: str
     suffix: str
 
-
-SUFFIXES = {"jr": "Jr", "sr": "Sr", "ii": "II", "iii": "III", "iv": "IV"}
-HONORIFICS = {"dr", "prof", "professor", "rev", "sen", "rep", "gov", "mr", "mrs", "ms", "sir"}
-HONORIFICS |= {"rabbi", "msgr"}
-DEGREES = {"md", "phd", "esq", "jd", "dds", "rn", "mba", "dvm", "mph"}
-# Lower-case words that belong to the family name ('Jane van Doe').
-PARTICLES = {"von", "van", "vanden", "de", "del", "della", "der", "den", "di", "da", "la", "le"}
-PARTICLES |= {"du", "dos", "das", "ter", "ten", "bin", "ibn", "al", "el"}
-# Words that mark an institution or a sentence, never part of a name written given-name first.
-ORG_WORDS = {
-    "anonymous", "board", "staff", "editor", "editors", "editorial", "editorials", "reader",
-    "readers", "contributor", "contributors", "opinion", "opinions", "news", "press", "times",
-    "post", "tribune", "globe", "journal", "service", "services", "show", "podcast", "writer",
-    "writers", "bureau", "wire", "report", "reports", "team", "desk", "today", "newsday",
-    "associated", "reuters", "bloomberg", "university", "institute", "center", "committee",
-    "council", "association", "foundation", "network", "republic", "sentinel", "herald",
-    "gazette", "syndicate", "special", "essay", "compiled", "columnist", "column", "star",
-    "the", "of", "is", "from", "for", "with", "was", "are", "who", "his", "her", "its",
-    "former", "director", "president", "chairman", "senator", "representative", "governor",
-    "executive", "member", "author", "letters", "county", "department", "college", "coalition",
-    "alliance", "society", "statesman", "dispatch", "courier", "chronicle", "register",
-    "observer", "examiner", "inquirer", "weekly", "magazine", "ledger", "media", "inc", "llc",
-    "company", "group", "excerpted", "illustration", "photo", "cartoon", "debate", "usa",
-    "guest",
-}  # fmt: skip
-# In 'Family, Given' form a family name can be an ORG_WORD ('Press, Jane'), so only these
-# words rule a part out when they stand alone before the comma.
-ROLE_WORDS = {"staff", "board", "editors", "editorial", "readers", "anonymous", "opinion"}
-ROLE_WORDS |= {"contributor", "contributors"}
 
 WORD_RE = re.compile(r"[^\W\d_]+(?:['\u2019.\-][^\W\d_]+)*\.?")  # letters, with ' - . inside
 INITIALS_RE = re.compile(r"(?:[^\W\d_]\.)+")  # 'J.' or 'J.Q.R.'
@@ -78,6 +60,20 @@ def _abbrev(token: str) -> str:
     """
     stem = token.rstrip(".")
     return "" if "." in stem else stem.casefold()
+
+
+def is_particle(word: str) -> bool:
+    """Tell whether a word is a particle of a family name ('van', 'de', 'Del').
+
+    A few particles are far more often a given name when written with a capital ('Al Doe').
+    """
+    bare = _bare(word)
+    return bare in PARTICLES and (word[0].islower() or bare not in GIVEN_WHEN_CAPITAL)
+
+
+def _has_org_word(words: list[str]) -> bool:
+    """Tell whether a word, or a piece of a hyphenated one, marks an institution."""
+    return any(piece in ORG_WORDS for w in words for piece in _bare(w).split("-"))
 
 
 def split_authors(raw: str | None) -> list[str]:
@@ -124,15 +120,14 @@ def _natural(text: str, suffix: str) -> Name | None:
         suffix, tokens = SUFFIXES[_abbrev(tokens[-1])], tokens[:-1]
     if not 2 <= len(tokens) <= MAX_NATURAL or not _are_name_words(tokens):  # noqa: PLR2004
         return None
-    # Hyphenated words are checked piece by piece ('Times-Union').
-    if any(piece in ORG_WORDS for t in tokens for piece in _bare(t).split("-")):
-        return None
-    if not all(t[0].isupper() for t in tokens if _bare(t) not in PARTICLES):
+    if _has_org_word(tokens) or not all(t[0].isupper() for t in tokens if not is_particle(t)):
         return None
     # The family name is the last word plus the particles right before it.
     start = len(tokens) - 1
-    while start > 1 and _bare(tokens[start - 1]) in PARTICLES:
+    while start > 1 and is_particle(tokens[start - 1]):
         start -= 1
+    if all(_bare(t) in ARTICLES for t in tokens[:start]):  # 'Le Monde' is not a person
+        return None
     return Name(" ".join(tokens[:start]), " ".join(tokens[start:]), suffix)
 
 
@@ -145,7 +140,9 @@ def _family_first(family: str, given: str, suffix: str) -> Name | None:
         return None
     if all(_bare(t) in DEGREES for t in given_words) or _bare(family) in ROLE_WORDS:
         return None
-    if any(_bare(t) in ORG_WORDS for t in given_words):
+    # One word before the comma can be a family name that is also an institution word
+    # ('Press, Jane'); several words holding one ('The Times, London') are an institution.
+    if _has_org_word(given_words) or (len(family_words) > 1 and _has_org_word(family_words)):
         return None
     if not given_words[0][0].isupper() or not any(t[0].isupper() for t in family_words):
         return None
@@ -175,8 +172,7 @@ def _leading_name(part: str) -> Name | None:
     """
     words: list[str] = []
     for word in NAME_END_RE.split(BY_RE.sub("", part.strip()), maxsplit=1)[0].split():
-        bare = _bare(word)
-        if word[0].islower() and bare not in PARTICLES:
+        if word[0].islower() and not is_particle(word):
             break
         if word.endswith(POSSESSIVES):
             words.append(word[:-2])
@@ -214,18 +210,18 @@ def read_part(part: str) -> tuple[list[Name], str]:
     return names, "recovered" if names else ""
 
 
+def _normal_case(word: str) -> str:
+    """Capitalise each run of letters of a word in capitals: O'DOE-ROE gives O'Doe-Roe."""
+    cased = re.sub(r"[^\W\d_]+", lambda m: m[0].capitalize(), word)
+    return re.sub("(['\u2019])S$", r"\1s", cased)  # a possessive keeps its small s
+
+
 def display(name: Name) -> str:
     """Return the name given-name first; a name written in capitals gets normal casing."""
     words = f"{name.given} {name.family}".split()
-    plain = [w for w in words if _bare(w) not in PARTICLES]
-    if all(w.isupper() for w in plain):
-        # Capitalise each run of letters, so O'DOE-ROE becomes O'Doe-Roe; initials stay.
-        words = [
-            w
-            if "." in w or w not in plain
-            else re.sub(r"[^\W\d_]+", lambda m: m[0].capitalize(), w)
-            for w in words
-        ]
+    # Lower-case particles ('del') do not count when deciding that a name is in capitals.
+    if all(w.isupper() for w in words if not (w.islower() and is_particle(w))):
+        words = [w if "." in w or not w.isupper() else _normal_case(w) for w in words]
     return " ".join([*words, name.suffix]).strip()
 
 

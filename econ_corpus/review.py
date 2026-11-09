@@ -13,8 +13,12 @@ case, see docs/decisions.md) or what a decision changes (authors, identity, proc
 import csv
 from pathlib import Path
 
+from econ_corpus import authors
+
 PARTS_FILE, PAIRS_FILE = "byline_parts.csv", "author_pairs.csv"
-NOT_A_CORRECTION = {"KEEP", "UNSURE", ""}  # the part stays as the rules read it
+AS_READ = {"keep", "unsure", ""}  # the part stays as the rules read it
+NOBODY = "nobody"
+VERDICTS = {"same", "different", "unsure"}
 
 
 def _rows(path: Path) -> list[dict[str, str]]:
@@ -24,18 +28,39 @@ def _rows(path: Path) -> list[dict[str, str]]:
         return list(csv.DictReader(handle))
 
 
+def decided_parts(path: Path) -> set[str]:
+    """Return every part the review has looked at, whatever was decided."""
+    return {row["part"] for row in _rows(path)}
+
+
 def load_parts(path: Path) -> dict[str, str]:
-    """Return part -> corrected byline; an empty byline means the part names nobody."""
+    """Return part -> corrected byline; an empty byline means the part names nobody.
+
+    A replacement must be KEEP, UNSURE, NOBODY (in any case) or a byline every part of which
+    reads as a name; anything else is refused, because it would silently remove the author.
+    """
     corrections = {}
     for row in _rows(path):
         replacement = row["replacement"].strip()
-        if replacement not in NOT_A_CORRECTION:
-            corrections[row["part"]] = "" if replacement == "NOBODY" else replacement
+        if replacement.casefold() in AS_READ:
+            continue
+        pieces = authors.split_authors(replacement)
+        if replacement.casefold() == NOBODY:
+            replacement = ""
+        elif not pieces or not all(authors.parse_name(piece) for piece in pieces):
+            msg = f"{path.name}: {replacement!r} is not a readable byline for {row['part']!r}"
+            raise ValueError(msg)
+        corrections[row["part"]] = replacement
     return corrections
 
 
 def load_pairs(path: Path) -> dict[tuple[str, str], str]:
     """Return (name key, name key) in sorted order -> 'same', 'different' or 'unsure'."""
-    return {
-        tuple(sorted((row["key_a"], row["key_b"]))): row["decision"].strip() for row in _rows(path)
-    }
+    decisions = {}
+    for row in _rows(path):
+        verdict = row["decision"].strip().casefold()
+        if verdict not in VERDICTS:
+            msg = f"{path.name}: unknown decision {row['decision']!r} for {row['key_a']}"
+            raise ValueError(msg)
+        decisions[tuple(sorted((row["key_a"], row["key_b"])))] = verdict
+    return decisions
