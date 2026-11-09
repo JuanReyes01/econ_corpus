@@ -51,17 +51,17 @@
 <text x="145.0" y="633" text-anchor="middle" fill="#333333">413,555</text>
 <line x1="145.0" x2="145.0" y1="648" y2="670" stroke="#333333"/>
 <line x1="145.0" x2="322" y1="659" y2="659" stroke="#333333"/>
-<text class="removed" x="330" y="663"><tspan fill="#f58518" font-weight="bold">− 11,112</tspan>  no_person_author: Byline names no person (an institution, or text with no full name)</text>
+<text class="removed" x="330" y="663"><tspan fill="#f58518" font-weight="bold">− 11,423</tspan>  no_person_author: No person as author: an institution, no full name, or a compiled page</text>
 <rect class="remaining" x="30" y="670" width="230" height="40" fill="#ffffff" stroke="#4c78a8"/>
-<text x="145.0" y="695" text-anchor="middle" fill="#333333">402,443</text>
+<text x="145.0" y="695" text-anchor="middle" fill="#333333">402,132</text>
 <line x1="145.0" x2="145.0" y1="710" y2="732" stroke="#333333"/>
 <line x1="145.0" x2="322" y1="721" y2="721" stroke="#333333"/>
-<text class="removed" x="330" y="725"><tspan fill="#f58518" font-weight="bold">− 1,873</tspan>  short_or_cartoon: Signed opinion piece under 50 words or under a cartoon heading</text>
+<text class="removed" x="330" y="725"><tspan fill="#f58518" font-weight="bold">− 1,919</tspan>  short_or_cartoon: Signed opinion piece under 50 words or under a cartoon heading</text>
 <rect class="remaining" x="30" y="732" width="230" height="40" fill="#ffffff" stroke="#4c78a8"/>
-<text x="145.0" y="757" text-anchor="middle" fill="#333333">400,570</text>
+<text x="145.0" y="757" text-anchor="middle" fill="#333333">400,213</text>
 <line x1="145.0" x2="145.0" y1="772" y2="794" stroke="#333333"/>
 <line x1="145.0" x2="322" y1="783" y2="783" stroke="#333333"/>
 <text class="removed" x="330" y="787"><tspan fill="#f58518" font-weight="bold">− 1,517</tspan>  not_english: Signed opinion piece whose text is not in English (mostly Spanish)</text>
 <rect class="remaining" x="30" y="794" width="230" height="40" fill="#4c78a8" stroke="#4c78a8"/>
-<text x="145.0" y="819" text-anchor="middle" fill="#ffffff">Cleaned dataset: 399,053</text>
+<text x="145.0" y="819" text-anchor="middle" fill="#ffffff">Cleaned dataset: 398,696</text>
 </svg>

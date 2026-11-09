@@ -59,10 +59,13 @@ give the shared raw table; the others leave only the cleaned dataset (Figure 1).
 - **Text and author:** an article needs body text and a byline that names at least one person.
   A body under 100 words carried by five or more different articles (a title on a date) is a
   notice or a credit ("text not available", a cartoon caption), not text (`no_text`). ProQuest's "Anonymous" and missing bylines are unsigned (`no_author`);
-  a byline that names only an institution is `no_person_author`.
+  a byline that names only an institution is `no_person_author`, and so is a page compiled
+  from the words of others, told by its byline (`Compiled by ...`) or by its heading
+  (`Punchlines`, `Best of Late Night`, `In Other Words: A sampling of opinions`, `Editorials
+  elsewhere`).
 - **A text to read:** a signed opinion piece with a body under 50 words (a cartoon stored
   as its caption, a teaser, a cut text) or with a title that starts with a cartoon heading
-  (`TOON-OP`, `Op-Comic`) is left out (`short_or_cartoon`).
+  (`TOON-OP`, `Op-Comic`, `Panel Discussion`) is left out (`short_or_cartoon`).
 - **English:** ProQuest labels every article English, but some online editions carry
   translations. A text is not English (`not_english`) when fewer than 5% of the words in
   its first 2,000 characters are among 39 common English words (`the`, `of`, `and` ...);
@@ -288,10 +291,10 @@ Pairs of authors that look alike and are not merged.
 
 - **Unsigned opinion is absent:** {{n_no_author}} opinion pieces have no author, mostly
   editorials. They are in the raw table.
-- **Bylines that name nobody:** {{n_no_person_author}} articles, signed by an editorial
-  board, a publication or a role, or only by whoever compiled them. A compiled page is left
-  out when its byline says so; about twenty pages of jokes and quotes signed with the plain
-  name of their compiler stay.
+- **No person as author:** {{n_no_person_author}} articles, signed by an editorial board, a
+  publication or a role, or compiled from the words of others. A compiled page is left out
+  when its byline or its heading says so: about 140 pages of late-night jokes of USA Today
+  that carry no heading stay, and so may pages under headings not listed.
 - **Authors may still be split:** of the {{n_candidates}} look-alike pairs,
   {{n_candidates_not_reviewed}} were not reviewed: one of the two authors has a single
   article and the other fewer than twenty. {{n_candidates_unsure}} were reviewed and left unsure.
