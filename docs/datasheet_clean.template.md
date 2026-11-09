@@ -136,7 +136,7 @@ its newspapers, its years and two headlines.
 | Reviewed | Cases | Outcome |
 |---|---|---|
 | Byline parts (ambiguous, holding a place or publication word, long, read by moving pieces around, possibly damaged, or read as nobody) | {{n_review_parts}} | {{n_parts_corrected}} corrected, {{n_parts_nobody}} not a person, {{n_parts_keep}} kept as read, {{n_parts_unsure}} unsure |
-| Pairs of look-alike authors with two or more articles each, or with one author of twenty or more; and pairs of name variants merged by the rule that appear five or more years apart | {{n_review_pairs}} | {{n_pairs_same}} same person, {{n_pairs_different}} different, {{n_pairs_unsure}} unsure |
+| Pairs of look-alike authors with two or more articles each, or with one author of twenty or more; and pairs of name variants of one author that appear five or more years apart | {{n_review_pairs}} | {{n_pairs_same}} same person, {{n_pairs_different}} different, {{n_pairs_unsure}} unsure |
 
 - **Models:** most cases were decided by Claude Sonnet run as subagents; the rest, and the
   checks, by Claude Fable 5.1. The reviewer of every decision is recorded in the review files.
@@ -152,13 +152,12 @@ its newspapers, its years and two headlines.
   of round 7 and found none wrong, and a sixth audit read 109 decisions of round 8 and found
   none clearly wrong.
 - **Merged variants years apart:** the rule merges two people of one name who wrote for
-  the same newspaper in different decades. The 616 pairs of variants it had merged with
-  five or more years between the last article of one and the first of the other were
-  reviewed in round 10, with the newspapers, years, up to six headlines and the bylines
-  as printed of each variant: 422 are one person, 45 are two (44 authors were split) and
-  149 were left unsure and stay merged. The second model read the 48 answers that split
-  an author and changed three to unsure. Not listed, and so not reviewed: about 180 such
-  pairs in authors that an earlier verdict had joined to another form of the name.
+  the same newspaper in different decades. Every pair of name variants of one author with
+  five or more years between the last article of one and the first of the other was
+  reviewed in round 10 (733 pairs), with the newspapers, years, up to six headlines and
+  the bylines as printed of each variant: 524 are one person, 53 are two (48 authors were
+  split) and 156 were left unsure and stay merged. The second model read the 56 answers
+  that split an author and changed three to unsure.
 - **Retired decisions:** a decision that applies to no byline any more, because the rules
   that split bylines changed, is taken out of the review files and kept apart; the counts
   above are of the decisions in force. The set was checked for
@@ -291,9 +290,9 @@ Pairs of authors that look alike and are not merged.
   which two people with a common name can meet, across decades too (a father and a son, one
   written with `Jr`; a writer of the 1990s and a historian of the 2020s). In an audit of 100
   authors with two or more name variants, seven to nine held more than one person. The
-  variants five or more years apart were reviewed afterwards (section 2.4): 44 authors were
-  split and 149 pairs stay merged for lack of evidence. Variants whose years overlap, and
-  about 180 pairs in authors joined by an earlier verdict, were not reviewed.
+  variants five or more years apart were reviewed afterwards (section 2.4): 48 authors were
+  split and 156 pairs stay merged for lack of evidence. Variants whose years overlap were
+  not reviewed.
 - **People with the same name are one author:** nothing tells two people apart when their
   names are written alike (a senator and a letter writer). In the audit this touched about
   1% of the authors of a random sample and about 3% of those with ten or more articles,
