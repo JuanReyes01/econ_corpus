@@ -217,6 +217,12 @@ def display(name: Name) -> str:
     return " ".join([*words, name.suffix]).strip()
 
 
+def fold(text: str) -> str:
+    """Return the letters and digits of a text, casefolded and without accents."""
+    text = unicodedata.normalize("NFKD", text)
+    return "".join(c for c in text.casefold() if c.isalnum())
+
+
 def name_key(name: Name) -> str:
     """Return a key equal for spelling variants of one name.
 
@@ -225,8 +231,7 @@ def name_key(name: Name) -> str:
     and suffixes are kept: deciding that 'John Doe' and 'John Doe Jr' are one person is
     not done here.
     """
-    text = unicodedata.normalize("NFKD", f"{name.given}{name.family}{name.suffix}")
-    return "".join(c for c in text.casefold() if c.isalnum())
+    return fold(f"{name.given}{name.family}{name.suffix}")
 
 
 def people(raw: str | None) -> list[Name]:
