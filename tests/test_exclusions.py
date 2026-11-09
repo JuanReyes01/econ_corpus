@@ -15,6 +15,7 @@ DEFAULTS = {
     "doc_id": 1,
     "body_sha256": "aaa",
     "body_chars": 100,
+    "author": "Doe, Jane",
     "title": "Sample title",
     "pub_date": date(2020, 1, 2),
     "publication_key": "newyorktimes,lateedition(eastcoast);newyork,n.y.",
@@ -56,6 +57,10 @@ def test_only_clear_non_opinion_and_duplicates_are_dropped() -> None:
         "duplicate_text",
         "missing_metadata",
         "not_opinion",
+        "unclear_opinion",
+        "no_text",
+        "no_author",
+        "no_person_author",
     }
 
 
@@ -109,7 +114,7 @@ def test_no_document_type_and_no_section_is_missing_metadata() -> None:
     assert reasons_of({"doc_type": None, "section": None}) == ["missing_metadata"]
 
 
-def test_generic_label_and_no_section_is_unclear_not_dropped() -> None:
+def test_generic_label_and_no_section_is_unclear() -> None:
     row = {"doc_type": "NEWSPAPER", "section": None, "title": "World News: Vote count"}
     assert reasons_of(row) == ["unclear_opinion"]
 
@@ -137,6 +142,36 @@ def test_a_repeated_non_queried_publication_is_still_a_repeated_id() -> None:
 
 def test_missing_publication_is_not_treated_as_non_queried() -> None:
     assert reasons_of({"publication_key": None}) == ["kept"]
+
+
+# --- text and authors ---------------------------------------------------------------
+
+
+def test_opinion_piece_without_text_is_dropped() -> None:
+    assert reasons_of({"body_chars": 0, "body_sha256": None}) == ["no_text"]
+
+
+def test_unsigned_opinion_piece_is_dropped() -> None:
+    assert reasons_of({"author": None}) == ["no_author"]
+    assert reasons_of({"author": "Anonymous"}) == ["no_author"]
+
+
+def test_byline_that_names_no_person_is_dropped() -> None:
+    assert reasons_of({"author": "The Editorial Board"}) == ["no_person_author"]
+
+
+def test_one_person_among_the_byline_parts_is_enough() -> None:
+    assert reasons_of({"author": "The Editorial Board; Doe, Jane"}) == ["kept"]
+
+
+def test_a_news_item_is_not_opinion_whatever_its_author() -> None:
+    row = {"doc_type": "NEWSPAPER", "section": "Sports", "author": None}
+    assert reasons_of(row) == ["not_opinion"]
+
+
+def test_text_and_author_reasons_are_the_last_before_kept() -> None:
+    codes = [r["code"] for r in exclusions.REASONS]
+    assert codes[-4:] == ["no_text", "no_author", "no_person_author", "kept"]
 
 
 # --- duplicates --------------------------------------------------------------------
@@ -217,7 +252,8 @@ def test_reason_counts_add_up_and_list_every_reason() -> None:
     assert {r[0]: r[-2] for r in rows[1:-1]}["duplicate_id"] == "no"
     assert {r[0]: r[-2] for r in rows[1:-1]}["kept"] == "yes"
     assert {r[0]: r[-1] for r in rows[1:-1]}["not_opinion"] == "yes"
-    assert {r[0]: r[-1] for r in rows[1:-1]}["unclear_opinion"] == "no"
+    assert {r[0]: r[-1] for r in rows[1:-1]}["unclear_opinion"] == "yes"
+    assert {r[0]: r[-2] for r in rows[1:-1]}["unclear_opinion"] == "yes"
 
 
 def test_write_exclusions_keeps_one_row_per_input_row(tmp_path: Path) -> None:

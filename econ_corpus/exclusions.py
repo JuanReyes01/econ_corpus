@@ -18,18 +18,19 @@ Two flags per reason: `in_raw` says whether the row is part of the shared raw ta
 repeated ids and repeated text are not), `dropped` whether it leaves the cleaned dataset.
 """
 
+from functools import cache
 from pathlib import Path
 
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from econ_corpus import datasheet, summaries
+from econ_corpus import authors, datasheet, summaries
 from econ_corpus.reasons import REASONS
 from econ_corpus.tables import Articles, Table
 
 COLUMNS = [
     "is_footer", "source_file", "record_index", "doc_id", "body_sha256", "title", "pub_date",
-    "publication_key", "doc_type", "section", "body_chars",
+    "publication_key", "doc_type", "section", "body_chars", "author",
 ]  # fmt: skip
 
 
@@ -48,6 +49,14 @@ def _opinion_reason(doc_type: str | None, section: str | None, title: str | None
     if any(map(summaries.is_opinion_label, labels)) or summaries.is_opinion_section(section):
         return "kept"
     return "unclear_opinion" if section is None else "not_opinion"
+
+
+@cache
+def _author_reason(byline: str | None) -> str:
+    """Return the reason for an opinion piece with text, given its byline."""
+    if not authors.is_signed(byline):
+        return "no_author"
+    return "kept" if authors.people(byline) else "no_person_author"
 
 
 def _kept_copies(rows: Articles, order: list[int]) -> dict[int, int]:
@@ -102,6 +111,10 @@ def assign_reasons(rows: Articles) -> list[str]:
             reasons[i] = "duplicate_text"
         else:
             reasons[i] = _opinion_reason(rows["doc_type"][i], rows["section"][i], title)
+        if reasons[i] == "kept":
+            # An opinion piece stays only with text and with a person among its authors.
+            has_text = bool(rows["body_chars"][i])
+            reasons[i] = _author_reason(rows["author"][i]) if has_text else "no_text"
         # A copy that was dropped as a repeated id must not make the kept copy look repeated.
         if sha and title and day and reasons[i] not in ("file_footer", "duplicate_id"):
             seen_text.add(text_key)
