@@ -338,3 +338,12 @@ def test_the_manifest_refuses_a_table_that_the_build_did_not_write(tmp_path: Pat
     processed.build(records, reasons, clean)
     with pytest.raises(ValueError, match=r"old_table\.csv"):
         manifest.check(clean, records, reasons, None)
+
+
+def test_the_manifest_refuses_a_missing_table(tmp_path: Path) -> None:
+    records, reasons = write_inputs(tmp_path)
+    clean = tmp_path / "clean"
+    processed.build(records, reasons, clean)
+    (clean / "author_candidates.csv").unlink()
+    with pytest.raises(ValueError, match=r"author_candidates\.csv"):
+        manifest.check(clean, records, reasons, None)

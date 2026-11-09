@@ -22,7 +22,8 @@ from econ_corpus.authors import Name
 from econ_corpus.name_words import HONORIFICS, SAINTS, SENTENCE_WORDS, SUFFIXES
 
 JOINER_RE = re.compile(r"\s+(?:and|&)\s+", re.IGNORECASE)
-LIST_RE = re.compile(r",|\s+(?:and|&)\s+", re.IGNORECASE)  # separators of a list of names
+# Separators of a list of names; ', and' is one separator, not two.
+LIST_RE = re.compile(r",(?:\s*(?:and|&)\s+)?|\s+(?:and|&)\s+", re.IGNORECASE)
 # What ends a name that other text follows: a comma, a dash, or a digit that does not start
 # an ordinal suffix ('Jane Doe 3d').
 NAME_END_RE = re.compile(r",|\s-\s|\d(?!(?:d|nd|rd|th)\b)")
@@ -52,6 +53,11 @@ BOARD_RE = re.compile(
     r"(?:written by|these are (?:the )?personal views of) members of the editorial board",
     re.IGNORECASE,
 )
+# The period that ends the sentence of one board member: after a word or an ordinal
+# ('Jane Doe 3d.'), not after an initial ('J. Q.') or a saint ('St. John'), and not before
+# a comma ('Jane Doe Jr., Richard Roe').
+BOARD_END_RE = re.compile(r"(?<!\b[Ss][Tt])(?:(?<=[^\W\d_]{2})|(?<=\d[a-z]))\.+(?!\s*,)\s*")
+BOARD_LIST = 3  # names that make a list with no 'and' ('Jane Doe, Oak Park' is no list)
 LEAD_RE = re.compile(
     r"^(?:(?:and|&)\s+)?(?:by\s+)?", re.IGNORECASE
 )  # 'And Jane Doe', 'By Jane Doe'
@@ -213,24 +219,36 @@ def _listed(part: str) -> list[Name]:
     separators = [text.strip() for text in LIST_RE.findall(part)][len(run) - 2 : len(run)]
     if len(run) < len(names) and all(text == "," for text in separators):
         return []
-    # 'Jane Doe and Richard Roe Jane Doe and ...': the list written again starts in the
-    # last name of the run, which then ends in the first name of the list.
+    # 'Jane Doe and Richard Roe Jane Doe and Richard Roe are ...': the list written again
+    # starts in the last name of the run, which then ends in the first name of the list, and
+    # the text after it starts with that last name again, in the same or another form
+    # ('Dr. Richard Roe', 'R. Roe', 'Richard Row'). 'Mary Jo Ann Lee' after 'Ann Lee', with
+    # no name after it, is one name.
     first, last = (f"{name.given} {name.family}" for name in (run[0], run[-1]))
-    again = last.endswith(f" {first}") and authors.given_first(last.removesuffix(first))
-    return [name for name in [*run[:-1], again or run[-1]] if name]
+    cut = authors.given_first(last.removesuffix(first)) if last.endswith(f" {first}") else None
+    again = _leading_name("".join(pieces[len(run) :][:1]))
+    twice = cut and again and (_same_family(cut, again) or _same_given(cut, again))
+    return [*run[:-1], cut if cut and twice else run[-1]]
 
 
 def _board_members(part: str) -> list[Name]:
     """Read the names around the note of an editorial-board item.
 
     'Jane Doe. Richard Roe. Written by members of the editorial board.' lists the members
-    who wrote it, one sentence each, before or after the note.
+    who wrote it before or after the note, one sentence each or as a list in one sentence
+    ('Jane Doe, Richard Roe and Ann Poe. Written by ...').
     """
     if not BOARD_RE.search(part):
         return []
-    pieces = re.split(r"(?<=[a-z])\.+\s*", BOARD_RE.sub(".", part))
-    names = [authors.given_first(piece.strip(". ")) for piece in pieces]
-    return [name for name in names if name]
+    found: list[Name] = []
+    for sentence in BOARD_END_RE.split(BOARD_RE.sub(".", part)):
+        names = [authors.given_first(piece.strip(". ")) for piece in LIST_RE.split(sentence)]
+        run = list(itertools.takewhile(bool, names))
+        # After one name and a comma comes her town or her role, unless the sentence is a
+        # list: it has 'and', or three names.
+        plain = all(text == "," for text in LIST_RE.findall(sentence)[: len(run) - 1])
+        found += run[:1] if plain and len(run) < BOARD_LIST else run
+    return found
 
 
 def recover_names(part: str) -> list[Name]:
@@ -271,6 +289,10 @@ def read_part(part: str) -> tuple[list[Name], str]:
 
 def _tokens(name: Name) -> list[str]:
     return sorted(filter(None, map(authors.fold, f"{name.given} {name.family}".split())))
+
+
+def _same_family(name: Name, other: Name) -> bool:
+    return authors.fold(name.family) == authors.fold(other.family)
 
 
 def _same_given(name: Name, earlier: Name) -> bool:

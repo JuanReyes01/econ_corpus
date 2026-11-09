@@ -1138,3 +1138,121 @@ def test_a_role_in_a_list_after_one_name_is_not_a_person() -> None:
     ]
     raw = "Jane Doe, Springfield District Attorney and a Democrat, was a member of the Example"
     assert bylines.people(raw) == [JANE]
+
+
+# --- findings of the review of the sixth audit's fixes -------------------------------
+
+BOARD_NOTE = "These are personal views of members of the editorial board."
+
+
+@pytest.mark.parametrize(
+    "part",
+    [
+        f"Jane Doe, Richard Roe, Ann Poe. {BOARD_NOTE}",
+        "Jane Doe, Richard Roe and Ann Poe. Written by members of the editorial board.",
+        "Written by members of the editorial board.. Jane Doe, Richard Roe & Ann Poe",
+        "Jane Doe, Richard Roe, and Ann Poe",
+        "Jane Doe, Richard Roe, and Ann Poe, Example Staff",
+        "Jane Doe, Richard Roe, & Ann Poe",
+    ],
+)
+def test_a_list_with_commas_gives_every_name(part: str) -> None:
+    expected = [JANE, Name("Richard", "Roe", ""), Name("Ann", "Poe", "")]
+    assert bylines.read_part(part) == (expected, "recovered")
+
+
+def test_scrambled_co_authors_with_a_comma_before_and_are_put_back() -> None:
+    assert bylines.read_part("Doe, Richard Roe, and Jane")[0] == [Name("Richard", "Roe", ""), JANE]
+
+
+@pytest.mark.parametrize("again", ["Richard Roe", "Richard Row"])
+def test_a_list_written_twice_in_a_part_with_a_comma_is_read_once(again: str) -> None:
+    raw = f"Jane Doe and Richard Roe Jane Doe and {again} are partners in Example, Springfield."
+    assert bylines.people(raw) == [JANE, Name("Richard", "Roe", "")]
+
+
+def test_a_name_that_ends_like_the_first_of_its_list_is_not_cut() -> None:
+    assert bylines.read_part("Ann Lee and Mary Jo Ann Lee, Staff Writers")[0] == [
+        Name("Ann", "Lee", ""),
+        Name("Mary Jo Ann", "Lee", ""),
+    ]
+
+
+def test_a_family_name_two_letters_apart_in_the_note_is_still_the_author() -> None:
+    assert len(bylines.people("Doeway, Jane; Jane Doeneway lives in Springfield.")) == 1
+
+
+@pytest.mark.parametrize(
+    "word",
+    [
+        "Resolution",
+        "Forum",
+        "Trust",
+        "Equality",
+        "Week",
+        "Partner",
+        "Managing",
+        "Attorney",
+        "District",
+    ],
+)
+def test_each_new_institution_word_names_nobody(word: str) -> None:
+    assert bylines.people(f"Springfield {word}") == []
+
+
+def test_board_members_with_a_saint_name_or_in_capitals_are_read() -> None:
+    note = "Written by members of the editorial board."
+    assert bylines.read_part(f"Jane St. John. Richard Roe. {note}")[0] == [
+        Name("Jane", "St. John", ""),
+        Name("Richard", "Roe", ""),
+    ]
+    assert bylines.read_part(f"JANE DOE. RICHARD ROE. {note}")[0] == [
+        Name("JANE", "DOE", ""),
+        Name("RICHARD", "ROE", ""),
+    ]
+
+
+@pytest.mark.parametrize(
+    "part",
+    [
+        "Jane Doe, Oak Park. Written by members of the editorial board.",
+        "Written by members of the editorial board.. Jane Doe, Oak Park",
+        "Jane Doe, Oak Park, Ill. Written by members of the editorial board.",
+    ],
+)
+def test_a_town_after_a_board_member_is_not_a_second_member(part: str) -> None:
+    assert bylines.read_part(part)[0] == [JANE]
+
+
+def test_board_members_after_an_ordinal_or_a_saint_in_capitals_are_read() -> None:
+    note = "Written by members of the editorial board."
+    assert bylines.read_part(f"Jane Doe 3d. Richard Roe. {note}")[0] == [
+        Name("Jane", "Doe", "III"),
+        Name("Richard", "Roe", ""),
+    ]
+    assert bylines.read_part(f"Jane ST. JOHN. Richard Roe. {note}")[0] == [
+        Name("Jane", "ST. JOHN", ""),
+        Name("Richard", "Roe", ""),
+    ]
+
+
+@pytest.mark.parametrize(
+    ("second", "again"),
+    [
+        ("Dr. Richard Roe", "Dr. Richard Roe"),
+        ("Richard Roe", "R. Roe"),
+        ("Richard Roe", "Rick Roe"),
+    ],
+)
+def test_a_list_written_twice_with_another_form_of_a_name_is_read_once(
+    second: str, again: str
+) -> None:
+    raw = f"Jane Doe and {second} Jane Doe and {again} are partners in Example, Springfield."
+    assert bylines.people(raw) == [JANE, Name("Richard", "Roe", "")]
+
+
+def test_a_suffix_inside_a_list_of_board_members_ends_no_sentence() -> None:
+    part = f"Jane Doe, Richard Roe Jr., Ann Poe. {BOARD_NOTE}"
+    assert [n.family for n in bylines.read_part(part)[0]] == ["Doe", "Roe", "Poe"]
+    apart = f"Jane Doe Jr. Richard Roe. {BOARD_NOTE}"
+    assert [n.family for n in bylines.read_part(apart)[0]] == ["Doe", "Roe"]

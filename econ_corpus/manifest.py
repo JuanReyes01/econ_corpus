@@ -36,7 +36,9 @@ def current(
         "byline_parts": review.fingerprint(parts),
         "author_pairs": review.fingerprint(pairs),
     }
-    tables = {f"{name}.csv": reasons.file_digest(clean / f"{name}.csv") for name in TABLES}
+    files = {f"{name}.csv": clean / f"{name}.csv" for name in TABLES}
+    # A missing table has no digest, so it differs from the one the build recorded.
+    tables = {name: reasons.file_digest(f) if f.exists() else "" for name, f in files.items()}
     return inputs | tables
 
 
