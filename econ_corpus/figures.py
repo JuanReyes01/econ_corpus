@@ -80,3 +80,56 @@ def year_chart_svg(rows: Table, *, labels: tuple[str, ...], heading: str) -> str
             f'<text x="{x + 16}" y="21">{label}</text>',
         ]
     return "\n".join([*parts, "</svg>"]) + "\n"
+
+
+FLOW_WIDTH, ROW = 860, 62  # width of the flow chart and height given to each step
+BOX_X, BOX_W, BOX_H, SIDE_X = 30, 230, 40, 330  # the column of totals and where removals start
+MINUS = "\u2212"  # a real minus sign, wider than a hyphen
+Flow = list[tuple[str, str, int, int, str]]  # code, description, removed, remaining, table reached
+
+
+def _total_box(y: float, count: int, label: str) -> list[str]:
+    """Draw a box with what remains at this point; a box that is a dataset is filled."""
+    fill = COLOURS[0] if label else "#ffffff"
+    ink = "#ffffff" if label else TEXT
+    text = f"{label}: {count:,}" if label else f"{count:,}"
+    middle = BOX_X + BOX_W / 2
+    box = (
+        f'<rect class="remaining" x="{BOX_X}" y="{y}" width="{BOX_W}" height="{BOX_H}" '
+        f'fill="{fill}" stroke="{COLOURS[0]}"/>'
+    )
+    return [
+        box,
+        f'<text x="{middle}" y="{y + 25}" text-anchor="middle" fill="{ink}">{text}</text>',
+    ]
+
+
+def flow_svg(steps: Flow, *, start: int, heading: str) -> str:
+    """Draw the exclusions as a column of totals with what each step leaves out beside it."""
+    height = TOP + ROW * (len(steps) + 1)
+    middle = BOX_X + BOX_W / 2
+    parts = [
+        (
+            f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {FLOW_WIDTH} {height}" '
+            f'font-family="sans-serif" font-size="12" fill="{TEXT}">'
+        ),
+        f"<title>{heading}</title>",
+        f'<rect width="{FLOW_WIDTH}" height="{height}" fill="#ffffff"/>',
+        f'<text x="{BOX_X}" y="22" font-size="14">{heading}</text>',
+        *_total_box(TOP, start, "Rows parsed"),
+    ]
+    for i, (code, description, removed, remaining, reached) in enumerate(steps, start=1):
+        y = TOP + ROW * i
+        arrow = y - ROW + BOX_H
+        left_out = (
+            f'<text class="removed" x="{SIDE_X}" y="{y - 7}">'
+            f'<tspan fill="{COLOURS[1]}" font-weight="bold">{MINUS} {removed:,}</tspan>'
+            f"  {code}: {description}</text>"
+        )
+        parts += [
+            f'<line x1="{middle}" x2="{middle}" y1="{arrow}" y2="{y}" stroke="{TEXT}"/>',
+            f'<line x1="{middle}" x2="{SIDE_X - 8}" y1="{y - 11}" y2="{y - 11}" stroke="{TEXT}"/>',
+            left_out,
+            *_total_box(y, remaining, reached),
+        ]
+    return "\n".join([*parts, "</svg>"]) + "\n"

@@ -64,6 +64,12 @@ processed:
 	uv run python -m econ_corpus.processed
 
 
+## Build the datasheet of the cleaned dataset (run `make processed` first)
+.PHONY: datasheet-clean
+datasheet-clean:
+	uv run python -m econ_corpus.datasheet_clean
+
+
 ## List the author cases that need a manual review (run `make processed` first)
 .PHONY: review-cases
 review-cases:

@@ -10,6 +10,7 @@ Lives here: reading the files. Does not live here: the review itself (done by re
 case, see docs/decisions.md) or what a decision changes (authors, identity, processed).
 """
 
+from collections import Counter
 import csv
 from pathlib import Path
 
@@ -102,3 +103,20 @@ def verdicts(decisions: Decisions, resolved: dict[str, str]) -> Decisions:
         if pair[0] != pair[1] and CAUTION[verdict] > CAUTION[found.get(pair, "same")]:
             found[pair] = verdict
     return found
+
+
+def outcome_counts(parts: list[dict[str, str]], pairs: list[dict[str, str]]) -> dict[str, int]:
+    """Count the decisions of the review files, given their rows as read from disk."""
+    marks = Counter(row["replacement"].strip().casefold() for row in parts)
+    verdicts = Counter(row["decision"].strip().casefold() for row in pairs)
+    return {
+        "n_review_parts": len(parts),
+        "n_parts_corrected": len(parts) - marks["keep"] - marks[NOBODY] - marks["unsure"],
+        "n_parts_nobody": marks[NOBODY],
+        "n_parts_keep": marks["keep"],
+        "n_parts_unsure": marks["unsure"],
+        "n_review_pairs": len(pairs),
+        "n_pairs_same": verdicts["same"],
+        "n_pairs_different": verdicts["different"],
+        "n_pairs_unsure": verdicts["unsure"],
+    }
