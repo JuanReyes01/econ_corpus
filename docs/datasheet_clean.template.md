@@ -49,7 +49,9 @@ give the shared raw table; the others leave only the cleaned dataset (Figure 1).
 {{flow}}
 
 - **Opinion:** a record is opinion if its document type, its section or its title marks it
-  as commentary, editorial, op-ed or letters. Records with no such mark are left out, either
+  as commentary, editorial, op-ed or letters, or if its text starts with the rubric that
+  USA Today printed above its opinion page from 1991 to 1997 (`THE EDITORIAL PAGE`), which
+  ProQuest files as news. Records with no such mark are left out, either
   as news (`not_opinion`) or, when they have no section, as undecided (`unclear_opinion`).
 - **Newspapers:** the ten queried newspapers, print and online editions.
 - **One text, one article:** a text found under several ids in one newspaper (print and
@@ -344,10 +346,9 @@ Pairs of authors that look alike and are not merged.
   50 words or under a cartoon heading; a cartoon with a longer caption and no heading
   stays.
 - **Opinion is taken from ProQuest's labels:** a few arts reviews and news analyses filed
-  under an opinion label are in, and opinion columns filed under a news section are out.
-  Signed pieces of the opinion pages of USA Today of 1991 to 2012 whose only mark is in
-  the first line of the text ("THE EDITORIAL PAGE", about 300) are out: the selection
-  reads the labels and the title, not the text. Records with no section and a generic
+  under an opinion label are in, and opinion columns filed under a news section are out,
+  unless the first line of their text is the rubric of the opinion page of USA Today; no
+  other rubric was looked for. Records with no section and a generic
   document type are left out as undecided
   (`unclear_opinion`); an audit of 100 of them found four signed op-eds, mostly of the Wall
   Street Journal before 1998.
