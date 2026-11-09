@@ -539,3 +539,25 @@ def test_fill_replaces_placeholders() -> None:
 def test_fill_raises_on_unknown_placeholder() -> None:
     with pytest.raises(KeyError):
         datasheet.fill("{{missing}}", {"n": "5"})
+
+
+@pytest.mark.parametrize(
+    "title",
+    [
+        "LONG ISLAND OPINION; A Sample Title",
+        "NEW JERSEY OPINION; A Sample Title",
+        "CONNECITCUT OPINION; A SAMPLE TITLE",
+        "OPINION; A SAMPLE TITLE",
+        "Op-Ed: A sample title",
+        "COMMENTARY; A sample title",
+    ],
+)
+def test_opinion_page_headings_in_titles_are_recognised(title: str) -> None:
+    assert summaries.is_opinion_title(title)
+
+
+@pytest.mark.parametrize(
+    "title", ["SECOND OPINION; A sample", "A MATTER OF OPINION", "ONE STRONG OPINION"]
+)
+def test_titles_that_only_hold_the_word_opinion_are_not_headings(title: str) -> None:
+    assert not summaries.is_opinion_title(title)

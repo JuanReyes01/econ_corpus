@@ -189,6 +189,7 @@ def build(
         msg = f"{unlinked} kept articles name no person: run exclusions again with these reviews"
         raise ValueError(msg)
     out_dir.mkdir(parents=True, exist_ok=True)
+    manifest.clear(out_dir)  # until the last table is written, the folder is not a dataset
     for name, table in tables.items():
         datasheet.write_csv(table, out_dir / f"{name}.csv")
     _write_articles(records, kept, out_dir / "articles.csv", batch_size)

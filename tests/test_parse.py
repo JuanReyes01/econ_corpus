@@ -384,3 +384,25 @@ def test_parse_folder_writes_nothing_when_a_file_fails_the_check(tmp_path: Path)
         parse.parse_folder(raw, out)
     assert not out.exists()
     assert list(tmp_path.glob("*.tmp")) == []
+
+
+def test_a_rule_that_is_not_a_clean_separator_fails_the_check() -> None:
+    text = make_file([make_record(), make_record()]).replace(
+        parse.SEPARATOR, parse.SEPARATOR + " ", 1
+    )
+    result = parse.check_text(text, "a.txt")
+    assert result["odd_rules"] == 1
+    assert result["ok"] is False
+
+
+def test_a_good_table_survives_a_parse_that_fails(tmp_path: Path) -> None:
+    raw = tmp_path / "raw"
+    raw.mkdir()
+    write_file(raw, "a.txt", [make_record()])
+    out = tmp_path / "records.parquet"
+    parse.parse_folder(raw, out)
+    good = out.read_bytes()
+    write_file(raw, "b.txt", [make_record()], footer=False)
+    with pytest.raises(ValueError, match=r"b\.txt"):
+        parse.parse_folder(raw, out)
+    assert out.read_bytes() == good

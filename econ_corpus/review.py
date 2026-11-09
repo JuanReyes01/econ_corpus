@@ -42,6 +42,10 @@ def folder(path: Path) -> Path:
             "(README.md says where they are kept) or create it empty to run with no review"
         )
         raise FileNotFoundError(msg)
+    missing = [name for name in (PARTS_FILE, PAIRS_FILE) if not (path / name).exists()]
+    if any(path.iterdir()) and missing:
+        msg = f"the review folder {path} holds files but not {' or '.join(missing)}"
+        raise FileNotFoundError(msg)
     return path
 
 
@@ -77,6 +81,10 @@ def load_parts(path: Path) -> dict[str, str]:
     _refuse_repeats(path, [row["part"] for row in rows])
     corrections = {}
     for row in rows:
+        if row["part"] != row["part"].strip() or ";" in row["part"]:
+            # Parts are cut at ';' and stripped, so such a decision would silently do nothing.
+            msg = f"{path.name}: {row['part']!r} can never match a part of a byline"
+            raise ValueError(msg)
         replacement = row["replacement"].strip()
         if replacement.casefold() in AS_READ:
             continue

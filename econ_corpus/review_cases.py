@@ -8,7 +8,8 @@ and names read by moving pieces around),
 `rejected_to_review.csv` (parts read as nobody, in kept articles and in those left out for
 having no person among their authors), `pairs_to_review.csv` (look-alike authors not yet
 reviewed) and `merged_to_review.csv` (authors merged from a name with a suffix and one
-without), each with the evidence a reviewer needs.
+without), each with the evidence a reviewer needs; and `unused_parts.csv` and
+`unused_pairs.csv`, the decisions that apply to nothing any more, to be retired.
 
 Lives here: which cases are worth a review, and the evidence shown. Does not live here: the
 decisions (taken by reading each case and kept in `data/review`, see `review`).
@@ -33,6 +34,7 @@ from econ_corpus.tables import Table
 
 GLUED_BY_RE = re.compile(r"(?i:by)[^\W\d_]{4,}")  # a first name such as 'BYJANE'
 MIN_ARTICLES = 2  # a pair is reviewed when both authors have at least this many articles
+FREQUENT = 20  # or when one of them has at least this many
 LONG_NAME = 4  # words in a name from which it is worth a second look
 MIN_SUFFIX_MERGE = 3  # articles each form needs for a suffix merge to be listed
 Article = tuple[str, int | None, str | None]  # newspaper, year, title
@@ -117,15 +119,35 @@ def rejected_parts(bylines: Iterable[str | None], decided: set[str]) -> Counter:
     return found
 
 
+def unused_parts(bylines: Iterable[str | None], decided: set[str]) -> list[str]:
+    """List the decided parts that no byline holds any more.
+
+    A change in how bylines are split leaves decisions that apply to nothing; they would
+    still be counted as reviewed cases, so they are listed to be retired.
+    """
+    held = {part for byline in bylines for part in split_authors(byline)}
+    return sorted(decided - held)
+
+
+def unused_pairs(decided: Iterable[tuple[str, str]], keys: set[str]) -> list[tuple[str, str]]:
+    """List the judged pairs in which a name key belongs to no author any more."""
+    return sorted(pair for pair in decided if not set(pair) <= keys)
+
+
 def pairs_to_review(candidates: Table, min_articles: int = MIN_ARTICLES) -> Table:
-    """Return the candidate pairs not reviewed yet with enough articles on both sides."""
+    """Return the candidate pairs not reviewed yet that are worth a review.
+
+    Both authors have enough articles, or one of them is a frequent author: a single article
+    under a misspelt name ('Jane Deo') matters when it belongs to someone with hundreds.
+    """
     head = candidates[0]
     a, b, status = head.index("articles_a"), head.index("articles_b"), head.index("review")
-    return [
-        row
-        for row in candidates[1:]
-        if row[status] == "not_reviewed" and min(int(row[a]), int(row[b])) >= min_articles
-    ]
+
+    def worth(row: list[str]) -> bool:
+        counts = int(row[a]), int(row[b])
+        return min(counts) >= min_articles or max(counts) >= FREQUENT
+
+    return [row for row in candidates[1:] if row[status] == "not_reviewed" and worth(row)]
 
 
 def evidence(articles: list[Article]) -> str:
@@ -200,7 +222,11 @@ def build(records: Path, reasons_file: Path, clean: Path, review_dir: Path) -> d
     ambiguous = ambiguous_parts(art["author"], decided)
     watched = watched_parts(art["author"], decided | set(ambiguous))
     nobody = pc.equal(reasons.load(records, reasons_file), "no_person_author")
-    unread = pq.read_table(records, columns=["author"]).filter(nobody)["author"].to_pylist()
+    every_byline = pq.read_table(records, columns=["author"])["author"]
+    unread = every_byline.filter(nobody).to_pylist()
+    names = _read(clean / "author_names.csv")
+    keys = {row[names[0].index("name_key")] for row in names[1:]}
+    judged = review.load_pairs(review_dir / review.PAIRS_FILE)
     # A kept article can also hold a part that names nobody, next to one that names a person.
     rejected = rejected_parts([*unread, *art["author"]], decided).most_common()
     article = dict(
@@ -215,11 +241,12 @@ def build(records: Path, reasons_file: Path, clean: Path, review_dir: Path) -> d
         "names_to_review": _part_rows(watched, papers),
         "rejected_to_review": [["part", "times"], *([part, str(n)] for part, n in rejected)],
         "pairs_to_review": _pair_rows(clean, article),
-        "merged_to_review": suffix_merges(
-            _read(clean / "author_names.csv"),
-            set(review.load_pairs(review_dir / review.PAIRS_FILE)),
-            MIN_SUFFIX_MERGE,
-        ),
+        "merged_to_review": suffix_merges(names, set(judged), MIN_SUFFIX_MERGE),
+        "unused_parts": [
+            ["part"],
+            *([part] for part in unused_parts(every_byline.unique().to_pylist(), decided)),
+        ],
+        "unused_pairs": [["key_a", "key_b"], *map(list, unused_pairs(judged, keys))],
     }
     for name, table in tables.items():
         datasheet.write_csv(table, review_dir / "cases" / f"{name}.csv")

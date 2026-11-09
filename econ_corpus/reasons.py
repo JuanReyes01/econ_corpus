@@ -99,6 +99,19 @@ INPUTS = [
     "doc_type", "section", "body_chars", "body_words", "author",
 ]  # fmt: skip
 RECORDS_STAMP = "records"  # metadata key of the reasons file that holds their fingerprint
+RULES_STAMP = "rules"  # and the one that holds the fingerprint of the code
+
+
+def rules_fingerprint(package: Path | None = None) -> str:
+    """Return a short code that changes whenever a module of the package changes.
+
+    A reason follows from the records and from the rules. Any edit counts, since telling a
+    rule from a comment is not worth the risk of keeping reasons that no longer hold.
+    """
+    digest = hashlib.sha256()
+    for module in sorted((package or Path(__file__).parent).glob("*.py")):
+        digest.update(module.name.encode() + module.read_bytes())
+    return digest.hexdigest()[:16]
 
 
 def fingerprint(table: pa.Table) -> str:
@@ -129,7 +142,7 @@ def write_reasons(
     """
     rows = rows.select(INPUTS)
     table = pa.table({**{key: rows[key] for key in KEYS}, "reason": codes})
-    stamps = {**(stamps or {}), RECORDS_STAMP: fingerprint(rows)}
+    stamps = {**(stamps or {}), RECORDS_STAMP: fingerprint(rows), RULES_STAMP: rules_fingerprint()}
     out.parent.mkdir(parents=True, exist_ok=True)
     pq.write_table(table.replace_schema_metadata(stamps), out, row_group_size=row_group_size)
 
@@ -138,19 +151,25 @@ def load(records: Path, reasons: Path) -> pa.ChunkedArray:
     """Return the reason of every row of `records`, in order.
 
     The reasons file must hold the same rows in the same order and must have been computed
-    from these records: one written for another parse would put the reasons on the wrong
-    records, or keep reasons that no longer follow from the data, so it is refused.
+    from these records with the rules as they are now: one written for another parse or by
+    older code would put the reasons on the wrong records, or keep reasons that no longer
+    hold, so it is refused.
     """
     table = pq.read_table(reasons, columns=[*KEYS, "reason"])
     rows = pq.read_table(records, columns=INPUTS)
     if not table.select(KEYS).equals(rows.select(KEYS)):
         msg = f"the rows of {reasons.name} and {records.name} differ: run the exclusions again"
         raise ValueError(msg)
-    stored = (pq.read_schema(reasons).metadata or {}).get(RECORDS_STAMP.encode(), b"").decode()
-    if stored != fingerprint(rows):
-        msg = (
-            f"{records.name} changed since {reasons.name} was computed (another parse): "
-            "run the exclusions again"
-        )
+    stamps = pq.read_schema(reasons).metadata or {}
+    found = {
+        "it has no fingerprint": RECORDS_STAMP.encode() not in stamps,
+        f"{records.name} changed since (another parse)": stamps.get(RECORDS_STAMP.encode(), b"")
+        != fingerprint(rows).encode(),
+        "the rules changed since (the code was edited)": stamps.get(RULES_STAMP.encode(), b"")
+        != rules_fingerprint().encode(),
+    }
+    wrong = next((why for why, bad in found.items() if bad), None)
+    if wrong:
+        msg = f"{reasons.name} cannot be used: {wrong}. Run the exclusions again"
         raise ValueError(msg)
     return table["reason"]

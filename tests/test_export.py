@@ -95,3 +95,12 @@ def test_exclusions_that_do_not_match_the_table_are_refused(tmp_path: Path) -> N
     _, short = write_tables(other, ["kept", "kept"])
     with pytest.raises(ValueError, match="rows"):
         export.write_csv(records, short, tmp_path / "r.csv")
+
+
+def test_the_export_is_stamped_with_what_it_was_made_from(tmp_path: Path) -> None:
+    records, reasons = write_tables(tmp_path, ["kept", "duplicate_id", "kept"])
+    out = tmp_path / "raw.csv"
+    export.write_csv(records, reasons, out)
+    assert export.is_current(records, reasons, out)
+    write_reasons(pq.read_table(records), ["kept", "kept", "kept"], reasons)
+    assert not export.is_current(records, reasons, out)

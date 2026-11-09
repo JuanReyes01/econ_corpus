@@ -742,9 +742,21 @@ def test_two_names_after_the_end_of_a_sentence_are_both_recovered() -> None:
     ]
 
 
-@pytest.mark.parametrize("part", ["vacation., Jane Doe", "reporting., Jane Doe", "Doe Jr., Jane"])
-def test_a_note_that_someone_did_not_write_is_not_a_sentence_about_the_author(part: str) -> None:
-    assert bylines.read_part(part)[0] != [JANE]
+@pytest.mark.parametrize("part", ["vacation., Jane Doe", "traveling., JANE DOE", "ill., Jane Doe"])
+def test_a_moved_absence_word_stands_before_the_author_not_the_absent(part: str) -> None:
+    # 'Jane Doe; Ann Roe is on vacation.' is exported as 'vacation., Jane Doe; Ann Roe is on'.
+    assert authors.name_key(bylines.read_part(part)[0][0]) == "janedoe"
+
+
+def test_the_cut_note_after_a_moved_absence_word_names_nobody() -> None:
+    assert bylines.people("vacation., Jane Doe; Ann Roe is on") == [JANE]
+    assert bylines.people("ill., Jane Doe; Ann Roe is") == [JANE]
+    assert bylines.people("traveling., Jane Doe; Roe is, A M") == [JANE]
+
+
+def test_a_suffix_before_the_comma_is_a_suffix() -> None:
+    assert authors.parse_name("Doe Jr., John") == Name("John", "Doe", "Jr")
+    assert authors.parse_name("III, John Q Doe") == Name("John Q", "Doe", "III")
 
 
 @pytest.mark.parametrize(
@@ -801,3 +813,87 @@ def test_a_degree_written_without_its_last_period_is_still_a_degree() -> None:
 
 def test_an_author_who_contributed_her_own_piece_is_still_the_author() -> None:
     assert bylines.people("Jane Doe contributed this essay to the Springfield Review") == [JANE]
+
+
+@pytest.mark.parametrize(
+    "part",
+    [
+        "Jane Doe, Ann Roe and Richard Poe contributed reporting for this article.",
+        "Jane Doe is on v acation.",
+        "Former Global Example Coordinator",
+        "Retired US Army captain",
+        "Taking Exception",
+        "Character Sketch",
+        "CEO, Example",
+        "Ventures, Example",
+        "Republicans, Example Cabin",
+        "Supreme Court",
+    ],
+)
+def test_notes_roles_and_rubrics_are_not_persons(part: str) -> None:
+    assert bylines.people(part) == []
+
+
+def test_and_inside_a_note_after_the_name_in_capitals_does_not_split() -> None:
+    raw = "JANE DOE. Jane Doe is professor of Law and Criminal Justice at Example University."
+    assert bylines.people(raw) == [Name("JANE", "DOE", "")]
+
+
+def test_pieces_of_a_note_after_a_sentence_about_the_author_are_not_authors() -> None:
+    raw = "Jane Q.Doe; Doe was a speechwriter for Presidents Poe; Roe, Richard; Poe, Senator Ann"
+    assert bylines.people(raw) == [Name("Jane Q.", "Doe", "")]
+
+
+def test_a_second_author_with_her_own_sentence_is_still_read() -> None:
+    raw = "Jane Doe is a teacher in Springfield; Richard Roe is a nurse in Shelbyville"
+    assert bylines.people(raw) == [JANE, Name("Richard", "Roe", "")]
+
+
+@pytest.mark.parametrize(("part", "suffix"), [("Jane Doe 3d", "III"), ("Doe, Jane 2d", "II")])
+def test_ordinal_suffixes_are_read(part: str, suffix: str) -> None:
+    assert authors.parse_name(part).suffix == suffix
+
+
+def test_reader_glued_to_the_name_is_removed() -> None:
+    assert bylines.read_part("Jane Q DoeReader") == ([Name("Jane Q", "Doe", "")], "as_written")
+
+
+def test_display_fixes_a_mc_name_in_capitals_and_keeps_numerals() -> None:
+    assert authors.display(Name("Jane", "MCDOE", "")) == "Jane McDoe"
+    assert authors.display(Name("JANE", "MCDOE", "")) == "Jane McDoe"
+    assert authors.display(Name("Jane", "Doe III", "")) == "Jane Doe III"
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        ("Doe, Temple", [Name("Temple", "Doe", "")]),
+        ("Jane Court and Richard Roe", [Name("Jane", "Court", ""), Name("Richard", "Roe", "")]),
+        ("Rear Adm. Jane Doe", [JANE]),
+        ("Sens. Jane Doe", [JANE]),
+    ],
+)
+def test_names_that_hold_a_word_of_an_institution_or_a_rank(raw: str, expected: list) -> None:
+    assert bylines.people(raw) == expected
+
+
+def test_a_sentence_that_ends_does_not_hide_the_authors_after_it() -> None:
+    raw = "Jane Doe. Springfield. Editor's Note: The writer is a teacher.; Roe Shelbyville, Ann"
+    assert [authors.name_key(n) for n in bylines.people(raw)] == ["janedoe", "annroeshelbyville"]
+
+
+def test_an_editors_note_cut_short_does_not_hide_the_next_letter_writers() -> None:
+    raw = "Jane Doe. Springfield. Editor's Note: The writer is director of the Example; Roe, Ann"
+    assert [authors.name_key(n) for n in bylines.people(raw)] == ["janedoe", "annroe"]
+
+
+def test_regressions_found_while_comparing_readings() -> None:
+    assert authors.name_key(authors.parse_name("Do us, Jane")) == "janedous"  # a stray space
+    assert bylines.people("Jane Doe Jr., Richard Roe") == [
+        Name("Jane", "Doe", "Jr"),
+        Name("Richard", "Roe", ""),
+    ]
+    assert bylines.people("US Rep Jane Doe") == [JANE]
+    raw = "This article was written jointly by Jane Doe, Example president; "
+    raw += "Richard Roe, Example Borough president"
+    assert Name("Richard", "Roe", "") in bylines.people(raw)

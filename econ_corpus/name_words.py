@@ -8,6 +8,7 @@ institution, and words worth a second look. Does not live here: how they are use
 """
 
 SUFFIXES = {"jr": "Jr", "sr": "Sr", "ii": "II", "iii": "III", "iv": "IV"}
+SUFFIXES |= {"2d": "II", "2nd": "II", "3d": "III", "3rd": "III", "4th": "IV"}
 HONORIFICS = {"dr", "prof", "professor", "rev", "sen", "rep", "gov", "mr", "mrs", "ms", "sir"}
 HONORIFICS |= {"rabbi", "msgr", "sister", "father", "pastor", "reverend", "doctor"}
 # Offices and ranks written before a name ('State Rep Jane Doe', 'Vice President Jane Doe').
@@ -16,7 +17,8 @@ HONORIFICS |= {
     "governor", "mayor", "legis", "legislator", "assemb", "assemblyman", "assemblywoman", "ald",
     "alderman", "congressman", "congresswoman", "councilman", "councilwoman", "supervisor",
     "commissioner", "secretary", "ambassador", "general", "gen", "brigadier", "colonel", "col",
-    "captain", "capt", "lieutenant", "lt", "sergeant", "sgt", "admiral",
+    "captain", "capt", "lieutenant", "lt", "sergeant", "sgt", "admiral", "adm", "rear",
+    "sens", "senators", "reps", "representatives", "drs", "revs", "us",
 }  # fmt: skip
 DEGREES = {"md", "phd", "esq", "jd", "dds", "rn", "mba", "dvm", "mph"}
 
@@ -51,6 +53,11 @@ ORG_WORDS = {
     "agency", "project", "administration", "administrations", "development", "rights",
     "commission", "school", "clinic", "sports", "newspapers", "government", "organization",
     "community", "institution", "corporation", "police", "veterans", "llp",
+    # Roles, bodies and column rubrics read as names in the third audit.
+    "coordinator", "reporter", "correspondent", "professor", "captain", "supreme", "army",
+    "navy", "health", "federation", "comptroller", "initiative", "bank", "relations",
+    "republicans", "democrats", "legal", "defense", "exception", "sketch", "myths", "topic",
+    "surgeon", "ceo",
 }  # fmt: skip
 # In 'Family, Given' form a one-word family name can be an ORG_WORD ('Press, Jane'), so only
 # these words rule a part out when they stand alone before the comma.
@@ -60,7 +67,8 @@ ROLE_WORDS |= {"advertiser"}
 # Institution words that are not a family name even alone ('University, Example').
 ROLE_WORDS |= {
     "university", "association", "committee", "institute", "foundation", "society", "college",
-    "department", "coalition", "alliance", "council", "network",
+    "department", "coalition", "alliance", "council", "network", "ceo", "ventures",
+    "republicans", "democrats", "commander",
 }  # fmt: skip
 
 # Words that go on a sentence after a name ('Jane Doe of Springfield', 'Jane Doe is a teacher').
@@ -68,12 +76,6 @@ ROLE_WORDS |= {
 SENTENCE_WORDS = {
     "is", "was", "are", "were", "has", "had", "will", "of", "from", "in", "at", "for", "with",
     "on", "to", "the", "a", "an", "who", "as", "by", "and", "or",
-}  # fmt: skip
-
-# The last word of a note saying that someone did not write ('Jane Doe is on vacation.').
-ABSENT_WORDS = {
-    "vacation", "leave", "today", "tour", "assignment", "sabbatical", "holiday", "traveling",
-    "reporting", "article", "column",
 }  # fmt: skip
 
 # Words of places and publications that are also family names ('Jane Washington'). A name

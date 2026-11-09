@@ -285,11 +285,13 @@ def parse_text(text: str, source_file: str) -> list[dict]:
 
 
 def check_text(text: str, source_file: str) -> dict:
-    """Compare records found against separator lines counted independently.
+    """Check that a file has the shape the splitter relies on.
 
-    A healthy file has exactly one footer, nothing before the first separator, and as many
-    chunks as separators. `odd_rules` counts other underscore rules, which are reported
-    but are not failures.
+    A healthy file has exactly one footer, nothing before the first separator, and no
+    separator line followed by spaces: it would not split, and two records would become one.
+    Other rules of underscores (`odd_rules`) belong to article bodies; they are reported and
+    are not failures. The records are not compared with a count from another source: ProQuest
+    states none in the file.
     """
     lines = text.replace("\r\n", "\n").split("\n")
     separators = sum(ln == SEPARATOR for ln in lines)
@@ -297,7 +299,8 @@ def check_text(text: str, source_file: str) -> dict:
     chunks = _chunks(text)
     footers = sum(c.strip().startswith(FOOTER_MARK) for c in chunks[1:])
     records = len(chunks) - 1 - footers
-    ok = records + footers == separators and footers == 1 and not chunks[0].strip()
+    spoiled = sum(ln != SEPARATOR and ln.rstrip(" \t") == SEPARATOR for ln in lines)
+    ok = footers == 1 and not chunks[0].strip() and spoiled == 0
     return {
         "source_file": source_file,
         "separators": separators,

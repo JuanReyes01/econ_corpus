@@ -1,4 +1,4 @@
-"""Used by steps 2 and 4 of the pipeline: read the people named in a ProQuest byline.
+"""Used by steps 2, 4 and 5 of the pipeline: read the people named in a ProQuest byline.
 
 Input: the `author` value of a record, as exported (for example 'Doe, Jane Q; Roe, Richard').
 Output: the persons it names, in order, each once, with how each was read.
@@ -17,26 +17,28 @@ import re
 
 from econ_corpus import authors
 from econ_corpus.authors import Name
-from econ_corpus.name_words import ABSENT_WORDS, HONORIFICS, SAINTS, SENTENCE_WORDS, SUFFIXES
+from econ_corpus.name_words import HONORIFICS, SAINTS, SENTENCE_WORDS, SUFFIXES
 
 JOINER_RE = re.compile(r"\s+(?:and|&)\s+", re.IGNORECASE)
 LIST_RE = re.compile(r",|\s+(?:and|&)\s+", re.IGNORECASE)  # separators of a list of names
 NAME_END_RE = re.compile(r",|\s-\s|\d")  # what ends a name that other text follows
 # A label that the export left on the name: 'Jane DoeGuest essay', 'essay, Jane DoeGuest',
 # 'Jane Doe Guest essay'.
-GLUED_RE = re.compile(r"^essay,\s*(?=.*Guest$)|\s*Gue ?st essay\b|(?<=[a-z])Guest\b")
+GLUED_RE = re.compile(r"^essay,\s*(?=.*Guest$)|\s*Gue ?st essay\b|(?<=[a-z])(?:Guest|Reader)\b")
 # What follows the name of someone who did not write: 'is on vacation', 'is off today',
-# 'is on book leave', 'is on' (cut short), 'contributed reporting'.
+# 'is on book leave', and the note cut short because the export moved its last word to the
+# front of the byline ('is on', 'is').
 ABSENT_RE = re.compile(
-    r"(?:(?:is|are) (?:off\b|away\b|on\.?$"
-    r"|on (?:an? )?(?:\w+ )?(?:vacation|leave|tour|assignment|sabbatical|holiday))"
-    r"|contributed (?:reporting|research)\b)",
+    r"(?:is|are)(?:\.?$| (?:off\b|away\b|on\.?$"
+    r"|on (?:an? )?(?:\w+ )?(?:v ?acation|leave|tour|assignment|sabbatical|holiday)))",
     re.IGNORECASE,
 )
+WRITER_NOTE_RE = re.compile(r"\bthe writers? (?:is|are)\b", re.IGNORECASE)  # of a letters page
+CREDIT_RE = re.compile(r"\bcontributed (?:reporting|research)\b", re.IGNORECASE)
 # A period glued to the word after it ('Jane Q.Doe', "Jane Q.O'Doe", 'Jane Doe.These are'),
 # but not the periods between initials ('J.Q.', 'M.D').
 PERIOD_GLUED_RE = re.compile(r"(?<=[^\W\d_]\.)(?=[^\W\d_](?:[^\W\d_]|['\u2019]))")
-BIO_RE = re.compile(r"(?:is|was|are|were|has|had)\b", re.IGNORECASE)  # starts a sentence
+BIO_RE = re.compile(r"\b(?:is|was|are|were|has|had)\b")  # the verb of a sentence about someone
 SENTENCE_END_RE = re.compile(r"\.['\"\u201d\u2019]*$")  # a period, and quotes closing after it
 # 'and Andrew' comes out of the export as 'andrew': 'and' swallowed the start of the name.
 AND_GLUED_RE = re.compile(r"(?<=\s)and(?=[a-z]+\s+[A-Z])")
@@ -47,9 +49,10 @@ def split_authors(raw: str | None) -> list[str]:
 
     ';' separates authors. A suffix standing alone ('Doe, John; Jr.') belongs to the name
     before it, and so does a given name cut off from its one-word family name ('Doe; , Jane').
-    A part without a comma loses a leading 'By' and is split at 'and' or '&', unless the 'and'
-    is inside a sentence about the first author ('Jane Doe is a teacher and ...') or the part
-    is a note about people who did not write ('Jane Doe and Ann Roe are on vacation').
+    A part without a comma loses a leading 'By' and is split at 'and' or '&', unless what
+    stands before the 'and' already holds a sentence about the first author ('Jane Doe is a
+    teacher and ...') or the part is a note about people who did not write ('Jane Doe and Ann
+    Roe are on vacation').
     """
     parts: list[str] = []
     for piece in (raw or "").split(";"):
@@ -65,7 +68,7 @@ def split_authors(raw: str | None) -> list[str]:
         else:
             text = AND_GLUED_RE.sub("and And", authors.BY_RE.sub("", text))
             pieces = [p.strip() for p in JOINER_RE.split(text) if p.strip()]
-            sentence = BIO_RE.match(" ".join(_leading(pieces[0])[1])) if pieces else None
+            sentence = BIO_RE.search(pieces[0]) if pieces else None
             parts += [text] if sentence or _is_note(text) else pieces
     return parts
 
@@ -98,13 +101,13 @@ def _leading(part: str) -> tuple[list[str], list[str]]:
 def _is_note(part: str) -> bool:
     """Tell whether a part says that the people it names did not write this article.
 
-    'Jane Doe is on vacation.' is printed under another columnist's article; so is
-    'Jane Doe and Ann Roe are on vacation.'.
+    'Jane Doe is on vacation.' is printed under another columnist's article; so are
+    'Jane Doe and Ann Roe are on vacation.' and a credit for reporting or research.
     """
     *before, last = JOINER_RE.split(part)
     words, rest = _leading(last)
     named = bool(words) and all(authors.given_first(piece.strip()) for piece in before)
-    return named and bool(ABSENT_RE.match(" ".join(rest)))
+    return bool(CREDIT_RE.search(part)) or (named and bool(ABSENT_RE.match(" ".join(rest))))
 
 
 def _leading_name(part: str) -> Name | None:
@@ -151,14 +154,15 @@ def unscrambled(part: str) -> list[Name]:
 def _after_sentence(part: str) -> list[Name]:
     """Read the names that follow the end of a sentence about them ('Committee., Jane Doe').
 
-    The export moves the last word of a note about the authors before their names. A note
-    saying that someone did not write ('vacation., Jane Doe') names nobody; neither does a
-    suffix before the comma ('Doe Jr., Jane'), which ends no sentence.
+    The export moves the last word of the whole byline before its first name. That word ends
+    a note about the authors, or a note about someone else that follows their names:
+    'Jane Doe; Ann Roe is on vacation.' comes out as 'vacation., Jane Doe; Ann Roe is on', so
+    the name after the moved word is always an author.
     """
     head, _, rest = part.partition(",")
     last = authors.lookup(SENTENCE_END_RE.sub("", head).split()[-1]) if head.strip(". ") else ""
     closes = SENTENCE_END_RE.search(head) and not authors.is_title(head.strip())
-    if not closes or not last or last in ABSENT_WORDS or last in SUFFIXES:
+    if not closes or not last or last in SUFFIXES:
         return []
     names = [authors.given_first(piece.strip()) for piece in JOINER_RE.split(rest)]
     return [name for name in names if name] if all(names) else []
@@ -202,16 +206,28 @@ def read_byline(
     """Return the persons a byline names, in order, each once, with how each was read.
 
     A part listed in `corrections` (decisions of the manual review) is read from its corrected
-    byline and marked 'manual_review'; the others are 'as_written' or 'recovered'.
+    byline and marked 'manual_review'; the others are 'as_written' or 'recovered'. After a
+    part that leaves a sentence about its author unfinished, a part written 'Family, Given' is
+    a piece of that sentence which the export cut off and turned round ('Jane Doe was an aide
+    to Presidents Poe and Richard Roe' gives 'Roe, Richard'), not an author. The editor's note
+    of a letters page ('The writer is ...') is followed by the next letter writers, so it
+    does not count.
     """
     found: dict[str, tuple[Name, str]] = {}
+    in_sentence = False
     for part in split_authors(raw):
         if corrections and part in corrections:
             reviewed = (authors.reviewed_name(p) for p in corrections[part].split(";"))
             names = [name for name in reviewed if name]
             how = "manual_review"
+        elif in_sentence and "," in part and authors.parse_name(part):
+            names, how = [], ""
         else:
             names, how = read_part(part)
+        if SENTENCE_END_RE.search(part):
+            in_sentence = False
+        elif BIO_RE.search(part) and not _is_note(part) and not WRITER_NOTE_RE.search(part):
+            in_sentence = True
         for name in names:
             found.setdefault(authors.name_key(name), (name, how))
     return list(found.values())

@@ -118,3 +118,18 @@ def test_a_correction_without_letters_on_both_sides_is_refused(tmp_path: Path, b
     )
     with pytest.raises(ValueError, match="readable"):
         review.load_parts(path)
+
+
+def test_a_review_folder_with_only_one_of_its_files_is_refused(tmp_path: Path) -> None:
+    write(tmp_path / "byline_parts.csv", "part,replacement,reason\n")
+    with pytest.raises(FileNotFoundError, match="author_pairs"):
+        review.folder(tmp_path)
+    write(tmp_path / "author_pairs.csv", "key_a,key_b,decision,reason\n")
+    assert review.folder(tmp_path) == tmp_path
+
+
+@pytest.mark.parametrize("part", ["Jane Doe ", " Jane Doe", "Doe, Jane; Roe, Ann"])
+def test_a_part_that_no_byline_can_produce_is_refused(tmp_path: Path, part: str) -> None:
+    path = write(tmp_path / "parts.csv", f'part,replacement,reason\n"{part}",NOBODY,\n')
+    with pytest.raises(ValueError, match="never match"):
+        review.load_parts(path)

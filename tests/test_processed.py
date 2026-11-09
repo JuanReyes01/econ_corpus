@@ -7,7 +7,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 
-from econ_corpus import parse, processed, review
+from econ_corpus import manifest, parse, processed, review
 from econ_corpus.reasons import write_reasons
 
 A, B = "Example Daily", "Sample Times"
@@ -130,28 +130,28 @@ def test_a_corrected_part_is_linked_as_manual_review() -> None:
 
 
 HAYWOOD = (
-    (10, "Haywood, Alyssa", A),
-    (11, "Haywood, Alyssa Q", A),
-    (12, "Haywoode, Alyssa", A),
-    (13, "Haywoode, Alyssa", A),
+    (10, "Doewood, Marta", A),
+    (11, "Doewood, Marta Q", A),
+    (12, "Doewoode, Marta", A),
+    (13, "Doewoode, Marta", A),
 )
 
 
 def test_a_pair_judged_different_that_ends_merged_is_refused() -> None:
-    rows = ((10, "Haywood, Alyssa", A), (11, "Haywoode, Alyssa", A), (12, "Haywooden, Alyssa", A))
+    rows = ((10, "Doewood, Marta", A), (11, "Doewoode, Marta", A), (12, "Doewooden, Marta", A))
     decisions = {
-        ("alyssahaywood", "alyssahaywoode"): "same",
-        ("alyssahaywoode", "alyssahaywooden"): "same",
-        ("alyssahaywood", "alyssahaywooden"): "different",
+        ("martadoewood", "martadoewoode"): "same",
+        ("martadoewoode", "martadoewooden"): "same",
+        ("martadoewood", "martadoewooden"): "different",
     }
-    with pytest.raises(ValueError, match="alyssahaywooden"):
+    with pytest.raises(ValueError, match="martadoewooden"):
         tables_for(*rows, decisions=decisions)
 
 
 def test_two_verdicts_on_one_pair_of_authors_keep_the_most_cautious() -> None:
     decisions = {
-        ("alyssahaywood", "alyssahaywoode"): "unsure",
-        ("alyssahaywoode", "alyssaqhaywood"): "different",
+        ("martadoewood", "martadoewoode"): "unsure",
+        ("martadoewoode", "martaqdoewood"): "different",
     }
     for order in (decisions, dict(reversed(decisions.items()))):
         tables = tables_for(*HAYWOOD, decisions=order)
@@ -289,3 +289,31 @@ def test_build_refuses_reasons_computed_with_other_review_files(tmp_path: Path) 
     )
     with pytest.raises(ValueError, match="review"):
         processed.build(records, reasons, tmp_path / "clean", review_dir=review_dir)
+
+
+def test_an_interrupted_build_leaves_no_manifest(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    records, reasons = write_inputs(tmp_path)
+    clean = tmp_path / "clean"
+    processed.build(records, reasons, clean)
+    assert (clean / "manifest.json").exists()
+
+    def stop(*_: object) -> None:
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(processed, "_write_articles", stop)
+    with pytest.raises(KeyboardInterrupt):
+        processed.build(records, reasons, clean)
+    assert not (clean / "manifest.json").exists()
+
+
+def test_the_manifest_refuses_a_table_that_was_cut(tmp_path: Path) -> None:
+    records, reasons = write_inputs(tmp_path)
+    clean = tmp_path / "clean"
+    processed.build(records, reasons, clean)
+    manifest.check(clean, reasons, None)
+    articles = clean / "articles.csv"
+    articles.write_text(articles.read_text(encoding="utf-8")[:-20], encoding="utf-8")
+    with pytest.raises(ValueError, match=r"articles\.csv"):
+        manifest.check(clean, reasons, None)

@@ -108,15 +108,22 @@ pdf:
 	uv run python -m econ_corpus.pdf docs/datasheet_raw.md docs/datasheet_clean.md
 
 
-## Copy the current outputs into the delivery folder DELIVERY (renders the PDFs first)
+## 7. Check that every output on disk belongs to the current records, reasons and review
+.PHONY: check
+check:
+	uv run python -m econ_corpus.check
+
+
+## Copy the current outputs into the delivery folder DELIVERY (checks them and renders the PDFs)
 # Everything is a copy, never a link: a later run of the pipeline must not change what was
-# delivered, and the files of one delivery belong to one state of the pipeline.
+# delivered. `check` stops the delivery when an output is stale, so the files of one delivery
+# belong to one state of the pipeline.
 .PHONY: delivery
-delivery: pdf
+delivery: check pdf
 	mkdir -p $(DELIVERY)/2_raw_csv $(DELIVERY)/3_clean
 	test -e $(DELIVERY)/1_raw_txt || cp -r --reflink=auto $(RAW_DIR) $(DELIVERY)/1_raw_txt
 	cp --reflink=auto --remove-destination data/processed/econ_corpus_raw.csv docs/datasheet_raw.pdf $(DELIVERY)/2_raw_csv/
-	cp --reflink=auto --remove-destination data/processed/clean/*.csv docs/datasheet_clean.pdf $(DELIVERY)/3_clean/
+	cp --reflink=auto --remove-destination data/processed/clean/*.csv data/processed/clean/manifest.json docs/datasheet_clean.pdf $(DELIVERY)/3_clean/
 	rm -rf $(DELIVERY)/3_clean/review
 	cp -r data/review $(DELIVERY)/3_clean/review
 	cp docs/delivery_readme.md $(DELIVERY)/README.md

@@ -376,3 +376,34 @@ def test_a_short_body_printed_on_many_days_under_one_title_is_a_placeholder() ->
         for i in range(1, exclusions.PLACEHOLDER_ARTICLES + 1)
     ]
     assert reasons_of(*rows) == ["no_text"] * exclusions.PLACEHOLDER_ARTICLES
+
+
+def test_reasons_are_refused_once_the_rules_change(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    source = tmp_path / "records.parquet"
+    pq.write_table(pa.table(make_rows({})), source)
+    out = tmp_path / "exclusions.parquet"
+    exclusions.write_exclusions(source, out)
+    monkeypatch.setattr(reasons, "rules_fingerprint", lambda: "other code")
+    with pytest.raises(ValueError, match="rules"):
+        reasons.load(source, out)
+
+
+def test_a_reasons_file_without_fingerprints_says_so(tmp_path: Path) -> None:
+    source = tmp_path / "records.parquet"
+    pq.write_table(pa.table(make_rows({})), source)
+    out = tmp_path / "exclusions.parquet"
+    keys = {"source_file": ["ProQuestDocuments-2024-11-22_1.txt"], "record_index": [0]}
+    table = pq.read_table(source, columns=["source_file", "record_index"])
+    pq.write_table(table.append_column("reason", pa.array(["kept"])), out)
+    assert keys
+    with pytest.raises(ValueError, match="no fingerprint"):
+        reasons.load(source, out)
+
+
+def test_the_rules_fingerprint_changes_with_the_code(tmp_path: Path) -> None:
+    (tmp_path / "a.py").write_text("X = 1\n", encoding="utf-8")
+    before = reasons.rules_fingerprint(tmp_path)
+    (tmp_path / "a.py").write_text("X = 2\n", encoding="utf-8")
+    assert reasons.rules_fingerprint(tmp_path) != before

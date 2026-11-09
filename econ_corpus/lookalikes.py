@@ -32,13 +32,16 @@ def _is_nickname(a: str, b: str) -> bool:
 
 
 def _is_initial(one: Name, other: Name) -> bool:
-    """Tell whether the only given name of one is the initial of the other's first name.
+    """Tell whether the given names of one are only the initials of the other's.
 
-    'J Doe' can be 'Jane Doe'. 'J Brad Doe' goes by Brad, so it is not listed with every
-    first name that starts with J.
+    'J Doe' can be 'Jane Doe', and 'J Q Doe' can be 'Jane Q Doe' or 'Jane Quincy Doe'.
+    'J Brad Doe' goes by Brad, so it is not listed with every first name that starts with J.
     """
-    (first, middle), (longer, _) = identity.given(one), identity.given(other)
-    return len(first) == 1 and not middle and len(longer) > 1 and longer.startswith(first)
+    initials = [fold(word) for word in one.given.split()]
+    words = [fold(word) for word in other.given.split() if fold(word)]
+    lone = all(len(letter) == 1 for letter in initials) and bool(initials)
+    stood_for = "".join(word[0] for word in words).startswith("".join(initials))
+    return lone and stood_for and bool(words) and len(words[0]) > 1
 
 
 def _one_edit(a: str, b: str) -> bool:
@@ -71,7 +74,11 @@ def _near_pairs(seen: dict[str, Seen]) -> set[tuple[str, str]]:
 
 
 def _nickname_pairs(seen: dict[str, Seen]) -> set[tuple[str, str]]:
-    """Find names in one newspaper that differ only by a short form of the first name."""
+    """Find names that differ only by a short form or the initials of the given names.
+
+    Unlike a letter of difference, a short form is listed across newspapers too: 'Chuck Doe'
+    in one and 'Charles Doe' in another are worth a look.
+    """
     by_family: defaultdict[str, list[str]] = defaultdict(list)
     for key in sorted(seen):
         by_family[fold(seen[key].name.family)].append(key)
@@ -84,11 +91,7 @@ def _nickname_pairs(seen: dict[str, Seen]) -> set[tuple[str, str]]:
                 or _is_initial(one.name, other.name)
                 or _is_initial(other.name, one.name)
             )
-            if (
-                short_form
-                and one.papers & other.papers
-                and identity.compatible(one.name, other.name)
-            ):
+            if short_form and identity.compatible(one.name, other.name):
                 pairs.add((a, b))
     return pairs
 

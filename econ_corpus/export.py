@@ -11,6 +11,7 @@ raw table (reasons) or any change to a value. The CSV holds ProQuest-licensed te
 shared directly and never committed.
 """
 
+import json
 from pathlib import Path
 
 import pyarrow as pa
@@ -18,19 +19,40 @@ import pyarrow.compute as pc
 import pyarrow.csv as pacsv
 import pyarrow.parquet as pq
 
-from econ_corpus.reasons import LEFT_OUT, load
+from econ_corpus.reasons import LEFT_OUT, RECORDS_STAMP, fingerprint, load, rules_fingerprint
 
 BATCH_SIZE = 20_000  # rows per batch; the parquet is read in pieces so it never has to fit in RAM
+
+
+def _stamp(parquet: Path, reasons: Path, out: Path) -> dict[str, str]:
+    """Return what the CSV depends on: the records, the rules, the rows left out, its size."""
+    codes = load(parquet, reasons)
+    left_out = pc.is_in(codes, value_set=pa.array(LEFT_OUT))
+    return {
+        "records": (pq.read_schema(reasons).metadata or {})[RECORDS_STAMP.encode()].decode(),
+        "rules": rules_fingerprint(),
+        "left_out": fingerprint(pa.table({"left_out": left_out})),
+        "bytes": str(out.stat().st_size) if out.exists() else "",
+    }
+
+
+def is_current(parquet: Path, reasons: Path, out: Path) -> bool:
+    """Tell whether the CSV on disk is the one these records and reasons give."""
+    stamp = out.with_suffix(".json")
+    stored = json.loads(stamp.read_text(encoding="utf-8")) if stamp.exists() else {}
+    return stored == _stamp(parquet, reasons, out)
 
 
 def write_csv(parquet: Path, reasons: Path, out: Path, batch_size: int = BATCH_SIZE) -> int:
     """Stream the rows that belong to the raw table into a CSV; return how many were written.
 
-    The reasons file has one row per row of the parquet, in the same order.
+    The reasons file has one row per row of the parquet, in the same order. A stamp is written
+    next to the CSV, so a later step can tell whether the file still matches its inputs.
     """
     source = pq.ParquetFile(parquet)
     codes = load(parquet, reasons)
     out.parent.mkdir(parents=True, exist_ok=True)
+    out.with_suffix(".json").unlink(missing_ok=True)
     written = start = 0
     with pacsv.CSVWriter(out, source.schema_arrow) as writer:
         for batch in source.iter_batches(batch_size=batch_size):
@@ -40,6 +62,8 @@ def write_csv(parquet: Path, reasons: Path, out: Path, batch_size: int = BATCH_S
             writer.write_batch(batch.filter(keep))
             written += pc.sum(keep).as_py() or 0
             start += batch.num_rows
+    stamp = json.dumps(_stamp(parquet, reasons, out), indent=2) + "\n"
+    out.with_suffix(".json").write_text(stamp, encoding="utf-8")
     return written
 
 

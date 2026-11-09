@@ -106,9 +106,9 @@ def test_contradicting_variants_are_candidates() -> None:
 
 
 def test_names_one_letter_apart_in_the_same_newspaper_are_candidates() -> None:
-    names = seen(("Haywood, Alyssa", {A}, 1), ("Haywoode, Alyssa", {A}, 11))
+    names = seen(("Doewood, Marta", {A}, 1), ("Doewoode, Marta", {A}, 11))
     assert lookalikes.candidates(names, identity.resolve(names)) == [
-        ("alyssahaywood", "alyssahaywoode", "one_letter_apart")
+        ("martadoewood", "martadoewoode", "one_letter_apart")
     ]
 
 
@@ -120,7 +120,7 @@ def test_one_changed_letter_counts_as_one_letter_apart() -> None:
 
 
 def test_names_one_letter_apart_in_different_newspapers_are_not_candidates() -> None:
-    names = seen(("Haywood, Alyssa", {A}, 1), ("Haywoode, Alyssa", {B}, 11))
+    names = seen(("Doewood, Marta", {A}, 1), ("Doewoode, Marta", {B}, 11))
     assert lookalikes.candidates(names, identity.resolve(names)) == []
 
 
@@ -138,9 +138,9 @@ def test_merged_variants_are_not_candidates() -> None:
 
 
 def test_a_pair_reviewed_as_the_same_person_is_merged() -> None:
-    names = seen(("Haywood, Alyssa", {A}, 1), ("Haywoode, Alyssa", {A}, 11))
-    resolved = identity.resolve(names, same=[("alyssahaywood", "alyssahaywoode")])
-    assert set(resolved.values()) == {"alyssahaywoode"}
+    names = seen(("Doewood, Marta", {A}, 1), ("Doewoode, Marta", {A}, 11))
+    resolved = identity.resolve(names, same=[("martadoewood", "martadoewoode")])
+    assert set(resolved.values()) == {"martadoewoode"}
     assert lookalikes.candidates(names, resolved) == []
 
 
@@ -212,9 +212,11 @@ def test_a_nickname_and_the_full_first_name_in_one_newspaper_are_candidates() ->
     assert len(pairs) == 2
 
 
-def test_nicknames_need_a_shared_newspaper_and_compatible_names() -> None:
+def test_nicknames_need_compatible_names_but_not_a_shared_newspaper() -> None:
     apart = seen(("Doe, Joe", {A}, 9), ("Doe, Joseph", {B}, 5))
-    assert lookalikes.candidates(apart, identity.resolve(apart)) == []
+    assert lookalikes.candidates(apart, identity.resolve(apart)) == [
+        ("joedoe", "josephdoe", "nickname")
+    ]
     clash = seen(("Doe, Joe Q", {A}, 9), ("Doe, Joseph R", {A}, 5))
     assert lookalikes.candidates(clash, identity.resolve(clash)) == []
 
@@ -235,3 +237,17 @@ def test_an_initial_and_a_first_name_it_starts_are_candidates() -> None:
 def test_an_initial_before_a_full_given_name_is_not_a_short_form() -> None:
     names = seen(("Doe, J Brad", {A}, 3), ("Doe, Jane", {A}, 5))
     assert lookalikes.candidates(names, identity.resolve(names)) == []
+
+
+def test_initials_and_the_given_names_they_stand_for_are_candidates() -> None:
+    names = seen(("Doe, J Q", {A}, 1), ("Doe, Jane Q", {A}, 30), ("Doe, John Quincy", {B}, 2))
+    pairs = {(a, b) for a, b, kind in lookalikes.candidates(names, identity.resolve(names))}
+    assert ("janeqdoe", "jqdoe") in pairs
+    assert ("johnquincydoe", "jqdoe") in pairs
+
+
+def test_a_short_form_in_another_newspaper_is_a_candidate() -> None:
+    names = seen(("Doe, Chuck", {A}, 21), ("Doe, Charles", {B}, 4))
+    assert lookalikes.candidates(names, identity.resolve(names)) == [
+        ("charlesdoe", "chuckdoe", "nickname")
+    ]

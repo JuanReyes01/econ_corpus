@@ -1,4 +1,4 @@
-"""Used by step 4 of the pipeline: read a person's name.
+"""Used by steps 2, 4 and 5 of the pipeline: read a person's name.
 
 Input: one name as written in a byline ('Doe, Jane Q' or 'Jane Q. Doe').
 Output: a `Name` (given names, family name, suffix), or None if the text is not clearly a
@@ -141,6 +141,14 @@ def _family_first(family: str, given: str, suffix: str) -> Name | None:
         if moved or INITIALS_RE.fullmatch(family):
             return moved
     family_words, given_words = family.split(), _drop_honorifics(given.split())
+    last_family = abbreviation(family_words[-1]) if family_words else ""
+    one_family_name = all(is_particle(word) for word in family_words[:-2])
+    if last_family in SUFFIXES and not suffix and one_family_name:
+        # 'Doe Jr., John', and 'III, John Q Doe' where the suffix alone was moved in front.
+        # Not 'Jane Doe Jr., Richard Roe', which is two names.
+        suffix, family_words = SUFFIXES[abbreviation(family_words[-1])], family_words[:-1]
+        if not family_words:
+            return given_first(given, suffix)
     # 'Doe, John Jr.': the suffix follows the given names. Not in 'Jane Doe, Richard Roe Jr.',
     # two names, where more than a family name stands before the comma.
     alone = all(is_particle(word) for word in family_words[:-1])
@@ -162,6 +170,7 @@ def _family_first(family: str, given: str, suffix: str) -> Name | None:
         or _has_org_word(given_words)
         or (len(family_words) > 1 and _has_org_word(family_words))
         or not given_words[0][0].isupper()
+        or family_words[-1] in ("is", "are")  # 'Doe is, J': a note cut short, turned round
         or not any(has_capital(t) for t in family_words)
     )
     return None if refused else Name(" ".join(given_words), " ".join(family_words), suffix)
@@ -220,6 +229,7 @@ def _normal_case(word: str) -> str:
     if mc:
         return mc[1] + _normal_case(mc[2])
     cased = re.sub(r"[^\W\d_]+", lambda m: m[0].capitalize(), word)
+    cased = re.sub(r"^Mc([a-z])(?=[a-z]{2})", lambda m: "Mc" + m[1].upper(), cased)  # 'MCDOE'
     return re.sub("(['\u2019])S$", r"\1s", cased)  # a possessive keeps its small s
 
 
@@ -237,7 +247,9 @@ def display(name: Name) -> str:
     def fix(word: str) -> bool:
         letters = [c for c in fold(word) if c.isalpha()]
         spoken = len(letters) >= MIN_SHOUTED and bool(VOWELS & set(letters))
-        return "." not in word and _in_capitals(word) and (shouted or spoken or not word.isupper())
+        numeral = word in SUFFIXES.values()  # 'III' stays
+        capitals = "." not in word and _in_capitals(word) and not numeral
+        return capitals and (shouted or spoken or not word.isupper())
 
     words = [_normal_case(w) if fix(w) else w for w in words]
     return " ".join([*words, name.suffix]).strip()

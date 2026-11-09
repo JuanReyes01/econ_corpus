@@ -50,6 +50,10 @@ OPINION_LABEL_WORDS = ("opinion", "editorial", "commentary", "op-ed", "op/ed", "
 OPINION_TITLE_STARTS = (
     "review&outlook", "letterstotheeditor", "opiniontoday:", "opinion:", "viewpoint:",
     "notable&quotable", "asides:", "boardofcontributors", "thejournaleditorialreport",
+    # Headings of opinion pages printed before the title ('LONG ISLAND OPINION; ...').
+    "opinion;", "op-ed;", "op-ed:", "commentary;", "commentary:", "longislandopinion;",
+    "westchesteropinion;", "newjerseyopinion;", "connecticutopinion;", "connecitcutopinion;",
+    "conneticutopinion;",
 )  # fmt: skip
 OPINION_TITLE_TAGS = ("(editorial)", "[op-ed", "[editorial", "[letter", "[commentary")
 

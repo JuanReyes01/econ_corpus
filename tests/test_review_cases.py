@@ -79,10 +79,10 @@ def test_bylines_that_name_nobody_are_listed_unless_unsigned_or_decided() -> Non
 
 NYT = "newyorktimes,lateedition(eastcoast);newyork,n.y."
 BYLINES = [
-    "Haywood, Alyssa",
-    "Haywood, Alyssa",
-    "Haywoode, Alyssa",
-    "Haywoode, Alyssa",
+    "Doewood, Marta",
+    "Doewood, Marta",
+    "Doewoode, Marta",
+    "Doewoode, Marta",
     "Jane Doe, Springfield",
     "Washington, Jane",
     "The Editorial Board",
@@ -115,6 +115,8 @@ def test_build_writes_every_kind_of_case_with_its_evidence(tmp_path: Path) -> No
         "rejected_to_review": 1,
         "pairs_to_review": 1,
         "merged_to_review": 0,
+        "unused_parts": 0,
+        "unused_pairs": 0,
     }
     cases = review_dir / "cases"
     assert [r["part"] for r in read(cases / "parts_to_review.csv")] == ["Jane Doe, Springfield"]
@@ -125,10 +127,10 @@ def test_build_writes_every_kind_of_case_with_its_evidence(tmp_path: Path) -> No
     pair = read(cases / "pairs_to_review.csv")[0]
     assert (pair["kind"], pair["key_a"], pair["key_b"]) == (
         "one_letter_apart",
-        "alyssahaywood",
-        "alyssahaywoode",
+        "martadoewood",
+        "martadoewoode",
     )
-    assert (pair["name_a"], pair["articles_a"]) == ("Alyssa Haywood", "2")
+    assert (pair["name_a"], pair["articles_a"]) == ("Marta Doewood", "2")
     assert pair["evidence_a"] == "New York Times:2 2020-2020 | Title 0 // Title 1"
     assert pair["evidence_b"] == "New York Times:2 2020-2020 | Title 2 // Title 3"
 
@@ -223,3 +225,22 @@ def test_ordinary_names_are_not_watched() -> None:
         "JANE DOE.Jane Doe is a teacher.",
     ]
     assert review_cases.watched_parts(plain, set()) == {}
+
+
+def test_a_pair_with_one_frequent_author_is_reviewed_whatever_the_other_has() -> None:
+    candidates = [
+        [*HEADER, "review"],
+        ["1", "Jane Doe", "900", "2", "Jane Deo", "1", "one_letter_apart", "not_reviewed"],
+        ["3", "Ann Poe", "9", "4", "Ann Poh", "1", "one_letter_apart", "not_reviewed"],
+    ]
+    assert [row[1] for row in review_cases.pairs_to_review(candidates)] == ["Jane Doe"]
+
+
+def test_decisions_that_apply_to_nothing_are_listed() -> None:
+    bylines = ["Doe, Jane; The Example Board"]
+    decided = {"The Example Board", "Roe, Ann", "Doe, Jane"}
+    assert review_cases.unused_parts(bylines, decided) == ["Roe, Ann"]
+    pairs = {("janedoe", "janeqdoe"), ("annroe", "annroh")}
+    assert review_cases.unused_pairs(pairs, {"janedoe", "janeqdoe", "annroe"}) == [
+        ("annroe", "annroh")
+    ]
