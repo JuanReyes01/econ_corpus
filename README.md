@@ -35,6 +35,10 @@ run on inputs that do not belong together.
 | 4 | `make processed` | steps 1 and 2, `data/review/` | `data/processed/clean/*.csv` and `manifest.json` |
 | 5 | `make review-cases` | steps 1, 2 and 4, `data/review/` | `data/review/cases/*.csv` |
 | 6 | `make datasheet-clean` | steps 1, 2 and 4, `data/review/` | `docs/datasheet_clean.md`, `clean_flow` table and figure |
+| 7 | `make check` | every output above | nothing: it stops if an output is stale |
+
+After any change to the code in `econ_corpus/`, run the steps again from step 2: the
+reasons carry a fingerprint of the code and are refused once it changes.
 
 `make raw` runs steps 2 to 3b and `make cleaned` runs steps 2 and 4 to 6. `RAW_DIR` defaults
 to the folder named in the Makefile: `make parse RAW_DIR=/path/to/exports`.
@@ -49,19 +53,26 @@ after every review round (`make cleaned`), until step 5 lists no case. `data/rev
 records who reviewed what.
 
 The review files are not in the repository (they hold names of private persons). A copy
-travels with every delivery, in `3_clean/review/`: copy it to `data/review/` before running
-the pipeline on another machine. The steps stop if `data/review/` does not exist; an empty
+travels with every delivery, in `3_clean/review/`: copy its contents to `data/review/`
+(`cp -rT 3_clean/review data/review`) before running the pipeline on another machine. The steps stop if `data/review/` does not exist; an empty
 folder runs the pipeline with no review.
 
 ### What stops a step
 
 | Check | Stops |
 |---|---|
-| A file of the exports fails its count of records | step 1, before the table is replaced |
-| The reasons were computed from other records (a new parse) or other review files | steps 3a to 6 |
-| The cleaned tables were built from other reasons or review files (`manifest.json`) | steps 5 and 6 |
-| A review file repeats a case, or holds an unknown verdict or an unreadable name | steps 2, 4, 5 and 6 |
-| `data/review/` is missing | steps 2, 4, 5 and 6 |
+| A file of the exports has no footer, text before its first record, or a separator line followed by spaces | step 1, before the table is replaced |
+| The reasons were computed from other records (a new parse) or by other code | steps 3a to 7 |
+| The reasons were computed with another `byline_parts.csv` | steps 4 to 7 |
+| The cleaned tables were built from other reasons, review files or code, or are not the files the build wrote (`manifest.json`) | steps 5 to 7 |
+| `byline_parts.csv` repeats a case or holds an unreadable name | steps 2 and 4 to 7 |
+| `author_pairs.csv` repeats a case or holds an unknown verdict | steps 4 to 7 |
+| `data/review/` is missing, or holds files but not the two review files | steps 2 and 4 to 7 |
+| The raw CSV or a datasheet is not what the current data gives | step 7, and so the delivery |
+
+The checks compare files with files. Step 1 cannot tell that an export file is missing from
+`RAW_DIR`, and files named `.TXT` are not read: the datasheet states how many files were
+parsed.
 
 ### Delivery
 
@@ -69,8 +80,8 @@ folder runs the pipeline with no review.
 make delivery
 ```
 
-`make delivery` renders the two datasheets as PDF and copies everything into the folder named
-by `DELIVERY`: the exports, the raw CSV with its datasheet, and the cleaned tables with their
+`make delivery` runs step 7, renders the two datasheets as PDF and copies everything into
+the folder named by `DELIVERY`: the exports, the raw CSV with its datasheet, and the cleaned tables with their
 datasheet and the review files. The folder holds copies, so running the pipeline again does
 not change a delivery; run `make delivery` again to replace it.
 

@@ -71,9 +71,10 @@ kept raw so that other researchers can derive their own samples from it.
 
 ### 2.3 Quality control
 
-- Per file, the records found are compared with the separator lines counted independently, and
-  the table is written only if every file has one footer and as many records as separators.
-  All {{n_files}} files passed.
+- Per file, the shape the splitter relies on is checked: one footer, nothing before the first
+  record, and no separator line spoiled by trailing spaces. The table is written only if
+  every file passes; all {{n_files}} files did. ProQuest states no record count in a file, so
+  the number of records is not compared with another source.
 - The detection of the `Materia` line was cross-checked once, outside the pipeline, against a
   plain text search on one in ten files, with no disagreement (details in
   `docs/decisions.md`). The cross-check found and fixed a parsing gap that had hidden
@@ -91,7 +92,7 @@ kept raw so that other researchers can derive their own samples from it.
 | Hash, word count and character count of the text | columns added | Integrity checks |
 | File footers removed | {{n_footer_rows}} rows | Not records |
 | Repeated ProQuest ids removed; the copy with the longest body is kept, the earliest download on ties | {{n_repeats_removed}} rows | Overlapping downloads (section 5.2) |
-| Repeated text removed: same body, title, date and queried newspaper under another id, titles compared without spaces or case; the copy kept is the earliest that is a signed opinion piece, or the earliest of all | {{n_text_repeats_removed}} rows | The same article downloaded under two ids (section 5.2) |
+| Repeated text removed: same body, title, date and queried newspaper under another id, titles compared without spaces or case; the copy kept is the earliest that is a signed opinion piece with text, or the earliest of all | {{n_text_repeats_removed}} rows | The same article downloaded under two ids (section 5.2) |
 | Nothing else removed or edited | news items, publications outside the query | Left for the cleaned dataset (section 3.2) |
 
 ## 3. Data records
@@ -233,7 +234,7 @@ others are removed from the shared table.
 
 A second kind of repeat has another id but the same body, title, date and queried newspaper
 (editions of one newspaper count as one): {{n_text_repeats_removed}} records. The copy kept
-is the earliest one that qualifies as a signed opinion piece, or the earliest of all if none
+is the earliest one that qualifies as a signed opinion piece with text, or the earliest of all if none
 does; the others are removed. Publications outside the query are judged only as not queried,
 so repeats among them stay.
 

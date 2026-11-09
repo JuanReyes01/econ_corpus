@@ -61,20 +61,27 @@ give the shared raw table; the others leave only the cleaned dataset (Figure 1).
 
 - `;` separates authors. A suffix standing alone joins the name before it, and a given name
   cut off from its family name is rejoined (`Lewis; , Flora`).
-- A part is a person if it reads as `Family, Given[, Suffix]` or `Given Family`: two to five
-  capitalised name words, no institution word, no digits. Titles and offices before the name
-  (Dr., Sen., State Rep) and degrees after it (MD, PhD) are dropped. One word is never taken as
-  a name.
+- A part is a person if it reads as `Given Family` (two to five capitalised name words, none
+  of them an institution word) or as `Family, Given[, Suffix]` (up to three words before the
+  comma and four after it, the first given word capitalised; one word before the comma may
+  be an institution word that is also a family name, as in `Press, Jane`). No digits. Titles
+  and offices before the name (Dr., Sen., State Rep) and degrees after it (MD, PhD) are
+  dropped. One word is never taken as a name.
 - If a part does not read as a name, a full name at its start is recovered
-  (`Jane Doe. Springfield`, `Jane Doe is a columnist`), a name after the end of a note about
-  it too (`Committee., Jane Doe`), and co-authors that the export scrambled are put back
-  (`Doe, Jane Roe and Ann` is Jane Roe and Ann Doe).
+  (`Jane Doe. Springfield`, `Jane Doe is a columnist`), and co-authors that the export
+  scrambled are put back (`Doe, Jane Roe and Ann` is Jane Roe and Ann Doe).
+- The export moves the last word of a byline to its front: `Jane Doe; Ann Roe is on
+  vacation.` comes out as `vacation., Jane Doe; Ann Roe is on`. The name after the moved word
+  is read as an author (`Committee., Jane Doe`), and the note cut short after it is not.
 - Debris of the export is removed first: a label or `By` glued to the name
   (`Jane DoeGuest essay`, `ByJane Doe`), a period glued to the next word (`Jane Q.Doe`) and
   `and` that swallowed the start of a name (`andrew Roe` is `and Andrew Roe`).
-- A note that someone did not write (`Jane Doe is on vacation.`) names nobody. A name
-  followed by a small word that may be a piece of it cut off by a stray space
-  (`Jane Do e Roe`) is not read: it goes to the manual review.
+- A note that someone did not write (`Jane Doe is on vacation.`, `Jane Doe contributed
+  reporting`) names nobody. `and` separates authors only after a name, not inside a sentence
+  about the first author, and a `Family, Given` piece after an unfinished sentence about an
+  author is a piece of that sentence. A name followed by a small word that may be a piece
+  of it cut off by a stray space (`Jane Do e Roe`) is not read: it goes to the manual
+  review.
 - Of {{n_links}} links, {{n_links_as_written}} ({{links_as_written_pct}}) were read as
   written, {{n_links_recovered}} were recovered and {{n_links_manual}} come from the manual
   review (section 2.4). Each link records how it was read.
@@ -84,10 +91,13 @@ give the shared raw table; the others leave only the cleaned dataset (Figure 1).
 - **Name key:** case, accents, periods, apostrophes, hyphens and spaces are ignored, so
   spelling variants and ProQuest's stray spaces give one key. Middle names and suffixes are
   kept.
-- **Rule:** names with the same first and family name are one author when their middle names
-  and suffixes do not contradict each other (one is missing, or one is the initial of the
-  other, compared name by name) and they share at least one newspaper. One contradiction among such names stops
-  every merge among them.
+- **Same key, one author:** every byline with the same name key is one author, in any
+  newspaper and any year. Two people with exactly the same name are therefore one author
+  (section 6).
+- **Rule for variants:** names with the same first and family name are one author when their
+  middle names and suffixes do not contradict each other (one is missing, or one is the
+  initial of the other, compared name by name) and they share at least one newspaper. One
+  contradiction among such names stops every merge among them.
 - **Result:** {{n_names}} name variants for {{n_authors}} authors; {{n_names_rule}} variants
   were merged by the rule and {{n_names_review}} by the manual review.
 - **Not merged:** {{n_candidates}} pairs of look-alike authors are listed, not merged
@@ -103,7 +113,7 @@ its newspapers, its years and two headlines.
 | Reviewed | Cases | Outcome |
 |---|---|---|
 | Byline parts (ambiguous, holding a place or publication word, long, read by moving pieces around, possibly damaged, or read as nobody) | {{n_review_parts}} | {{n_parts_corrected}} corrected, {{n_parts_nobody}} not a person, {{n_parts_keep}} kept as read, {{n_parts_unsure}} unsure |
-| Pairs of look-alike authors with two or more articles each | {{n_review_pairs}} | {{n_pairs_same}} same person, {{n_pairs_different}} different, {{n_pairs_unsure}} unsure |
+| Pairs of look-alike authors with two or more articles each, or with one author of twenty or more | {{n_review_pairs}} | {{n_pairs_same}} same person, {{n_pairs_different}} different, {{n_pairs_unsure}} unsure |
 
 - **Models:** most cases were decided by Claude Sonnet run as subagents; the rest, and the
   checks, by Claude Fable 5.1. The reviewer of every decision is recorded in the review files.
@@ -111,7 +121,12 @@ its newspapers, its years and two headlines.
   again by a second model, which rewrote two suffixes and changed no decision; an independent
   audit of the output then found credits of interviewers, illustrators and photographers
   taken as authors, and 31 corrections were changed. In round 5 the second model read every
-  answer other than "not a person" (294) and changed four. The set was checked for
+  answer other than "not a person" (296) and changed four; the third audit showed that two
+  of those four changes were wrong, and they were undone. In round 6 it read the 200 answers
+  on byline parts and a sample of 60 merges, and changed one.
+- **Retired decisions:** a decision that applies to no byline any more, because the rules
+  that split bylines changed, is taken out of the review files and kept apart; the counts
+  above are of the decisions in force. The set was checked for
   contradictions. The rounds are described in the README of the review files.
 - **Evidence for damaged names:** a name with a lone small letter (`Doe, Jan e`) was
   corrected from the spelling of the same name in other bylines, when there was one.
@@ -177,7 +192,7 @@ Pairs of authors that look alike and are not merged.
 |---|---|---|
 | `author_id_a`, `name_a`, `articles_a` | | First author of the pair |
 | `author_id_b`, `name_b`, `articles_b` | | Second author |
-| `kind` | string | `no_shared_newspaper` (compatible names never in the same newspaper), `conflicting_names` (middle names or suffixes contradict within the group), `one_letter_apart` (keys one letter apart in the same newspaper), `nickname` (first names that are short forms of each other, in the same newspaper), `swapped_names` (given and family name the other way round) or `apart_by_review` |
+| `kind` | string | `no_shared_newspaper` (compatible names never in the same newspaper), `conflicting_names` (middle names or suffixes contradict within the group), `one_letter_apart` (keys one letter apart in the same newspaper), `nickname` (given names that are a short form or the initials of each other, in any newspaper), `swapped_names` (given and family name the other way round) or `apart_by_review` |
 | `review` | string | `different`, `unsure` or `not_reviewed`. A verdict on a pair that no rule lists any more is kept in the review files only |
 
 ## 4. Contents
@@ -212,12 +227,17 @@ Pairs of authors that look alike and are not merged.
   author that exist; every article has at least one author. The build stops otherwise.
 - **Reasons:** they are matched to the records by file and position in the file, and the
   counts per reason add up to the rows parsed. The reasons carry a fingerprint of the columns
-  they were decided from, so reasons computed before a new parse are refused.
+  they were decided from and of the code, so reasons computed before a new parse or a change
+  of the rules are refused.
 - **Review:** a review file with a repeated case, an unknown verdict or an unreadable
   correction stops the build, and so does a pair judged different that ends up merged. The
   reasons carry a fingerprint of the corrections they were computed with, and the tables carry
-  the fingerprints of the reasons and of both review files (`manifest.json`); this document
-  and the lists of cases refuse tables built from other inputs.
+  the fingerprints of the reasons, of both review files and of the code, with the size of
+  every table (`manifest.json`); this document and the lists of cases refuse tables built
+  from other inputs or cut short.
+- **Delivery:** before the files are copied, the raw table, the cleaned tables and both
+  datasheets are checked against the current records, reasons and review, and the datasheets
+  are built again and compared.
 - **Look-alike authors left apart** (kind / review):
 
 {{candidate_kinds}}
@@ -232,7 +252,19 @@ Pairs of authors that look alike and are not merged.
   {{n_candidates_not_reviewed}} were not reviewed, most because one of the two authors has a
   single article. {{n_candidates_unsure}} were reviewed and left unsure.
 - **Authors may be wrongly merged:** the rule needs a shared newspaper and compatible names,
-  which two people with a common name can meet.
+  which two people with a common name can meet, across decades too (a father and a son, one
+  written with `Jr`; a writer of the 1990s and a historian of the 2020s). In an audit of 100
+  authors with two or more name variants, seven to nine held more than one person.
+- **People with the same name are one author:** nothing tells two people apart when their
+  names are written alike (a senator and a letter writer). In the audit this touched about
+  1% of the authors of a random sample and about 3% of those with ten or more articles,
+  usually one to three articles each.
+- **Residual errors in reading:** in a random sample of 300 authors, an audit by a language
+  model found five wrong (1.7%): one not a person, one damaged name, three holding articles
+  of another person. The sample was drawn before the last round of corrections, which
+  addressed the patterns it found; the rate has not been measured again.
+- **Credits of podcasts and videos:** the people credited under a transcript (producers,
+  editors, a photographer) are read as authors when they are written like one.
 - **Readers' letters:** letters to the editor count as opinion, so many authors with one
   article are readers.
 - **One word is never a name:** pen names of one word and bylines cut to one word are lost.
