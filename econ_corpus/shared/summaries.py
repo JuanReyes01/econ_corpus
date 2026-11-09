@@ -72,6 +72,13 @@ COMPILED_TITLE_TAGS = ("asamplingofopinions", "asamplingofotheropinions")
 # The same headings at the end of a title: '...: Punchlines' (cut short as '...: Punchline'),
 # '... in Best of Late Night'.
 COMPILED_TITLE_END_RE = re.compile(r"(?:[:?.!]punchlines?|bestoflatenight)[.!]?$")
+# Who the round-up of late-night jokes of USA Today quotes, when it carries no heading
+# ('Kimmel to Trump: ...', 'Comics say ...'). A column about one of them has the same names.
+LATE_NIGHT_RE = re.compile(
+    r"\b(?:colbert|kimmel|fallon|conan|meyers|noah|corden|samantha bee|john oliver|maher"
+    r"|jefferies|minhaj|snl|saturday night live|late[- ]night|comics)\b",
+    re.IGNORECASE,
+)
 
 
 def newspaper_family(publication_key: str | None) -> str | None:
@@ -166,3 +173,8 @@ def is_compiled_title(title: str | None) -> bool:
     tagged = any(tag in squeezed for tag in COMPILED_TITLE_TAGS)
     headed = squeezed.startswith(COMPILED_TITLE_STARTS) or COMPILED_TITLE_END_RE.search(squeezed)
     return bool(headed) or tagged
+
+
+def is_late_night_title(title: str | None) -> bool:
+    """Tell whether a title names a late-night comedian or show, or late-night comics at large."""
+    return bool(LATE_NIGHT_RE.search(title or ""))

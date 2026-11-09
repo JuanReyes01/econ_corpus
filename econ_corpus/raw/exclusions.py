@@ -39,6 +39,9 @@ from econ_corpus.shared.tables import Articles, Table
 PLACEHOLDER_WORDS, PLACEHOLDER_ARTICLES = 100, 5
 # Under MIN_WORDS a body is a caption or a teaser: the piece has no text to read.
 MIN_WORDS = 50
+# The round-up of late-night jokes of ROUNDUP_PAPER often has no heading: a title that names
+# a comedian over a body under ROUNDUP_WORDS. Its columns about a comedian are longer.
+ROUNDUP_PAPER, ROUNDUP_WORDS = "USA Today", 300
 
 
 def _opinion_reason(doc_type: str | None, section: str | None, title: str | None) -> str:
@@ -63,6 +66,18 @@ def _author_reason(byline: str | None, corrections: dict[str, str] | None) -> st
     if not bylines.is_signed(byline):
         return "no_author"
     return "kept" if bylines.people(byline, corrections) else "no_person_author"
+
+
+def _compiled(rows: Articles, i: int, family: str | None) -> bool:
+    """Tell whether a piece is a page compiled from the words of others, going by its title.
+
+    A heading says so in any newspaper (see `summaries.is_compiled_title`). The round-up of
+    jokes of ROUNDUP_PAPER is also told without one.
+    """
+    title = rows["title"][i]
+    short = (rows["body_words"][i] or 0) < ROUNDUP_WORDS
+    roundup = family == ROUNDUP_PAPER and short and summaries.is_late_night_title(title)
+    return summaries.is_compiled_title(title) or roundup
 
 
 def _kept_copies(rows: Articles, order: list[int]) -> dict[int, int]:
@@ -187,7 +202,7 @@ def assign_reasons(
                 by_byline[byline] = _author_reason(byline, corrections)
             has_text = rows["body_chars"][i] and sha not in placeholders
             reasons[i] = by_byline[byline] if has_text else "no_text"
-            if reasons[i] == "kept" and summaries.is_compiled_title(title):
+            if reasons[i] == "kept" and _compiled(rows, i, families[i]):
                 reasons[i] = "no_person_author"  # whoever compiled a page is not its author
             if reasons[i] not in ("no_text", "no_author"):
                 qualifies.add(i)

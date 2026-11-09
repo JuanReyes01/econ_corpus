@@ -653,3 +653,27 @@ def test_other_titles_are_not_compiled_pages(title: str | None) -> None:
 def test_the_heading_of_a_page_of_cartoons_is_a_cartoon_label(title: str) -> None:
     assert summaries.is_cartoon_title(title)
     assert not summaries.is_cartoon_title("Panel discussion on trade was useful")
+
+
+@pytest.mark.parametrize(
+    "title",
+    [
+        "Kimmel to the president: read the report",
+        "Trevor Noah calls it a snowflake moment",
+        "Comics say the speech should be shorter",
+        "These were the best late-night jokes of the year",
+        "SNL's host explains the trial",
+        "A guest of 'Saturday Night Live' says the law is the law",
+        "COLBERT: a new game show",
+    ],
+)
+def test_titles_that_name_a_late_night_comedian_are_recognised(title: str) -> None:
+    assert summaries.is_late_night_title(title)
+
+
+@pytest.mark.parametrize(
+    "title",
+    ["A comic book hero for our time", "Meyerson on trade", "The nightly news is late", None],
+)
+def test_other_titles_name_no_late_night_comedian(title: str | None) -> None:
+    assert not summaries.is_late_night_title(title)

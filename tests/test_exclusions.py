@@ -440,6 +440,26 @@ def test_which_copy_of_a_text_stays_does_not_depend_on_the_compiled_heading() ->
     assert reasons_of(labelled, plain) == ["no_person_author", "duplicate_text"]
 
 
+USA_TODAY = {"publication_key": "usatoday", "title": "Colbert says the speech ran long"}
+
+
+def test_a_short_page_of_usa_today_that_names_a_comedian_is_a_round_up_of_jokes() -> None:
+    assert summaries.newspaper_family("usatoday") == exclusions.ROUNDUP_PAPER
+    short = {**USA_TODAY, "body_words": exclusions.ROUNDUP_WORDS - 1}
+    assert reasons_of(short) == ["no_person_author"]
+    assert reasons_of({**short, "author": None}) == ["no_author"]
+    # A column about a comedian is longer, and other newspapers have no such page.
+    assert reasons_of({**USA_TODAY, "body_words": exclusions.ROUNDUP_WORDS}) == ["kept"]
+    assert reasons_of({"title": USA_TODAY["title"], "body_words": 200}) == ["kept"]
+    assert reasons_of({**short, "title": "The speech ran long"}) == ["kept"]
+
+
+def test_which_copy_of_a_text_stays_does_not_depend_on_the_round_up_rule() -> None:
+    short = {**USA_TODAY, "body_words": 200}
+    first, second = {**short, "doc_id": 1}, {**short, "doc_id": 2, "source_file": LATER}
+    assert reasons_of(first, second) == ["no_person_author", "duplicate_text"]
+
+
 # --- texts in another language -----------------------------------------------------
 
 LOW, HIGH = language.MIN_ENGLISH / 2, language.MIN_ENGLISH * 5
