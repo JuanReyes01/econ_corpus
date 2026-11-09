@@ -251,6 +251,22 @@ def test_repeated_text_keeps_the_earliest_of_the_copies_that_qualify() -> None:
     assert reasons_of(first, second, third) == ["duplicate_text", "kept", "duplicate_text"]
 
 
+def test_which_copy_of_a_text_stays_does_not_depend_on_the_review() -> None:
+    first = {"doc_id": 1, "author": "Example Board, The"}
+    second = {"doc_id": 2, "source_file": LATER}
+    rows = make_rows(first, second)
+    plain = exclusions.assign_reasons(rows)
+    reviewed = exclusions.assign_reasons(rows, {"Example Board, The": "Doe, Ann"})
+    assert plain == ["no_person_author", "duplicate_text"]
+    assert reviewed == ["kept", "duplicate_text"]
+
+
+def test_a_byline_that_names_no_person_still_counts_as_signed_when_choosing_the_copy() -> None:
+    board = {"doc_id": 1, "author": "The Editorial Board"}
+    signed = {"doc_id": 2, "source_file": LATER}
+    assert reasons_of(board, signed) == ["no_person_author", "duplicate_text"]
+
+
 def test_same_text_with_another_title_is_not_an_obvious_duplicate() -> None:
     first = {"doc_id": 1}
     second = {"doc_id": 2, "title": "Another title"}

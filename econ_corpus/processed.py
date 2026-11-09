@@ -24,12 +24,11 @@ import pyarrow.parquet as pq
 
 from econ_corpus import authors, datasheet, identity, reasons, review, summaries
 from econ_corpus.authors import Name
+from econ_corpus.bylines import read_byline
 from econ_corpus.tables import Table
 
 BATCH_SIZE = 20_000  # rows per batch when streaming the articles
 Corrections = dict[str, str]
-Decisions = dict[tuple[str, str], str]
-CAUTION = {"same": 0, "unsure": 1, "different": 2}  # of two verdicts on a pair, the higher stays
 
 
 def _commonest(spellings: Counter) -> Name:
@@ -47,7 +46,7 @@ def _read_bylines(
     read: dict[str | None, list] = {}  # bylines repeat, so each distinct one is read once
     for doc_id, byline, paper in zip(doc_ids, bylines, newspapers, strict=True):
         if byline not in read:
-            read[byline] = authors.read_byline(byline, corrections)
+            read[byline] = read_byline(byline, corrections)
         found = {authors.name_key(name): how for name, how in read[byline]}
         for name, _ in read[byline]:
             spellings[authors.name_key(name)][name] += 1
@@ -71,31 +70,12 @@ def _rule(key: str, resolved: dict[str, str], by_rule: dict[str, str]) -> str:
     return "shared_newspaper" if by_rule[key] == by_rule[resolved[key]] else "manual_review"
 
 
-def _reviewed(decisions: Decisions, resolved: dict[str, str]) -> Decisions:
-    """Return the verdict on each pair of authors that the review left apart.
-
-    A pair judged different or unsure that ends up as one author (through the rule or a chain
-    of 'same' verdicts) contradicts the review, so it is refused rather than hidden.
-    """
-    verdicts: Decisions = {}
-    for (a, b), verdict in decisions.items():
-        if a not in resolved or b not in resolved:
-            continue
-        pair = tuple(sorted((resolved[a], resolved[b])))
-        if pair[0] == pair[1] and verdict != "same":
-            msg = f"{a} and {b} were judged {verdict} but are one author: check the review files"
-            raise ValueError(msg)
-        if pair[0] != pair[1] and CAUTION[verdict] > CAUTION[verdicts.get(pair, "same")]:
-            verdicts[pair] = verdict
-    return verdicts
-
-
 def author_tables(
     doc_ids: list[int],
     bylines: list[str | None],
     newspapers: list[str],
     corrections: Corrections,
-    decisions: Decisions,
+    decisions: review.Decisions,
 ) -> dict[str, Table]:
     """Build the author, name, link and candidate tables from the bylines of the articles.
 
@@ -104,8 +84,9 @@ def author_tables(
     """
     seen, per_article = _read_bylines(doc_ids, bylines, newspapers, corrections)
     by_rule = identity.resolve(seen)
-    resolved = identity.resolve(seen, [pair for pair, d in decisions.items() if d == "same"])
-    reviewed = _reviewed(decisions, resolved)
+    judged = {v: [pair for pair, d in decisions.items() if d == v] for v in ("same", "different")}
+    resolved = identity.resolve(seen, same=judged["same"], apart=judged["different"])
+    reviewed = review.verdicts(decisions, resolved)
     ids = {head: i for i, head in enumerate(sorted(set(resolved.values())), start=1)}
     links = [["doc_id", "author_id", "position", "read"]]
     articles: Counter = Counter()

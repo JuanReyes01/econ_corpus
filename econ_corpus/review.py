@@ -18,7 +18,9 @@ from econ_corpus import authors
 PARTS_FILE, PAIRS_FILE = "byline_parts.csv", "author_pairs.csv"
 AS_READ = {"keep", "unsure", ""}  # the part stays as the rules read it
 NOBODY = "nobody"
-VERDICTS = {"same", "different", "unsure"}
+CAUTION = {"same": 0, "unsure": 1, "different": 2}  # of two verdicts, the higher stays
+VERDICTS = set(CAUTION)
+Decisions = dict[tuple[str, str], str]
 
 
 def _rows(path: Path) -> list[dict[str, str]]:
@@ -26,6 +28,16 @@ def _rows(path: Path) -> list[dict[str, str]]:
         return []
     with path.open(encoding="utf-8", newline="") as handle:
         return list(csv.DictReader(handle))
+
+
+def _refuse_repeats(path: Path, items: list) -> None:
+    """Refuse a review file that decides the same case twice: it would have no single answer."""
+    seen = set()
+    for item in items:
+        if item in seen:
+            msg = f"{path.name}: {item!r} is listed twice"
+            raise ValueError(msg)
+        seen.add(item)
 
 
 def decided_parts(path: Path) -> set[str]:
@@ -36,31 +48,57 @@ def decided_parts(path: Path) -> set[str]:
 def load_parts(path: Path) -> dict[str, str]:
     """Return part -> corrected byline; an empty byline means the part names nobody.
 
-    A replacement must be KEEP, UNSURE, NOBODY (in any case) or a byline every part of which
-    reads as a name; anything else is refused, because it would silently remove the author.
+    A replacement must be KEEP, UNSURE, NOBODY (in any case) or names written 'Family, Given'
+    and separated by ';'; anything else is refused, because it would silently remove the author.
     """
+    rows = _rows(path)
+    _refuse_repeats(path, [row["part"] for row in rows])
     corrections = {}
-    for row in _rows(path):
+    for row in rows:
         replacement = row["replacement"].strip()
         if replacement.casefold() in AS_READ:
             continue
-        pieces = authors.split_authors(replacement)
+        pieces = [authors.reviewed_name(piece) for piece in replacement.split(";")]
         if replacement.casefold() == NOBODY:
             replacement = ""
-        elif not pieces or not all(authors.parse_name(piece) for piece in pieces):
+        elif not all(pieces):
             msg = f"{path.name}: {replacement!r} is not a readable byline for {row['part']!r}"
             raise ValueError(msg)
         corrections[row["part"]] = replacement
     return corrections
 
 
-def load_pairs(path: Path) -> dict[tuple[str, str], str]:
+def load_pairs(path: Path) -> Decisions:
     """Return (name key, name key) in sorted order -> 'same', 'different' or 'unsure'."""
+    rows = _rows(path)
+    pairs = [tuple(sorted((row["key_a"], row["key_b"]))) for row in rows]
+    _refuse_repeats(path, pairs)
     decisions = {}
-    for row in _rows(path):
+    for pair, row in zip(pairs, rows, strict=True):
         verdict = row["decision"].strip().casefold()
         if verdict not in VERDICTS:
             msg = f"{path.name}: unknown decision {row['decision']!r} for {row['key_a']}"
             raise ValueError(msg)
-        decisions[tuple(sorted((row["key_a"], row["key_b"])))] = verdict
+        decisions[pair] = verdict
     return decisions
+
+
+def verdicts(decisions: Decisions, resolved: dict[str, str]) -> Decisions:
+    """Return the verdict on each pair of authors that the review left apart.
+
+    `resolved` maps a name key to the key of its author. A pair judged different that ends up
+    as one author (through a chain of 'same' verdicts) contradicts the review, so it is
+    refused rather than hidden. A pair the review was unsure about may be merged by the rule.
+    Of two verdicts on one pair of authors, the more cautious stays.
+    """
+    found: Decisions = {}
+    for (a, b), verdict in decisions.items():
+        if a not in resolved or b not in resolved:
+            continue
+        pair = tuple(sorted((resolved[a], resolved[b])))
+        if pair[0] == pair[1] and verdict == "different":
+            msg = f"{a} and {b} were judged {verdict} but are one author: check the review files"
+            raise ValueError(msg)
+        if pair[0] != pair[1] and CAUTION[verdict] > CAUTION[found.get(pair, "same")]:
+            found[pair] = verdict
+    return found

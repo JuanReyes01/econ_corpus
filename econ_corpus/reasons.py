@@ -1,6 +1,6 @@
 """The reasons table: why a row of the parsed table is left out, as data.
 
-Input: nothing; this module only holds the table.
+Input: none for the table itself; `load` reads the reasons file and the keys of a records file.
 Output: `REASONS`, one entry per reason, and `LEFT_OUT`, the codes of rows that are not part of
 the shared raw table. `load` reads the reasons written by `exclusions` for a records file.
 

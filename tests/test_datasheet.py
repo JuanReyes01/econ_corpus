@@ -304,14 +304,26 @@ def test_build_describes_the_shared_table_and_counts_what_was_removed(tmp_path: 
         {"doc_id": 2},
         {"doc_id": 3},
     )
-    columns = {**articles, "is_footer": [False, False, False, False]}
-    footer = {k: [None] for k in columns} | {"is_footer": [True]}
+    columns = {**articles, "is_footer": [False] * 4, "record_index": [0, 1, 2, 3]}
+    footer = {k: [None] for k in columns} | {"is_footer": [True], "record_index": [4]}
     merged = {k: columns[k] + footer[k] for k in columns}
     parquet = tmp_path / "records.parquet"
     pq.write_table(pa.table(merged), parquet)
     reasons = tmp_path / "exclusions.parquet"
     codes = ["kept", "duplicate_id", "kept", "duplicate_text", "file_footer"]
-    pq.write_table(pa.table({"reason": codes}), reasons)
+    keys = {"source_file": merged["source_file"], "record_index": merged["record_index"]}
+    pq.write_table(pa.table({**keys, "reason": codes}), reasons)
+    other = tmp_path / "other.parquet"
+    pq.write_table(pa.table({**keys, "record_index": [9, 8, 7, 6, 5], "reason": codes}), other)
+    with pytest.raises(ValueError, match="rows"):
+        datasheet.build(
+            parquet,
+            other,
+            tmp_path / "t.md",
+            tmp_path / "o.md",
+            tables_dir=tmp_path,
+            figures_dir=tmp_path,
+        )
     template = tmp_path / "template.md"
     template.write_text(
         "Articles: {{n_articles}}\nParsed: {{n_parsed}}\nRemoved: {{n_repeats_removed}}\n"

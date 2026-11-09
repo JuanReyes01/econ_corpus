@@ -1,8 +1,12 @@
 """Tests for econ_corpus.review_cases, using made-up names only."""
 
+import csv
 from pathlib import Path
 
-from econ_corpus import review, review_cases
+import pyarrow as pa
+import pyarrow.parquet as pq
+
+from econ_corpus import parse, processed, review, review_cases
 
 HEADER = ["author_id_a", "name_a", "articles_a", "author_id_b", "name_b", "articles_b", "kind"]
 
@@ -58,3 +62,70 @@ def test_decided_parts_are_all_the_parts_in_the_review_file(tmp_path: Path) -> N
     path.write_text('part,replacement,reason\n"Van Doe, Jane",KEEP,\n"Doe Roe, Ann",UNSURE,\n')
     assert review.decided_parts(path) == {"Van Doe, Jane", "Doe Roe, Ann"}
     assert review.decided_parts(tmp_path / "none.csv") == set()
+
+
+def test_bylines_that_name_nobody_are_listed_unless_unsigned_or_decided() -> None:
+    bylines = ["The Editorial Board; Anonymous", "doe, jane", "Doe, Jane", "The Editorial Board"]
+    assert review_cases.rejected_parts(bylines, set()) == {
+        "The Editorial Board": 2,
+        "doe, jane": 1,
+    }
+    assert review_cases.rejected_parts(bylines, {"doe, jane"}) == {"The Editorial Board": 2}
+
+
+# --- files --------------------------------------------------------------------------
+
+NYT = "newyorktimes,lateedition(eastcoast);newyork,n.y."
+BYLINES = [
+    "Haywood, Alyssa",
+    "Haywood, Alyssa",
+    "Haywoode, Alyssa",
+    "Haywoode, Alyssa",
+    "Jane Doe, Springfield",
+    "Washington, Jane",
+    "The Editorial Board",
+]
+
+
+def read(path: Path) -> list[dict[str, str]]:
+    with path.open(encoding="utf-8", newline="") as handle:
+        return list(csv.DictReader(handle))
+
+
+def test_build_writes_every_kind_of_case_with_its_evidence(tmp_path: Path) -> None:
+    rows = []
+    for i, byline in enumerate([*BYLINES, None]):
+        row = parse.empty_row("a.txt", i, is_footer=byline is None)
+        if byline:
+            row |= {"doc_id": 100 + i, "author": byline, "publication_key": NYT, "pub_year": 2020}
+            row |= {"title": f"Title {i}", "text": "Synthetic body.", "has_body": True}
+        rows.append(row)
+    records, reasons = tmp_path / "records.parquet", tmp_path / "exclusions.parquet"
+    pq.write_table(pa.Table.from_pylist(rows, schema=parse.SCHEMA), records)
+    keys = {"source_file": ["a.txt"] * 8, "record_index": list(range(8))}
+    codes = ["kept"] * 6 + ["no_person_author", "file_footer"]
+    pq.write_table(pa.table({**keys, "reason": codes}), reasons)
+    clean, review_dir = tmp_path / "clean", tmp_path / "review"
+    processed.build(records, reasons, clean)
+    counts = review_cases.build(records, reasons, clean, review_dir)
+    assert counts == {
+        "parts_to_review": 1,
+        "names_to_review": 1,
+        "rejected_to_review": 1,
+        "pairs_to_review": 1,
+    }
+    cases = review_dir / "cases"
+    assert [r["part"] for r in read(cases / "parts_to_review.csv")] == ["Jane Doe, Springfield"]
+    assert [r["part"] for r in read(cases / "names_to_review.csv")] == ["Washington, Jane"]
+    assert read(cases / "rejected_to_review.csv") == [
+        {"part": "The Editorial Board", "times": "1"}
+    ]
+    pair = read(cases / "pairs_to_review.csv")[0]
+    assert (pair["kind"], pair["key_a"], pair["key_b"]) == (
+        "one_letter_apart",
+        "alyssahaywood",
+        "alyssahaywoode",
+    )
+    assert (pair["name_a"], pair["articles_a"]) == ("Alyssa Haywood", "2")
+    assert pair["evidence_a"] == "New York Times:2 2020-2020 | Title 0 // Title 1"
+    assert pair["evidence_b"] == "New York Times:2 2020-2020 | Title 2 // Title 3"

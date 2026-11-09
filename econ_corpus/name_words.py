@@ -18,7 +18,7 @@ PARTICLES |= {"du", "dos", "das", "ter", "ten", "bin", "ibn", "al", "el"}
 # Of those, the ones that written with a capital are far more often a given name ('Al Doe').
 GIVEN_WHEN_CAPITAL = {"al", "el", "da", "bin", "ibn", "ten"}
 # Articles: alone, they are never a person's given name ('Le Monde').
-ARTICLES = {"le", "la", "el", "il", "lo", "der", "die", "das", "les", "los", "las"}
+ARTICLES = {"le", "la", "el", "der", "das", "los", "las"}  # not 'les', a given name
 
 # Words that mark an institution or a sentence, never part of a name written given-name first.
 ORG_WORDS = {

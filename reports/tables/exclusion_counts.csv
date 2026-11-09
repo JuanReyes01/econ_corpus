@@ -8,6 +8,6 @@ not_opinion,"A news section, and neither an opinion document type nor an opinion
 unclear_opinion,"Generic document type, no section and no opinion title: may be opinion","11,153",0.8%,yes,yes
 no_text,Opinion piece with no body text,"1,487",0.1%,yes,yes
 no_author,Opinion piece that is unsigned or marked Anonymous,"660,049",47.9%,yes,yes
-no_person_author,"Byline names no person (an institution, or text with no full name)","14,239",1.0%,yes,yes
-kept,"Opinion piece with text, signed by at least one person","401,433",29.1%,yes,no
+no_person_author,"Byline names no person (an institution, or text with no full name)","11,034",0.8%,yes,yes
+kept,"Opinion piece with text, signed by at least one person","404,638",29.4%,yes,no
 Total,,"1,377,766",100.0%,,

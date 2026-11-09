@@ -157,6 +157,23 @@ def test_two_verdicts_on_one_pair_of_authors_keep_the_most_cautious() -> None:
         assert [row[-1] for row in body(tables["author_candidates"])] == ["different"]
 
 
+SHARED = ((10, "Doe, Jane", A), (11, "Doe, Jane", A), (12, "Doe, Jane Q", A))
+
+
+def test_a_pair_judged_different_stays_apart_even_if_the_rule_would_merge_it() -> None:
+    tables = tables_for(*SHARED, decisions={PAIR: "different"})
+    assert len(body(tables["authors"])) == 2
+    assert [row[-2:] for row in body(tables["author_candidates"])] == [
+        ["apart_by_review", "different"]
+    ]
+
+
+def test_the_rule_decides_a_pair_the_review_was_unsure_about() -> None:
+    tables = tables_for(*SHARED, decisions={PAIR: "unsure"})
+    assert body(tables["authors"]) == [["1", "Jane Doe", "3", "2"]]
+    assert body(tables["author_candidates"]) == []
+
+
 # --- files --------------------------------------------------------------------------
 
 

@@ -23,7 +23,7 @@ import pyarrow.compute as pc
 import pyarrow.parquet as pq
 
 from econ_corpus import figures, summaries, tables
-from econ_corpus.reasons import LEFT_OUT
+from econ_corpus.reasons import LEFT_OUT, load
 from econ_corpus.tables import Articles, Table
 
 COLUMNS = [
@@ -209,7 +209,7 @@ def build(  # noqa: PLR0913 (one argument per input or output file)
 ) -> None:
     """Read the parquet, fill the template and write the datasheet and the CSV tables."""
     table = pq.read_table(parquet, columns=COLUMNS)
-    codes = pq.read_table(reasons, columns=["reason"])["reason"]
+    codes = load(parquet, reasons)
     in_raw = pc.invert(pc.is_in(codes, value_set=pa.array(LEFT_OUT)))
     parsed = table.filter(pc.invert(table["is_footer"])).to_pydict()
     articles = table.filter(in_raw).to_pydict()

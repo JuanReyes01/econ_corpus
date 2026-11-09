@@ -72,17 +72,27 @@ def _linked(keys: list[str], seen: dict[str, Seen]) -> list[list[str]]:
     return groups
 
 
-def resolve(seen: dict[str, Seen], same: list[tuple[str, str]] | None = None) -> dict[str, str]:
+def resolve(
+    seen: dict[str, Seen],
+    same: list[tuple[str, str]] | None = None,
+    apart: list[tuple[str, str]] | None = None,
+) -> dict[str, str]:
     """Return, for every name key, the key of its author.
 
-    `same` lists pairs of keys that a manual review found to be one person; they are merged
-    after the rule, together with the variants each already has. An author is named by its
-    variant with most articles; the longest name decides ties.
+    `same` and `apart` come from a manual review. A group the rule would merge is left
+    unmerged if it holds a pair judged `apart`, since the rule cannot tell which variants go
+    with which of the two. Pairs judged `same` are merged after the rule, together with the
+    variants each already has. An author is named by its variant with most articles; the
+    longest name decides ties.
     """
+    kept_apart = {frozenset(pair) for pair in apart or []}
     group_of: dict[str, list[str]] = {}
     for keys, consistent in _buckets(seen):
         for group in _linked(keys, seen) if consistent else [[k] for k in keys]:
-            group_of |= dict.fromkeys(group, group)
+            if any(frozenset(pair) in kept_apart for pair in combinations(group, 2)):
+                group_of |= {key: [key] for key in group}
+            else:
+                group_of |= dict.fromkeys(group, group)
     for a, b in same or []:
         if a in group_of and b in group_of and group_of[a] is not group_of[b]:
             merged = group_of[a] + group_of[b]
@@ -128,14 +138,18 @@ def candidates(seen: dict[str, Seen], resolved: dict[str, str]) -> list[Pair]:
     """List the pairs of authors that look alike but were not merged, with the reason.
 
     'no_shared_newspaper': compatible names that never appear in the same newspaper.
-    'conflicting_names': names in a group with a contradiction. 'one_letter_apart': keys
-    one letter apart that share a newspaper.
+    'apart_by_review': compatible names that share a newspaper but were kept apart by a
+    review. 'conflicting_names': names in a group with a contradiction. 'one_letter_apart':
+    keys one letter apart that share a newspaper.
     """
     found: dict[tuple[str, str], str] = {}
     for keys, consistent in _buckets(seen):
-        kind = "no_shared_newspaper" if consistent else "conflicting_names"
-        heads = sorted({resolved[k] for k in keys})
-        found |= dict.fromkeys(combinations(heads, 2), kind)
+        papers: defaultdict[str, set[str]] = defaultdict(set)
+        for key in keys:
+            papers[resolved[key]] |= seen[key].papers
+        for a, b in combinations(sorted(papers), 2):
+            shared = "apart_by_review" if papers[a] & papers[b] else "no_shared_newspaper"
+            found[a, b] = shared if consistent else "conflicting_names"
     for a, b in _near_pairs(seen):
         pair = tuple(sorted((resolved[a], resolved[b])))
         if pair[0] != pair[1]:

@@ -24,7 +24,7 @@ from pathlib import Path
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from econ_corpus import authors, datasheet, review, summaries
+from econ_corpus import bylines, datasheet, review, summaries
 from econ_corpus.reasons import REASONS
 from econ_corpus.tables import Articles, Table
 
@@ -53,9 +53,9 @@ def _opinion_reason(doc_type: str | None, section: str | None, title: str | None
 
 def _author_reason(byline: str | None, corrections: dict[str, str] | None) -> str:
     """Return the reason for an opinion piece with text, given its byline."""
-    if not authors.is_signed(byline):
+    if not bylines.is_signed(byline):
         return "no_author"
-    return "kept" if authors.people(byline, corrections) else "no_person_author"
+    return "kept" if bylines.people(byline, corrections) else "no_person_author"
 
 
 def _kept_copies(rows: Articles, order: list[int]) -> dict[int, int]:
@@ -77,10 +77,12 @@ def _kept_copies(rows: Articles, order: list[int]) -> dict[int, int]:
     return kept
 
 
-def _mark_repeated_text(groups: Iterable[list[int]], reasons: list[str]) -> None:
+def _mark_repeated_text(
+    groups: Iterable[list[int]], reasons: list[str], qualifies: set[int]
+) -> None:
     """Leave one copy of each repeated text and mark the others `duplicate_text`, in place."""
     for copies in groups:
-        stays = next((i for i in copies if reasons[i] == "kept"), copies[0])
+        stays = next((i for i in copies if i in qualifies), copies[0])
         for i in copies:
             if i != stays:
                 reasons[i] = "duplicate_text"
@@ -91,9 +93,11 @@ def assign_reasons(rows: Articles, corrections: dict[str, str] | None = None) ->
 
     Of the copies of a ProQuest id, only the one chosen by `_kept_copies` is judged on its
     merits; the others are `duplicate_id`. Of the copies of a text under several ids, the one
-    that stays is the earliest that qualifies for the cleaned dataset, or the earliest of all
-    if none does; the others are `duplicate_text`. So each article is counted once, and a
-    signed copy is never lost to an unsigned one.
+    that stays is the earliest signed opinion piece with text, or the earliest of all if there
+    is none; the others are `duplicate_text`. So each article is counted once and a signed copy
+    is not lost to an unsigned one. "Signed" means any byline other than Anonymous: the choice
+    must not depend on how names are read or on the manual review, because these rows also
+    leave the shared raw table.
     """
     n = len(rows["source_file"])
     file_key = {f: summaries.file_order(f) for f in set(rows["source_file"])}
@@ -103,6 +107,7 @@ def assign_reasons(rows: Articles, corrections: dict[str, str] | None = None) ->
     kept = _kept_copies(rows, order)
     same_text: dict[tuple, list[int]] = {}  # copies of one text, in download order
     by_byline: dict[str | None, str] = {}  # bylines repeat, so each is read once
+    qualifies: set[int] = set()  # signed opinion pieces with text
     reasons = [""] * n
     for i in order:
         doc_id, title = rows["doc_id"][i], rows["title"][i]
@@ -124,7 +129,9 @@ def assign_reasons(rows: Articles, corrections: dict[str, str] | None = None) ->
             if byline not in by_byline:
                 by_byline[byline] = _author_reason(byline, corrections)
             reasons[i] = by_byline[byline] if rows["body_chars"][i] else "no_text"
-    _mark_repeated_text(same_text.values(), reasons)
+            if reasons[i] not in ("no_text", "no_author"):
+                qualifies.add(i)
+    _mark_repeated_text(same_text.values(), reasons, qualifies)
     return reasons
 
 

@@ -77,3 +77,16 @@ def test_verdicts_are_normalised_and_unknown_ones_refused(tmp_path: Path) -> Non
     bad = write(tmp_path / "bad.csv", "key_a,key_b,decision,reason\njanedoe,janeqdoe,maybe,\n")
     with pytest.raises(ValueError, match="maybe"):
         review.load_pairs(bad)
+
+
+def test_a_part_or_a_pair_listed_twice_is_refused(tmp_path: Path) -> None:
+    text = 'part,replacement,reason\n"Jane Doe, Springfield","Doe, Jane",\n'
+    parts = write(tmp_path / "parts.csv", text + '"Jane Doe, Springfield",KEEP,\n')
+    with pytest.raises(ValueError, match="twice"):
+        review.load_parts(parts)
+    pairs = write(
+        tmp_path / "pairs.csv",
+        "key_a,key_b,decision,reason\njanedoe,janeqdoe,same,\njaneqdoe,janedoe,different,\n",
+    )
+    with pytest.raises(ValueError, match="twice"):
+        review.load_pairs(pairs)

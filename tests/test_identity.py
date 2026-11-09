@@ -166,3 +166,16 @@ def test_two_swapped_letters_count_as_one_letter_apart() -> None:
     assert [kind for _, _, kind in identity.candidates(names, identity.resolve(names))] == [
         "one_letter_apart"
     ]
+
+
+def test_a_pair_reviewed_as_different_is_not_merged_by_the_rule() -> None:
+    names = seen(("Doe, Jane", {A}, 50), ("Doe, Jane Q", {A}, 2))
+    resolved = identity.resolve(names, apart=[("janeqdoe", "janedoe")])
+    assert resolved == {"janedoe": "janedoe", "janeqdoe": "janeqdoe"}
+    assert identity.candidates(names, resolved) == [("janedoe", "janeqdoe", "apart_by_review")]
+
+
+def test_a_pair_kept_apart_also_stops_the_variants_linked_through_it() -> None:
+    names = seen(("Doe, Jane", {A}, 5), ("Doe, Jane Q", {A, B}, 9), ("Doe, Jane Quinn", {B}, 1))
+    resolved = identity.resolve(names, apart=[("janedoe", "janequinndoe")])
+    assert resolved == {k: k for k in names}
