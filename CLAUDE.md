@@ -29,4 +29,4 @@ Build and audit a corpus of U.S. newspaper opinion articles (ProQuest) to study 
 
 ## Inclusion criteria of the cleaned dataset (settled, see docs/decisions.md)
 
-Opinion pieces (by document type, section or title), from the 10 queried newspapers, with at least 50 words of English text, signed by at least one person; no cartoons, and production credits are not authors. The pipeline order and commands are in README.md.
+Opinion pieces (by document type, section or title), from the 10 queried newspapers, with at least 30 words of English text written by the author (a drawing alone is not text), signed by at least one person; production credits are not authors. The pipeline order and commands are in README.md.

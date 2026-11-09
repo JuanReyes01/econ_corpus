@@ -9,9 +9,9 @@ Data descriptor, version 1.0 (2026-11-09). Derived from the raw table described 
 
 ## Abstract
 
-The dataset holds 398,817 opinion articles signed by at least one person, published
+The dataset holds 399,252 opinion articles signed by at least one person, published
 1980–2024 in ten U.S. newspapers with the highest circulation, and the
-86,703 authors who signed them. Articles and authors are separate tables joined by a
+86,758 authors who signed them. Articles and authors are separate tables joined by a
 link table, since an article can have several authors and an author many articles. The
 dataset is derived from 1,377,766 rows parsed from ProQuest US Newsstream exports by a
 sequence of exclusions, each row leaving for exactly one reason. Authors were read from the
@@ -23,17 +23,18 @@ documented here.
 
 The dataset supports the study of how economists communicate with the public through
 newspaper opinion pieces. It keeps only what that study needs: opinion pieces, from the
-queried newspapers, with an English text of at least 50 words, signed by a person.
+queried newspapers, with at least 30 words of English text written by the author, signed
+by a person.
 
 | | |
 |---|---|
-| Articles | 398,817 |
-| Authors | 86,703 |
-| Article–author links | 446,840 |
+| Articles | 399,252 |
+| Authors | 86,758 |
+| Article–author links | 447,267 |
 | Newspapers | 10 |
 | Publication years | 1980–2024 |
 | Articles with one author | 93.2% |
-| Authors with one article | 51,688 (59.6%) |
+| Authors with one article | 51,742 (59.6%) |
 
 ## 2. Methods
 
@@ -59,8 +60,8 @@ give the shared raw table; the others leave only the cleaned dataset (Figure 1).
 | no_text | Opinion piece with no text, or only a notice shared by several articles | 4,426 | 1,046,274 |
 | no_author | Opinion piece that is unsigned or marked Anonymous | 632,425 | 413,849 |
 | no_person_author | No person as author: an institution, no full name, or a compiled page | 11,596 | 402,253 |
-| short_or_cartoon | Signed opinion piece under 50 words or under a cartoon heading | 1,919 | 400,334 |
-| not_english | Signed opinion piece whose text is not in English (mostly Spanish) | 1,517 | 398,817 |
+| short_or_cartoon | Signed opinion piece with under 30 words written by its author | 1,484 | 400,769 |
+| not_english | Signed opinion piece whose text is not in English (mostly Spanish) | 1,517 | 399,252 |
 
 - **Opinion:** a record is opinion if its document type, its section or its title marks it
   as commentary, editorial, op-ed or letters, or if its text starts with the rubric that
@@ -80,9 +81,13 @@ give the shared raw table; the others leave only the cleaned dataset (Figure 1).
   (`Punchlines`, `Best of Late Night`, `In Other Words: A sampling of opinions`, `Editorials
   elsewhere`). The round-up of late-night jokes of USA Today often has no heading: there, a
   piece under 300 words whose title names a late-night comedian or show is that page.
-- **A text to read:** a signed opinion piece with a body under 50 words (a cartoon stored
-  as its caption, a teaser, a cut text) or with a title that starts with a cartoon heading
-  (`TOON-OP`, `Op-Comic`, `Panel Discussion`) is left out (`short_or_cartoon`).
+- **A text to read:** a signed opinion piece needs at least 30 words written by its author
+  (`short_or_cartoon` otherwise). The text stored for a drawing, a photograph or a gallery
+  is not empty: the export adds the credit and the description of the image, and the
+  newspaper its notices, invitations to subscribe, lists of links and a note on the
+  cartoonist. Those lines, listed in `raw/prose.py`, are not counted. A short letter stays,
+  and so does the paragraph that a cartoonist writes under a drawing. The rule reads texts
+  under 150 words; a longer one is kept.
 - **English:** ProQuest labels every article English, but some online editions carry
   translations. A text is not English (`not_english`) when fewer than 5% of the words in
   its first 2,000 characters are among 39 common English words (`the`, `of`, `and` ...);
@@ -126,8 +131,8 @@ give the shared raw table; the others leave only the cleaned dataset (Figure 1).
   author is a piece of that sentence. A name followed by a small word that may be a piece
   of it cut off by a stray space (`Jane Do e Roe`, `Jane Do rgan`) is not read: it goes
   to the manual review.
-- Of 446,840 links, 425,543 (95.2%) were read as
-  written, 16,357 were recovered and 4,940 come from the manual
+- Of 447,267 links, 425,549 (95.1%) were read as
+  written, 16,761 were recovered and 4,957 come from the manual
   review (section 2.4). Each link records how it was read.
 
 ### 2.3 Deciding that two names are one author
@@ -143,9 +148,9 @@ give the shared raw table; the others leave only the cleaned dataset (Figure 1).
   initial of the other, compared name by name) and they are linked through shared newspapers
   (two variants can be joined by a third that shares a newspaper with each). One
   contradiction among such names stops every merge among them.
-- **Result:** 90,759 name variants for 86,703 authors; 3,160 variants
+- **Result:** 90,816 name variants for 86,758 authors; 3,162 variants
   were merged by the rule and 896 by the manual review.
-- **Not merged:** 7,226 pairs of look-alike authors are listed, not merged
+- **Not merged:** 7,235 pairs of look-alike authors are listed, not merged
   (section 3.5).
 
 ### 2.4 Manual review by a large language model
@@ -158,7 +163,7 @@ its newspapers, its years and two headlines.
 | Reviewed | Cases | Outcome |
 |---|---|---|
 | Byline parts (ambiguous, holding a place or publication word, long, read by moving pieces around, possibly damaged, or read as nobody) | 7,235 | 3,322 corrected, 3,038 not a person, 766 kept as read, 89 unsure, 20 production credits |
-| Pairs of look-alike authors with two or more articles each, or with one author of twenty or more; and pairs of name variants of one author that appear five or more years apart | 3,118 | 1,420 same person, 988 different, 710 unsure |
+| Pairs of look-alike authors with two or more articles each, or with one author of twenty or more; and pairs of name variants of one author that appear five or more years apart | 3,119 | 1,421 same person, 988 different, 710 unsure |
 
 - **Models:** most cases were decided by Claude Sonnet run as subagents; the rest, and the
   checks, by Claude Fable 5.1. The reviewer of every decision is recorded in the review files.
@@ -262,35 +267,35 @@ Pairs of authors that look alike and are not merged.
 
 | Newspaper | Articles | Print | Online | Pre-1997 | Share |
 |---|---|---|---|---|---|
-| Washington Post | 105,347 | 49,865 | 44,584 | 10,898 | 26.4% |
-| New York Times | 96,312 | 66,727 | 29,585 | 0 | 24.1% |
-| Los Angeles Times | 58,007 | 32,692 | 9,855 | 15,460 | 14.5% |
-| Boston Globe | 41,174 | 23,311 | 5,721 | 12,142 | 10.3% |
+| Washington Post | 105,355 | 49,869 | 44,588 | 10,898 | 26.4% |
+| New York Times | 96,287 | 66,715 | 29,572 | 0 | 24.1% |
+| Los Angeles Times | 58,308 | 32,976 | 9,871 | 15,461 | 14.6% |
+| Boston Globe | 41,180 | 23,312 | 5,726 | 12,142 | 10.3% |
 | Wall Street Journal | 37,399 | 1,942 | 35,457 | 0 | 9.4% |
-| Newsday | 20,474 | 20,474 | 0 | 0 | 5.1% |
-| Chicago Tribune | 19,510 | 4,236 | 11,812 | 3,462 | 4.9% |
-| USA Today | 18,593 | 2,889 | 15,407 | 297 | 4.7% |
+| Newsday | 20,487 | 20,487 | 0 | 0 | 5.1% |
+| Chicago Tribune | 19,639 | 4,292 | 11,883 | 3,464 | 4.9% |
+| USA Today | 18,596 | 2,889 | 15,410 | 297 | 4.7% |
 | Tampa Bay Times | 1,525 | 98 | 1,427 | 0 | 0.4% |
 | Star Tribune | 476 | 476 | 0 | 0 | 0.1% |
-| Total | 398,817 | 202,710 | 153,848 | 42,259 | 100.0% |
+| Total | 399,252 | 203,056 | 153,934 | 42,262 | 100.0% |
 
 ### 4.2 Decades
 
 | Decade | Articles | Share |
 |---|---|---|
-| 1980s | 30,876 | 7.7% |
-| 1990s | 49,274 | 12.4% |
-| 2000s | 74,225 | 18.6% |
-| 2010s | 130,626 | 32.8% |
-| 2020s | 113,801 | 28.5% |
+| 1980s | 30,887 | 7.7% |
+| 1990s | 49,280 | 12.3% |
+| 2000s | 74,532 | 18.7% |
+| 2010s | 130,791 | 32.8% |
+| 2020s | 113,747 | 28.5% |
 | Unknown year | 15 | 0.0% |
 
 ### 4.3 Authors per article
 
 | Authors | Articles | Share |
 |---|---|---|
-| 1 | 371,569 | 93.2% |
-| 2 | 19,410 | 4.9% |
+| 1 | 372,012 | 93.2% |
+| 2 | 19,402 | 4.9% |
 | 3 | 2,946 | 0.7% |
 | 4 | 1,727 | 0.4% |
 | 5 or more | 3,165 | 0.8% |
@@ -299,22 +304,22 @@ Pairs of authors that look alike and are not merged.
 
 | Articles | Authors | Share |
 |---|---|---|
-| 1 | 51,688 | 59.6% |
-| 2 to 9 | 30,343 | 35.0% |
-| 10 to 99 | 4,270 | 4.9% |
-| 100 or more | 402 | 0.5% |
+| 1 | 51,742 | 59.6% |
+| 2 to 9 | 30,346 | 35.0% |
+| 10 to 99 | 4,267 | 4.9% |
+| 100 or more | 403 | 0.5% |
 
 ### 4.5 Most frequent authors
 
 | Author | Articles |
 |---|---|
-| Jennifer Rubin | 5,048 |
+| Jennifer Rubin | 5,050 |
 | George F Will | 3,874 |
 | Paul Krugman | 3,514 |
 | EJ Dionne Jr | 3,060 |
 | David Ignatius | 2,690 |
 | Ellen Goodman | 2,561 |
-| Nicholas Kristof | 2,368 |
+| Nicholas Kristof | 2,369 |
 | Thomas L Friedman | 2,366 |
 | Jeff Jacoby | 2,351 |
 | Maureen Dowd | 2,301 |
@@ -328,9 +333,9 @@ Pairs of authors that look alike and are not merged.
 
 | Read | Count | Share |
 |---|---|---|
-| as_written | 425,543 | 95.2% |
-| recovered | 16,357 | 3.7% |
-| manual_review | 4,940 | 1.1% |
+| as_written | 425,549 | 95.1% |
+| recovered | 16,761 | 3.7% |
+| manual_review | 4,957 | 1.1% |
 
 ## 5. Technical validation
 
@@ -354,10 +359,10 @@ Pairs of authors that look alike and are not merged.
 
 | Kind / review | Count | Share |
 |---|---|---|
-| nickname / not_reviewed | 2,212 | 30.6% |
-| conflicting_names / not_reviewed | 1,654 | 22.9% |
-| no_shared_newspaper / not_reviewed | 1,217 | 16.8% |
-| one_letter_apart / not_reviewed | 698 | 9.7% |
+| nickname / not_reviewed | 2,216 | 30.6% |
+| conflicting_names / not_reviewed | 1,658 | 22.9% |
+| no_shared_newspaper / not_reviewed | 1,218 | 16.8% |
+| one_letter_apart / not_reviewed | 698 | 9.6% |
 | nickname / different | 305 | 4.2% |
 | conflicting_names / different | 298 | 4.1% |
 | nickname / unsure | 212 | 2.9% |
@@ -382,8 +387,8 @@ Pairs of authors that look alike and are not merged.
   rule for the pages of USA Today with no heading goes by the names in the title, so a short
   piece of that newspaper about a person of the same family name would be left out too; no
   such piece was found among the 173 it leaves out.
-- **Authors may still be split:** of the 7,226 look-alike pairs,
-  5,802 were not reviewed: one of the two authors has a single
+- **Authors may still be split:** of the 7,235 look-alike pairs,
+  5,811 were not reviewed: one of the two authors has a single
   article and the other fewer than twenty. 529 were reviewed and left unsure.
 - **Authors may be wrongly merged:** the rule needs a shared newspaper and compatible names,
   which two people with a common name can meet, across decades too (a father and a son, one
@@ -424,9 +429,11 @@ Pairs of authors that look alike and are not merged.
   text that mixes languages can fall on either side. A listing of the cases near the limit
   found three texts in Spanish with English passages that stay and two English captions
   left out.
-- **Cartoons** have no label in ProQuest. They are left out when stored as a caption under
-  50 words or under a cartoon heading; a cartoon with a longer caption and no heading
-  stays.
+- **Cartoons** have no label in ProQuest. A piece is left out when fewer than 30 words
+  remain once the lines added around its text are removed. The list of those lines is
+  explicit and was read in the short texts of this corpus: a line of a kind not seen counts
+  as text, so a caption or a gallery can stay; a text of 150 words or more is not read, so
+  a long page of credits and links stays; and a letter of fewer than 30 words is left out.
 - **Opinion is taken from ProQuest's labels:** a few arts reviews and news analyses filed
   under an opinion label are in, and opinion columns filed under a news section are out,
   unless the first line of their text is the rubric of the opinion page of USA Today; no

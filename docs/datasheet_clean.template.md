@@ -23,7 +23,8 @@ documented here.
 
 The dataset supports the study of how economists communicate with the public through
 newspaper opinion pieces. It keeps only what that study needs: opinion pieces, from the
-queried newspapers, with an English text of at least 50 words, signed by a person.
+queried newspapers, with at least 30 words of English text written by the author, signed
+by a person.
 
 | | |
 |---|---|
@@ -66,9 +67,13 @@ give the shared raw table; the others leave only the cleaned dataset (Figure 1).
   (`Punchlines`, `Best of Late Night`, `In Other Words: A sampling of opinions`, `Editorials
   elsewhere`). The round-up of late-night jokes of USA Today often has no heading: there, a
   piece under 300 words whose title names a late-night comedian or show is that page.
-- **A text to read:** a signed opinion piece with a body under 50 words (a cartoon stored
-  as its caption, a teaser, a cut text) or with a title that starts with a cartoon heading
-  (`TOON-OP`, `Op-Comic`, `Panel Discussion`) is left out (`short_or_cartoon`).
+- **A text to read:** a signed opinion piece needs at least 30 words written by its author
+  (`short_or_cartoon` otherwise). The text stored for a drawing, a photograph or a gallery
+  is not empty: the export adds the credit and the description of the image, and the
+  newspaper its notices, invitations to subscribe, lists of links and a note on the
+  cartoonist. Those lines, listed in `raw/prose.py`, are not counted. A short letter stays,
+  and so does the paragraph that a cartoonist writes under a drawing. The rule reads texts
+  under 150 words; a longer one is kept.
 - **English:** ProQuest labels every article English, but some online editions carry
   translations. A text is not English (`not_english`) when fewer than 5% of the words in
   its first 2,000 characters are among 39 common English words (`the`, `of`, `and` ...);
@@ -342,9 +347,11 @@ Pairs of authors that look alike and are not merged.
   text that mixes languages can fall on either side. A listing of the cases near the limit
   found three texts in Spanish with English passages that stay and two English captions
   left out.
-- **Cartoons** have no label in ProQuest. They are left out when stored as a caption under
-  50 words or under a cartoon heading; a cartoon with a longer caption and no heading
-  stays.
+- **Cartoons** have no label in ProQuest. A piece is left out when fewer than 30 words
+  remain once the lines added around its text are removed. The list of those lines is
+  explicit and was read in the short texts of this corpus: a line of a kind not seen counts
+  as text, so a caption or a gallery can stay; a text of 150 words or more is not read, so
+  a long page of credits and links stays; and a letter of fewer than 30 words is left out.
 - **Opinion is taken from ProQuest's labels:** a few arts reviews and news analyses filed
   under an opinion label are in, and opinion columns filed under a news section are out,
   unless the first line of their text is the rubric of the opinion page of USA Today; no
