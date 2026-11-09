@@ -28,7 +28,7 @@ from pathlib import Path
 import pyarrow.parquet as pq
 
 from econ_corpus.names import bylines, review
-from econ_corpus.raw import export, language, parse
+from econ_corpus.raw import export, language, parse, text_marks
 from econ_corpus.raw.reasons import INPUTS, REASONS, check_parser, write_reasons
 from econ_corpus.shared import summaries, tables
 from econ_corpus.shared.tables import Articles, Table
@@ -44,15 +44,18 @@ MIN_WORDS = 50
 ROUNDUP_PAPER, ROUNDUP_WORDS = "USA Today", 300
 
 
-def _opinion_reason(doc_type: str | None, section: str | None, title: str | None) -> str:
+def _opinion_reason(
+    doc_type: str | None, section: str | None, title: str | None, *, rubric: bool = False
+) -> str:
     """Return the reason for a record that is not a duplicate.
 
-    An opinion title, document type or section keeps the record. Without any of them, a record
-    with no section is unclear (the section is what would settle it), and one in a news
-    section is not opinion.
+    An opinion title, document type or section keeps the record, and so does the rubric of an
+    opinion page as the first line of its text (see `text_marks`). Without any of them, a
+    record with no section is unclear (the section is what would settle it), and one in a
+    news section is not opinion.
     """
     labels = summaries.split_labels(doc_type)
-    if summaries.is_opinion_title(title):
+    if summaries.is_opinion_title(title) or rubric:
         return "kept"
     if not labels and section is None:
         return "missing_metadata"
@@ -160,6 +163,7 @@ def assign_reasons(
     rows: Articles,
     corrections: dict[str, str] | None = None,
     english: list[float | None] | None = None,
+    rubric: list[bool] | None = None,
 ) -> list[str]:
     """Return one reason code per row, with repeats judged in download order.
 
@@ -173,7 +177,7 @@ def assign_reasons(
     text (see `_placeholders`). A page under the heading of a compiled page (jokes, quotes of
     others) has no author, whoever signs it. A piece that passes every rule is still left
     out of the cleaned dataset as `short_or_cartoon` under MIN_WORDS words or under the
-    heading of a cartoon, and as `not_english` when `english` (see `language.shares_of`; None
+    heading of a cartoon, and as `not_english` when `english` (see `text_marks.read`; None
     skips the rule) gives its text a share of common English words under
     `language.MIN_ENGLISH`.
     """
@@ -192,7 +196,8 @@ def assign_reasons(
     qualifies: set[int] = set()  # signed opinion pieces with text, however short
     for i in judged:
         title, sha = rows["title"][i], rows["body_sha256"][i]
-        reasons[i] = _opinion_reason(rows["doc_type"][i], rows["section"][i], title)
+        marked = rubric is not None and rubric[i]
+        reasons[i] = _opinion_reason(rows["doc_type"][i], rows["section"][i], title, rubric=marked)
         if text_key := _text_key(rows, i, families[i]):
             same_text.setdefault(text_key, []).append(i)
         if reasons[i] == "kept":
@@ -245,7 +250,8 @@ def write_exclusions(
     """Assign a reason to every row of the parsed table and write them next to their keys."""
     check_parser(parquet)
     table = pq.read_table(parquet, columns=INPUTS)
-    reasons = assign_reasons(table.to_pydict(), corrections, language.shares_of(parquet))
+    marks = text_marks.read(parquet)
+    reasons = assign_reasons(table.to_pydict(), corrections, marks.english, marks.rubric)
     # The reasons depend on the review, so they carry its fingerprint (see review.same_review).
     write_reasons(table, reasons, out, {review.STAMP: review.fingerprint(corrections or {})})
     return reasons

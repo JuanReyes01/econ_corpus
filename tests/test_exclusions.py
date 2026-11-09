@@ -460,6 +460,39 @@ def test_which_copy_of_a_text_stays_does_not_depend_on_the_round_up_rule() -> No
     assert reasons_of(first, second) == ["no_person_author", "duplicate_text"]
 
 
+# --- the rubric of an opinion page at the start of the text ---------------------------
+
+NEWS = {"doc_type": "NEWSPAPER", "section": "NEWS"}
+
+
+def test_the_rubric_of_an_opinion_page_marks_opinion_like_a_title_or_a_section() -> None:
+    rows = make_rows(NEWS, {**NEWS, "doc_id": 2, "body_sha256": "bbb"})
+    assert exclusions.assign_reasons(rows) == ["not_opinion", "not_opinion"]
+    assert exclusions.assign_reasons(rows, rubric=[True, False]) == ["kept", "not_opinion"]
+
+
+@pytest.mark.parametrize(
+    ("change", "reason"),
+    [
+        ({"author": None}, "no_author"),
+        ({"author": "The Editorial Board"}, "no_person_author"),
+        ({"body_chars": 0}, "no_text"),
+        ({"body_words": 10}, "short_or_cartoon"),
+        ({"section": None}, "kept"),
+        ({"section": None, "doc_type": None}, "kept"),
+    ],
+)
+def test_a_piece_under_the_rubric_still_needs_text_and_a_person(change: dict, reason: str) -> None:
+    assert exclusions.assign_reasons(make_rows({**NEWS, **change}), rubric=[True]) == [reason]
+
+
+def test_write_exclusions_reads_the_rubric_from_the_text(tmp_path: Path) -> None:
+    rows = make_rows(NEWS, {**NEWS, "doc_id": 2, "body_sha256": "bbb"})
+    source = tmp_path / "records.parquet"
+    pq.write_table(records_table(rows, [f"THE EDITORIAL PAGE\n{ENGLISH}", ENGLISH]), source)
+    assert exclusions.write_exclusions(source, tmp_path / "out.parquet") == ["kept", "not_opinion"]
+
+
 # --- texts in another language -----------------------------------------------------
 
 LOW, HIGH = language.MIN_ENGLISH / 2, language.MIN_ENGLISH * 5

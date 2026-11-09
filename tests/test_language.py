@@ -1,9 +1,6 @@
 """Tests for econ_corpus.raw.language on made-up sentences."""
 
-from pathlib import Path
-
 import pyarrow as pa
-import pyarrow.parquet as pq
 import pytest
 
 from econ_corpus.raw import language
@@ -65,15 +62,3 @@ def test_only_the_start_of_a_text_is_read() -> None:
     spanish_first, english_first = shares(f"{long_spanish} {ENGLISH}", f"{ENGLISH} {long_spanish}")
     assert spanish_first < language.MIN_ENGLISH
     assert english_first > language.MIN_ENGLISH
-
-
-def test_the_shares_of_a_table_of_records_come_in_row_order(tmp_path: Path) -> None:
-    records = tmp_path / "records.parquet"
-    texts = [ENGLISH, None, SPANISH, ENGLISH, SPANISH]
-    pq.write_table(
-        pa.table({"text": pa.array(texts, type=pa.string())}), records, row_group_size=2
-    )
-    assert pq.ParquetFile(records).num_row_groups > 1
-    found = language.shares_of(records)
-    assert found == shares(*texts)
-    assert [s is not None and s > language.MIN_ENGLISH for s in found] == [1, 0, 0, 1, 0]

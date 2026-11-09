@@ -11,11 +11,8 @@ in Spanish, Portuguese, French, Turkish, Arabic or Russian they are close to non
 language is named: the share only says whether the text is English.
 """
 
-from pathlib import Path
-
 import pyarrow as pa
 import pyarrow.compute as pc
-import pyarrow.parquet as pq
 
 ENGLISH_WORDS = (
     "the", "of", "and", "to", "in", "that", "is", "for", "it", "was", "with", "as", "on", "be",
@@ -41,16 +38,3 @@ def english_shares(texts: pa.Array | pa.ChunkedArray) -> list[float | None]:
     words = pc.count_substring_regex(head, r"\S+").to_pylist()
     found = pc.count_substring_regex(head, PATTERN).to_pylist()
     return [hits / total if total else None for hits, total in zip(found, words, strict=True)]
-
-
-def shares_of(records: Path) -> list[float | None]:
-    """Return the share of every record of the parquet, in row order.
-
-    The texts are read one row group at a time: all together they do not fit in memory.
-    """
-    file = pq.ParquetFile(records)
-    return [
-        share
-        for group in range(file.num_row_groups)
-        for share in english_shares(file.read_row_group(group, columns=["text"])["text"])
-    ]
