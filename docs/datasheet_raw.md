@@ -330,9 +330,9 @@ so repeats among them stay.
 
 ### 5.3 News and opinion
 
-Document type is not a reliable marker of opinion. 36.4% of
-records have a non-opinion label but sit in an opinion section, and 150,523
-(12.3%) have neither an opinion label nor an opinion section. All are kept in
+Document type is not a reliable marker of opinion. 36.5% of
+records have a non-opinion label but sit in an opinion section, and 148,622
+(12.1%) have neither an opinion label nor an opinion section. All are kept in
 the raw table.
 
 ## 6. Usage notes and limitations

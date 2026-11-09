@@ -29,7 +29,7 @@ run on inputs that do not belong together.
 | Step | Command | Reads | Writes |
 |---|---|---|---|
 | 1 | `make parse` | the `.txt` exports in `RAW_DIR` | `data/interim/records.parquet` |
-| 2 | `make exclusions` | step 1, `data/review/byline_parts.csv` | `data/interim/exclusions.parquet`, `reports/tables/exclusion_counts.csv` |
+| 2 | `make exclusions` | step 1, `data/review/byline_parts.csv` | `data/interim/exclusions.parquet`, `reports/tables/exclusion_counts.csv`, `data/processed/econ_corpus_raw_reasons.csv` |
 | 3a | `make export` | steps 1 and 2 | `data/processed/econ_corpus_raw.csv` |
 | 3b | `make datasheet` | steps 1 and 2 | `docs/datasheet_raw.md`, raw tables and figures in `reports/` |
 | 4 | `make processed` | steps 1 and 2, `data/review/` | `data/processed/clean/*.csv` and `manifest.json` |
@@ -63,7 +63,7 @@ folder runs the pipeline with no review.
 
 | Check | Stops |
 |---|---|
-| A file of the exports has no footer, text before its first record, or a separator line followed by spaces | step 1, before the table is replaced |
+| A file of the exports has no footer, text before its first record, or a line that is almost a separator (59 to 61 underscores once spaces are removed) | step 1, before the table is replaced |
 | The table of step 1 was written by another version of `parse.py` | steps 2 to 7 |
 | The reasons were computed from other records (a new parse) or by other code | steps 3a to 7 |
 | The reasons were computed with another `byline_parts.csv` | steps 4 to 7 |
@@ -71,7 +71,7 @@ folder runs the pipeline with no review.
 | `byline_parts.csv` repeats a case or holds an unreadable name | steps 2 and 4 to 7 |
 | `author_pairs.csv` repeats a case or holds an unknown verdict | steps 4 to 7 |
 | `data/review/` is missing, or holds files but not the two review files | steps 2 and 4 to 7 |
-| The raw CSV, a datasheet, a table or figure of `reports/`, or a list of review cases is not what the current data gives | step 7, and so the delivery |
+| The raw CSV, its file of reasons, a datasheet, a table or figure of `reports/`, or a list of review cases is not what the current data gives, or one of those folders holds a file that no step writes | step 7, and so the delivery |
 
 The checks compare files with files. Step 1 cannot tell that an export file is missing from
 `RAW_DIR`, and files named `.TXT` are not read: the datasheet states how many files were

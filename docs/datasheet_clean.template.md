@@ -78,9 +78,10 @@ give the shared raw table; the others leave only the cleaned dataset (Figure 1).
   `and` that swallowed the start of a name (`andrew Roe` is `and Andrew Roe`).
 - A note after the byline that repeats the author (`Doe, Jane; Jane Q. Doe lives in ...`)
   adds no second author when its name is the earlier one with a letter of difference, a
-  piece of it, or the same words in another order; when the earlier part had a town where
-  the family name goes (`Springfield, Jane Doe`) or the two names the wrong way round, the
-  name of the note is the one kept.
+  shorter or longer form of it, or the same words in another order. The earlier reading
+  stands, except when the earlier part had a town where the family name goes
+  (`Springfield, Jane Doe`) or the two names the wrong way round: then the name of the
+  note is the one kept. Two names with different suffixes (`Sr`, `Jr`) are two people.
 - A note that someone did not write (`Jane Doe is on vacation.`, `Jane Doe contributed
   reporting`) names nobody. `and` separates authors only after a name, not inside a sentence
   about the first author, and a `Family, Given` piece after an unfinished sentence about an
@@ -130,8 +131,9 @@ its newspapers, its years and two headlines.
   answer other than "not a person" (296) and changed four; the third audit showed that two
   of those four changes were wrong, and they were undone. In round 6 it read the 200 answers
   on byline parts and a sample of 60 merges, and changed one. A fourth audit then read
-  samples of the decisions of round 6 (140 on parts, 240 on pairs) and found nine wrong,
-  which were changed.
+  samples of the decisions of round 6 (140 on parts, 240 on pairs); two corrections and six
+  pair verdicts were changed after it. A fifth audit read the 90 parts and 12 pair verdicts
+  of round 7 and found none wrong.
 - **Retired decisions:** a decision that applies to no byline any more, because the rules
   that split bylines changed, is taken out of the review files and kept apart; the counts
   above are of the decisions in force. The set was checked for
@@ -268,10 +270,13 @@ Pairs of authors that look alike and are not merged.
   names are written alike (a senator and a letter writer). In the audit this touched about
   1% of the authors of a random sample and about 3% of those with ten or more articles,
   usually one to three articles each.
-- **Residual errors in reading:** in a random sample of 300 authors, an audit by a language
-  model found five wrong (1.7%): one not a person, one damaged name, three holding articles
-  of another person. The sample was drawn before the last round of corrections, which
-  addressed the patterns it found; the rate has not been measured again.
+- **Residual errors in reading:** three audits by a language model each judged a fresh
+  random sample of 300 authors against their bylines and found five (1.7%), two (0.7%) and
+  one (0.3%) wrong, each drawn before the corrections that followed it; the last one is two
+  people glued in one name. Among authors with ten or more articles the last two audits
+  found no reading error in 150. The whole table still holds an estimated 90 names that
+  are not a person (institutions and roles after a name in a byline), most with one
+  article.
 - **Credits of podcasts and videos:** the people credited under a transcript (producers,
   editors, a photographer) are read as authors when they are written like one.
 - **Readers' letters:** letters to the editor count as opinion, so many authors with one
@@ -287,7 +292,10 @@ Pairs of authors that look alike and are not merged.
   notice shared by several articles.
 - **Opinion is taken from ProQuest's labels:** a few arts reviews and news analyses filed
   under an opinion label are in, and opinion columns filed under a news section are out.
-  Records with no section and a generic document type are left out as undecided
+  Signed pieces of the opinion pages of USA Today of 1991 to 2012 whose only mark is in
+  the first line of the text ("THE EDITORIAL PAGE", about 300) are out: the selection
+  reads the labels and the title, not the text. Records with no section and a generic
+  document type are left out as undecided
   (`unclear_opinion`); an audit of 100 of them found four signed op-eds, mostly of the Wall
   Street Journal before 1998.
 
