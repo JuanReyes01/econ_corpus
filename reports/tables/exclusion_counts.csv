@@ -4,10 +4,10 @@ duplicate_id,Repeats a ProQuest id; the copy with the longest body is the one ke
 not_queried_newspaper,Publication is not one of the queried newspapers,"12,413",0.9%,yes,yes
 duplicate_text,"Same body, title, date and newspaper as another record, which stays","2,991",0.2%,no,yes
 missing_metadata,"No publication, no id, or no document type and section: unclassifiable",885,0.1%,yes,yes
-not_opinion,"A news section, and neither an opinion document type nor an opinion title","122,349",8.9%,yes,yes
+not_opinion,"A news section, and neither an opinion document type nor an opinion title","121,958",8.9%,yes,yes
 unclear_opinion,"Generic document type, no section and no opinion title: may be opinion","11,149",0.8%,yes,yes
 no_text,"Opinion piece with no text, or only a notice shared by several articles","4,420",0.3%,yes,yes
-no_author,Opinion piece that is unsigned or marked Anonymous,"659,344",47.9%,yes,yes
-no_person_author,"Byline names no person (an institution, or text with no full name)","11,105",0.8%,yes,yes
-kept,"Opinion piece with text, signed by at least one person","405,191",29.4%,yes,no
+no_author,Opinion piece that is unsigned or marked Anonymous,"659,444",47.9%,yes,yes
+no_person_author,"Byline names no person (an institution, or text with no full name)","11,129",0.8%,yes,yes
+kept,"Opinion piece with text, signed by at least one person","405,458",29.4%,yes,no
 Total,,"1,377,766",100.0%,,

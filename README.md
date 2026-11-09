@@ -35,10 +35,11 @@ run on inputs that do not belong together.
 | 4 | `make processed` | steps 1 and 2, `data/review/` | `data/processed/clean/*.csv` and `manifest.json` |
 | 5 | `make review-cases` | steps 1, 2 and 4, `data/review/` | `data/review/cases/*.csv` |
 | 6 | `make datasheet-clean` | steps 1, 2 and 4, `data/review/` | `docs/datasheet_clean.md`, `clean_flow` table and figure |
-| 7 | `make check` | every output above | nothing: it stops if an output is stale |
+| 7 | `make check` | every output above | nothing: it builds the datasheets, their tables and figures and the case lists again, and stops if any differs or the raw CSV or a cleaned table is stale |
 
 After any change to the code in `econ_corpus/`, run the steps again from step 2: the
-reasons carry a fingerprint of the code and are refused once it changes.
+reasons carry a fingerprint of the code and are refused once it changes. After a change to
+`parse.py`, start from step 1: the table carries a fingerprint of the parser.
 
 `make raw` runs steps 2 to 3b and `make cleaned` runs steps 2 and 4 to 6. `RAW_DIR` defaults
 to the folder named in the Makefile: `make parse RAW_DIR=/path/to/exports`.
@@ -54,7 +55,8 @@ records who reviewed what.
 
 The review files are not in the repository (they hold names of private persons). A copy
 travels with every delivery, in `3_clean/review/`: copy its contents to `data/review/`
-(`cp -rT 3_clean/review data/review`) before running the pipeline on another machine. The steps stop if `data/review/` does not exist; an empty
+(`mkdir -p data && cp -rT 3_clean/review data/review`) before running the pipeline on
+another machine. The steps stop if `data/review/` does not exist; an empty
 folder runs the pipeline with no review.
 
 ### What stops a step
@@ -62,13 +64,14 @@ folder runs the pipeline with no review.
 | Check | Stops |
 |---|---|
 | A file of the exports has no footer, text before its first record, or a separator line followed by spaces | step 1, before the table is replaced |
+| The table of step 1 was written by another version of `parse.py` | steps 2 to 7 |
 | The reasons were computed from other records (a new parse) or by other code | steps 3a to 7 |
 | The reasons were computed with another `byline_parts.csv` | steps 4 to 7 |
-| The cleaned tables were built from other reasons, review files or code, or are not the files the build wrote (`manifest.json`) | steps 5 to 7 |
+| The cleaned tables were built from other reasons, review files or code, or a table is not the file the build wrote (`manifest.json` holds a fingerprint of each) | steps 5 to 7 |
 | `byline_parts.csv` repeats a case or holds an unreadable name | steps 2 and 4 to 7 |
 | `author_pairs.csv` repeats a case or holds an unknown verdict | steps 4 to 7 |
 | `data/review/` is missing, or holds files but not the two review files | steps 2 and 4 to 7 |
-| The raw CSV or a datasheet is not what the current data gives | step 7, and so the delivery |
+| The raw CSV, a datasheet, a table or figure of `reports/`, or a list of review cases is not what the current data gives | step 7, and so the delivery |
 
 The checks compare files with files. Step 1 cannot tell that an export file is missing from
 `RAW_DIR`, and files named `.TXT` are not read: the datasheet states how many files were

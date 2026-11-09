@@ -4,8 +4,10 @@ U.S. newspaper opinion articles from ProQuest US Newsstream. Internal use only (
 
 - `1_raw_txt/`: the 2,801 ProQuest `.txt` exports, untouched.
 - `2_raw_csv/`: `econ_corpus_raw.csv` (one row per record, article text and every metadata
-  field, repeats removed) and `datasheet_raw.pdf`, which describes the table and every change
-  made to the exports.
+  field, repeats removed); `econ_corpus_raw_reasons.csv` (for each row of that table, keyed
+  by `source_file` and `record_index`, the reason it is or is not in the cleaned dataset);
+  `exclusion_counts.csv` (rows per reason, of all rows parsed); and `datasheet_raw.pdf`,
+  which describes the table and every change made to the exports.
 - `3_clean/`: the cleaned dataset. `articles.csv` (signed opinion articles), `authors.csv`,
   `author_names.csv`, `article_authors.csv` (the link between articles and authors),
   `author_candidates.csv` (look-alike authors not merged), `datasheet_clean.pdf` and

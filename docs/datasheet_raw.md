@@ -4,7 +4,7 @@ template, never in the generated file. -->
 
 # A raw table of U.S. newspaper opinion articles from ProQuest US Newsstream, 1980–2024
 
-Data descriptor, version 1.1 (2026-11-08). Companion to the cleaned dataset derived from this table.
+Data descriptor, version 1.1 (2026-11-09). Companion to the cleaned dataset derived from this table.
 
 ## Abstract
 
@@ -14,7 +14,7 @@ repeated. Each record keeps every metadata field of the export, the article text
 dates, years and identifiers with explicit quality flags, its file of origin, and a hash and
 word count of the text. Apart from repeated records and file footers, nothing was removed or
 corrected, so the table documents the source as delivered, including news items and
-publications outside the query. A companion table assigns every record one exclusion reason. This descriptor
+publications outside the query. A companion file, `econ_corpus_raw_reasons.csv`, assigns every record one exclusion reason. This descriptor
 reports how the data were collected and parsed, what they contain, and where they depart from
 the intended design.
 
@@ -32,7 +32,7 @@ kept raw so that other researchers can derive their own samples from it.
 | Publication years | 1980–2024 |
 | Newspapers queried | 10 |
 | Distinct ProQuest ids | 1,225,974 |
-| Records with a named author | 597,047 (48.7%) |
+| Records with a named author | 527,772 (43.0%) |
 
 ## 2. Methods
 
@@ -134,8 +134,11 @@ read the CSV with a data-analysis library instead.
 
 ### 3.2 Companion files
 
-- `data/interim/exclusions.parquet`: `source_file`, `record_index` and one exclusion `reason`
-  per row of the parsed table, footers and repeats included (section 6).
+- `econ_corpus_raw_reasons.csv`, delivered next to the table: `source_file`, `record_index`,
+  `doc_id` and one exclusion `reason` for each of its rows (section 6). The reasons of every
+  parsed row, footers and repeats included, are in `data/interim/exclusions.parquet` of the
+  pipeline workspace.
+- `exclusion_counts.csv`, delivered next to the table: rows per reason, of all rows parsed.
 - `reports/tables/raw_by_year.csv` and `reports/tables/raw_by_download_date.csv`: records and
   distinct ids per year, and counts and publication-year range per download date, all as
   parsed, before repeated ids were removed.
@@ -149,19 +152,19 @@ read the CSV with a data-analysis library instead.
 
 | Newspaper | Records | Print | Online | Pre-1997 | Blog/podcast/website | With author |
 |---|---|---|---|---|---|---|
-| New York Times | 387,610 | 148,077 | 239,533 | 0 | 239,533 | 33.1% |
-| Washington Post | 275,422 | 129,755 | 94,982 | 50,685 | 94,982 | 49.7% |
-| Wall Street Journal | 121,396 | 45,199 | 76,197 | 0 | 0 | 66.7% |
-| Los Angeles Times | 144,566 | 82,026 | 15,182 | 47,358 | 15,182 | 55.5% |
-| Boston Globe | 103,429 | 57,427 | 8,685 | 37,317 | 0 | 57.3% |
-| Chicago Tribune | 72,908 | 26,214 | 23,006 | 23,688 | 23,006 | 50.3% |
-| USA Today | 36,918 | 13,494 | 19,248 | 4,176 | 0 | 73.6% |
-| Newsday | 51,387 | 51,387 | 0 | 0 | 0 | 63.4% |
+| New York Times | 387,610 | 148,077 | 239,533 | 0 | 239,533 | 32.9% |
+| Washington Post | 275,422 | 129,755 | 94,982 | 50,685 | 94,982 | 45.2% |
+| Wall Street Journal | 121,396 | 45,199 | 76,197 | 0 | 0 | 40.2% |
+| Los Angeles Times | 144,566 | 82,026 | 15,182 | 47,358 | 15,182 | 49.9% |
+| Boston Globe | 103,429 | 57,427 | 8,685 | 37,317 | 0 | 51.2% |
+| Chicago Tribune | 72,908 | 26,214 | 23,006 | 23,688 | 23,006 | 45.0% |
+| USA Today | 36,918 | 13,494 | 19,248 | 4,176 | 0 | 69.3% |
+| Newsday | 51,387 | 51,387 | 0 | 0 | 0 | 56.2% |
 | Tampa Bay Times | 12,921 | 9,985 | 2,936 | 0 | 2,936 | 22.5% |
-| Star Tribune | 7,001 | 7,001 | 0 | 0 | 0 | 77.3% |
-| Other | 12,413 | 11,870 | 530 | 13 | 797 | 54.8% |
+| Star Tribune | 7,001 | 7,001 | 0 | 0 | 0 | 69.2% |
+| Other | 12,413 | 11,870 | 530 | 13 | 797 | 54.3% |
 | No metadata | 885 | 0 | 0 | 0 | 0 | 0.0% |
-| Total | 1,226,856 | 582,435 | 480,299 | 163,237 | 376,436 | 48.7% |
+| Total | 1,226,856 | 582,435 | 480,299 | 163,237 | 376,436 | 43.0% |
 
 ### 4.2 Online editions and the blog label
 
@@ -196,9 +199,9 @@ read the CSV with a data-analysis library instead.
 | Decade | Records | With author |
 |---|---|---|
 | 1980s | 119,028 | 47.0% |
-| 1990s | 204,934 | 40.9% |
-| 2000s | 349,144 | 36.4% |
-| 2010s | 377,225 | 54.4% |
+| 1990s | 204,934 | 40.5% |
+| 2000s | 349,144 | 29.7% |
+| 2010s | 377,225 | 42.4% |
 | 2020s | 175,619 | 71.2% |
 | Unknown year | 906 | 1.9% |
 
@@ -209,13 +212,13 @@ op-eds mostly signed.
 
 | Document type | Records | With author |
 |---|---|---|
-| News | 335,173 | 43.6% |
-| Editorial | 285,685 | 23.2% |
-| NEWSPAPER | 267,133 | 44.4% |
-| Opinions | 237,026 | 58.2% |
-| Commentary | 212,803 | 88.5% |
+| News | 335,173 | 33.3% |
+| Editorial | 285,685 | 12.0% |
+| NEWSPAPER | 267,133 | 44.0% |
+| Opinions | 237,026 | 57.6% |
+| Commentary | 212,803 | 87.9% |
 | Op-Ed | 18,370 | 93.0% |
-| Opinion | 5,402 | 87.5% |
+| Opinion | 5,402 | 86.2% |
 | Opinion Piece | 3,495 | 98.1% |
 | Letter To The Editor | 2,687 | 0.1% |
 | EPG | 1,568 | 24.6% |
@@ -327,8 +330,8 @@ so repeats among them stay.
 
 ### 5.3 News and opinion
 
-Document type is not a reliable marker of opinion. 36.3% of
-records have a non-opinion label but sit in an opinion section, and 150,914
+Document type is not a reliable marker of opinion. 36.4% of
+records have a non-opinion label but sit in an opinion section, and 150,523
 (12.3%) have neither an opinion label nor an opinion section. All are kept in
 the raw table.
 
@@ -339,9 +342,10 @@ the raw table.
   missing metadata, not opinion, unclear opinion, no text, no author, no person among the
   authors, or kept. Only file footer, repeated id and repeated text leave the shared table;
   the others say which records the cleaned dataset leaves out and do not change this table.
-  Counts: `reports/tables/exclusion_counts.csv`.
+  Counts: `exclusion_counts.csv`.
 - **Subtler duplicates** (reprints, edited versions under another title) are not detected.
-- **Authors:** 597,047 records (48.7%) name an author. Unsigned pieces,
+- **Authors:** 527,772 records (43.0%) name an author; ProQuest's
+  `Anonymous` is not counted as one. Unsigned pieces,
   mostly editorials, cannot be linked to a person.
 - **No body text:** 1,622 records, all in 5 files.
 - **Metadata as exported:** values keep ProQuest's stray spaces; use the `*_key` columns to

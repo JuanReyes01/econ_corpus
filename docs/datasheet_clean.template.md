@@ -4,7 +4,7 @@ the prose in the template, never in the generated file. -->
 
 # A cleaned dataset of signed opinion articles in U.S. newspapers, {{year_min}}–{{year_max}}
 
-Data descriptor, version 1.0 (2026-11-08). Derived from the raw table described in
+Data descriptor, version 1.0 (2026-11-09). Derived from the raw table described in
 `docs/datasheet_raw.md`.
 
 ## Abstract
@@ -76,12 +76,17 @@ give the shared raw table; the others leave only the cleaned dataset (Figure 1).
 - Debris of the export is removed first: a label or `By` glued to the name
   (`Jane DoeGuest essay`, `ByJane Doe`), a period glued to the next word (`Jane Q.Doe`) and
   `and` that swallowed the start of a name (`andrew Roe` is `and Andrew Roe`).
+- A note after the byline that repeats the author (`Doe, Jane; Jane Q. Doe lives in ...`)
+  adds no second author when its name is the earlier one with a letter of difference, a
+  piece of it, or the same words in another order; when the earlier part had a town where
+  the family name goes (`Springfield, Jane Doe`) or the two names the wrong way round, the
+  name of the note is the one kept.
 - A note that someone did not write (`Jane Doe is on vacation.`, `Jane Doe contributed
   reporting`) names nobody. `and` separates authors only after a name, not inside a sentence
   about the first author, and a `Family, Given` piece after an unfinished sentence about an
   author is a piece of that sentence. A name followed by a small word that may be a piece
-  of it cut off by a stray space (`Jane Do e Roe`) is not read: it goes to the manual
-  review.
+  of it cut off by a stray space (`Jane Do e Roe`, `Jane Do rgan`) is not read: it goes
+  to the manual review.
 - Of {{n_links}} links, {{n_links_as_written}} ({{links_as_written_pct}}) were read as
   written, {{n_links_recovered}} were recovered and {{n_links_manual}} come from the manual
   review (section 2.4). Each link records how it was read.
@@ -96,7 +101,8 @@ give the shared raw table; the others leave only the cleaned dataset (Figure 1).
   (section 6).
 - **Rule for variants:** names with the same first and family name are one author when their
   middle names and suffixes do not contradict each other (one is missing, or one is the
-  initial of the other, compared name by name) and they share at least one newspaper. One
+  initial of the other, compared name by name) and they are linked through shared newspapers
+  (two variants can be joined by a third that shares a newspaper with each). One
   contradiction among such names stops every merge among them.
 - **Result:** {{n_names}} name variants for {{n_authors}} authors; {{n_names_rule}} variants
   were merged by the rule and {{n_names_review}} by the manual review.
@@ -123,7 +129,9 @@ its newspapers, its years and two headlines.
   taken as authors, and 31 corrections were changed. In round 5 the second model read every
   answer other than "not a person" (296) and changed four; the third audit showed that two
   of those four changes were wrong, and they were undone. In round 6 it read the 200 answers
-  on byline parts and a sample of 60 merges, and changed one.
+  on byline parts and a sample of 60 merges, and changed one. A fourth audit then read
+  samples of the decisions of round 6 (140 on parts, 240 on pairs) and found nine wrong,
+  which were changed.
 - **Retired decisions:** a decision that applies to no byline any more, because the rules
   that split bylines changed, is taken out of the review files and kept apart; the counts
   above are of the decisions in force. The set was checked for
@@ -223,8 +231,9 @@ Pairs of authors that look alike and are not merged.
 
 ## 5. Technical validation
 
-- **Keys:** every article has its own ProQuest id; every link points to an article and an
-  author that exist; every article has at least one author. The build stops otherwise.
+- **Keys:** every article has its own ProQuest id and at least one author; the build stops
+  otherwise. Every link points to an article and an author that exist, by construction: the
+  three tables are written from one reading of the bylines.
 - **Reasons:** they are matched to the records by file and position in the file, and the
   counts per reason add up to the rows parsed. The reasons carry a fingerprint of the columns
   they were decided from and of the code, so reasons computed before a new parse or a change
@@ -232,8 +241,8 @@ Pairs of authors that look alike and are not merged.
 - **Review:** a review file with a repeated case, an unknown verdict or an unreadable
   correction stops the build, and so does a pair judged different that ends up merged. The
   reasons carry a fingerprint of the corrections they were computed with, and the tables carry
-  the fingerprints of the reasons, of both review files and of the code, with the size of
-  every table (`manifest.json`); this document and the lists of cases refuse tables built
+  the fingerprints of the reasons, of both review files, of the code and of every table
+  (`manifest.json`); this document and the lists of cases refuse tables built
   from other inputs or cut short.
 - **Delivery:** before the files are copied, the raw table, the cleaned tables and both
   datasheets are checked against the current records, reasons and review, and the datasheets
@@ -249,8 +258,8 @@ Pairs of authors that look alike and are not merged.
 - **Bylines that name nobody:** {{n_no_person_author}} articles, signed by an editorial
   board, a publication or a role.
 - **Authors may still be split:** of the {{n_candidates}} look-alike pairs,
-  {{n_candidates_not_reviewed}} were not reviewed, most because one of the two authors has a
-  single article. {{n_candidates_unsure}} were reviewed and left unsure.
+  {{n_candidates_not_reviewed}} were not reviewed: one of the two authors has a single
+  article and the other fewer than twenty. {{n_candidates_unsure}} were reviewed and left unsure.
 - **Authors may be wrongly merged:** the rule needs a shared newspaper and compatible names,
   which two people with a common name can meet, across decades too (a father and a son, one
   written with `Jr`; a writer of the 1990s and a historian of the 2020s). In an audit of 100
@@ -268,6 +277,8 @@ Pairs of authors that look alike and are not merged.
 - **Readers' letters:** letters to the editor count as opinion, so many authors with one
   article are readers.
 - **One word is never a name:** pen names of one word and bylines cut to one word are lost.
+- **The name key ignores spaces**, because the export puts stray spaces inside names: `Jane
+  C Hu` and `Jane Chu` are one author. An audit found four such pairs.
 - **Subtler duplicates** (reprints, edited versions under another title, the print and
   online editions of one article under different titles or dates) are not detected.
 - **Language:** a small share of the articles (about 0.4%, estimated once from the text) is
@@ -276,6 +287,9 @@ Pairs of authors that look alike and are not merged.
   notice shared by several articles.
 - **Opinion is taken from ProQuest's labels:** a few arts reviews and news analyses filed
   under an opinion label are in, and opinion columns filed under a news section are out.
+  Records with no section and a generic document type are left out as undecided
+  (`unclear_opinion`); an audit of 100 of them found four signed op-eds, mostly of the Wall
+  Street Journal before 1998.
 
 ## 7. Code availability
 

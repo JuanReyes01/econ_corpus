@@ -22,7 +22,7 @@ Build and audit a corpus of U.S. newspaper opinion articles (ProQuest) to study 
 
 - ProQuest export inserts stray spaces inside metadata values ('En glish', 'Per iódicos', 'Aug 29, 202 2'), titles and author names included. The body text is clean. Normalize before comparing categories and re-parse dates, years and ids.
 - 30% of records are labelled blog/podcast/website: they are the '(Online)' editions of NYT, Washington Post, Chicago Tribune, LA Times and Tampa Bay Times, added on purpose. The label belongs to the edition, not to the article.
-- About 295 publications outside the ten queried newspapers appear (reason `not_queried_newspaper`).
+- About 296 publications outside the ten queried newspapers appear (reason `not_queried_newspaper`).
 - Duplicate ProQuest ids come from overlapping download rounds across files (none inside one file). The 2014 spike is this artifact.
 - 27.6% of records have no 'Materia' line; 5 files from 2024-12-04 have no body.
 - About 51% of records have no author (anonymous, editorial boards, unsigned).

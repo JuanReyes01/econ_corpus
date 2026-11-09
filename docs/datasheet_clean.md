@@ -4,14 +4,14 @@ the prose in the template, never in the generated file. -->
 
 # A cleaned dataset of signed opinion articles in U.S. newspapers, 1980–2024
 
-Data descriptor, version 1.0 (2026-11-08). Derived from the raw table described in
+Data descriptor, version 1.0 (2026-11-09). Derived from the raw table described in
 `docs/datasheet_raw.md`.
 
 ## Abstract
 
-The dataset holds 405,191 opinion articles signed by at least one person, published
+The dataset holds 405,458 opinion articles signed by at least one person, published
 1980–2024 in ten U.S. newspapers with the highest circulation, and the
-86,814 authors who signed them. Articles and authors are separate tables joined by a
+86,726 authors who signed them. Articles and authors are separate tables joined by a
 link table, since an article can have several authors and an author many articles. The
 dataset is derived from 1,377,766 rows parsed from ProQuest US Newsstream exports by a
 sequence of exclusions, each row leaving for exactly one reason. Authors were read from the
@@ -27,13 +27,13 @@ queried newspapers, with text, signed by a person.
 
 | | |
 |---|---|
-| Articles | 405,191 |
-| Authors | 86,814 |
-| Article–author links | 453,660 |
+| Articles | 405,458 |
+| Authors | 86,726 |
+| Article–author links | 453,805 |
 | Newspapers | 10 |
 | Publication years | 1980–2024 |
-| Articles with one author | 93.1% |
-| Authors with one article | 51,448 (59.3%) |
+| Articles with one author | 93.2% |
+| Authors with one article | 51,356 (59.2%) |
 
 ## 2. Methods
 
@@ -54,11 +54,11 @@ give the shared raw table; the others leave only the cleaned dataset (Figure 1).
 | duplicate_text | Same body, title, date and newspaper as another record, which stays | 2,991 | 1,226,856 |
 | not_queried_newspaper | Publication is not one of the queried newspapers | 12,413 | 1,214,443 |
 | missing_metadata | No publication, no id, or no document type and section: unclassifiable | 885 | 1,213,558 |
-| not_opinion | A news section, and neither an opinion document type nor an opinion title | 122,349 | 1,091,209 |
-| unclear_opinion | Generic document type, no section and no opinion title: may be opinion | 11,149 | 1,080,060 |
-| no_text | Opinion piece with no text, or only a notice shared by several articles | 4,420 | 1,075,640 |
-| no_author | Opinion piece that is unsigned or marked Anonymous | 659,344 | 416,296 |
-| no_person_author | Byline names no person (an institution, or text with no full name) | 11,105 | 405,191 |
+| not_opinion | A news section, and neither an opinion document type nor an opinion title | 121,958 | 1,091,600 |
+| unclear_opinion | Generic document type, no section and no opinion title: may be opinion | 11,149 | 1,080,451 |
+| no_text | Opinion piece with no text, or only a notice shared by several articles | 4,420 | 1,076,031 |
+| no_author | Opinion piece that is unsigned or marked Anonymous | 659,444 | 416,587 |
+| no_person_author | Byline names no person (an institution, or text with no full name) | 11,129 | 405,458 |
 
 - **Opinion:** a record is opinion if its document type, its section or its title marks it
   as commentary, editorial, op-ed or letters. Records with no such mark are left out, either
@@ -88,14 +88,19 @@ give the shared raw table; the others leave only the cleaned dataset (Figure 1).
 - Debris of the export is removed first: a label or `By` glued to the name
   (`Jane DoeGuest essay`, `ByJane Doe`), a period glued to the next word (`Jane Q.Doe`) and
   `and` that swallowed the start of a name (`andrew Roe` is `and Andrew Roe`).
+- A note after the byline that repeats the author (`Doe, Jane; Jane Q. Doe lives in ...`)
+  adds no second author when its name is the earlier one with a letter of difference, a
+  piece of it, or the same words in another order; when the earlier part had a town where
+  the family name goes (`Springfield, Jane Doe`) or the two names the wrong way round, the
+  name of the note is the one kept.
 - A note that someone did not write (`Jane Doe is on vacation.`, `Jane Doe contributed
   reporting`) names nobody. `and` separates authors only after a name, not inside a sentence
   about the first author, and a `Family, Given` piece after an unfinished sentence about an
   author is a piece of that sentence. A name followed by a small word that may be a piece
-  of it cut off by a stray space (`Jane Do e Roe`) is not read: it goes to the manual
-  review.
-- Of 453,660 links, 432,166 (95.3%) were read as
-  written, 16,423 were recovered and 5,071 come from the manual
+  of it cut off by a stray space (`Jane Do e Roe`, `Jane Do rgan`) is not read: it goes
+  to the manual review.
+- Of 453,805 links, 432,393 (95.3%) were read as
+  written, 16,289 were recovered and 5,123 come from the manual
   review (section 2.4). Each link records how it was read.
 
 ### 2.3 Deciding that two names are one author
@@ -108,11 +113,12 @@ give the shared raw table; the others leave only the cleaned dataset (Figure 1).
   (section 6).
 - **Rule for variants:** names with the same first and family name are one author when their
   middle names and suffixes do not contradict each other (one is missing, or one is the
-  initial of the other, compared name by name) and they share at least one newspaper. One
+  initial of the other, compared name by name) and they are linked through shared newspapers
+  (two variants can be joined by a third that shares a newspaper with each). One
   contradiction among such names stops every merge among them.
-- **Result:** 90,892 name variants for 86,814 authors; 3,211 variants
-  were merged by the rule and 867 by the manual review.
-- **Not merged:** 7,103 pairs of look-alike authors are listed, not merged
+- **Result:** 90,791 name variants for 86,726 authors; 3,195 variants
+  were merged by the rule and 870 by the manual review.
+- **Not merged:** 7,047 pairs of look-alike authors are listed, not merged
   (section 3.5).
 
 ### 2.4 Manual review by a large language model
@@ -124,8 +130,8 @@ its newspapers, its years and two headlines.
 
 | Reviewed | Cases | Outcome |
 |---|---|---|
-| Byline parts (ambiguous, holding a place or publication word, long, read by moving pieces around, possibly damaged, or read as nobody) | 6,886 | 3,177 corrected, 2,921 not a person, 695 kept as read, 93 unsure |
-| Pairs of look-alike authors with two or more articles each, or with one author of twenty or more | 2,317 | 868 same person, 902 different, 547 unsure |
+| Byline parts (ambiguous, holding a place or publication word, long, read by moving pieces around, possibly damaged, or read as nobody) | 6,976 | 3,218 corrected, 2,945 not a person, 719 kept as read, 94 unsure |
+| Pairs of look-alike authors with two or more articles each, or with one author of twenty or more | 2,318 | 871 same person, 904 different, 543 unsure |
 
 - **Models:** most cases were decided by Claude Sonnet run as subagents; the rest, and the
   checks, by Claude Fable 5.1. The reviewer of every decision is recorded in the review files.
@@ -135,7 +141,9 @@ its newspapers, its years and two headlines.
   taken as authors, and 31 corrections were changed. In round 5 the second model read every
   answer other than "not a person" (296) and changed four; the third audit showed that two
   of those four changes were wrong, and they were undone. In round 6 it read the 200 answers
-  on byline parts and a sample of 60 merges, and changed one.
+  on byline parts and a sample of 60 merges, and changed one. A fourth audit then read
+  samples of the decisions of round 6 (140 on parts, 240 on pairs) and found nine wrong,
+  which were changed.
 - **Retired decisions:** a decision that applies to no byline any more, because the rules
   that split bylines changed, is taken out of the review files and kept apart; the counts
   above are of the decisions in force. The set was checked for
@@ -213,80 +221,81 @@ Pairs of authors that look alike and are not merged.
 
 | Newspaper | Articles | Print | Online | Pre-1997 | Share |
 |---|---|---|---|---|---|
-| Washington Post | 108,649 | 50,098 | 47,723 | 10,828 | 26.8% |
-| New York Times | 96,814 | 67,013 | 29,801 | 0 | 23.9% |
+| Washington Post | 108,909 | 50,152 | 47,783 | 10,974 | 26.9% |
+| New York Times | 96,836 | 67,013 | 29,823 | 0 | 23.9% |
 | Los Angeles Times | 58,742 | 33,161 | 10,115 | 15,466 | 14.5% |
-| Boston Globe | 41,321 | 23,365 | 5,789 | 12,167 | 10.2% |
+| Boston Globe | 41,313 | 23,358 | 5,788 | 12,167 | 10.2% |
 | Wall Street Journal | 38,217 | 1,963 | 36,254 | 0 | 9.4% |
-| Chicago Tribune | 20,359 | 4,331 | 12,552 | 3,476 | 5.0% |
-| Newsday | 20,021 | 20,021 | 0 | 0 | 4.9% |
+| Chicago Tribune | 20,353 | 4,325 | 12,552 | 3,476 | 5.0% |
+| Newsday | 20,020 | 20,020 | 0 | 0 | 4.9% |
 | USA Today | 19,181 | 2,891 | 16,287 | 3 | 4.7% |
 | Tampa Bay Times | 1,526 | 98 | 1,428 | 0 | 0.4% |
 | Star Tribune | 361 | 361 | 0 | 0 | 0.1% |
-| Total | 405,191 | 203,302 | 159,949 | 41,940 | 100.0% |
+| Total | 405,458 | 203,342 | 160,030 | 42,086 | 100.0% |
 
 ### 4.2 Decades
 
 | Decade | Articles | Share |
 |---|---|---|
-| 1980s | 30,720 | 7.6% |
-| 1990s | 48,701 | 12.0% |
-| 2000s | 74,648 | 18.4% |
-| 2010s | 134,662 | 33.2% |
-| 2020s | 116,445 | 28.7% |
+| 1980s | 30,773 | 7.6% |
+| 1990s | 48,795 | 12.0% |
+| 2000s | 74,681 | 18.4% |
+| 2010s | 134,743 | 33.2% |
+| 2020s | 116,451 | 28.7% |
 | Unknown year | 15 | 0.0% |
 
 ### 4.3 Authors per article
 
 | Authors | Articles | Share |
 |---|---|---|
-| 1 | 377,397 | 93.1% |
-| 2 | 19,983 | 4.9% |
-| 3 | 2,984 | 0.7% |
-| 4 | 1,703 | 0.4% |
+| 1 | 377,778 | 93.2% |
+| 2 | 19,876 | 4.9% |
+| 3 | 2,978 | 0.7% |
+| 4 | 1,702 | 0.4% |
 | 5 or more | 3,124 | 0.8% |
 
 ### 4.4 Articles per author
 
 | Articles | Authors | Share |
 |---|---|---|
-| 1 | 51,448 | 59.3% |
-| 2 to 9 | 30,618 | 35.3% |
-| 10 to 99 | 4,338 | 5.0% |
+| 1 | 51,356 | 59.2% |
+| 2 to 9 | 30,620 | 35.3% |
+| 10 to 99 | 4,340 | 5.0% |
 | 100 or more | 410 | 0.5% |
 
 ### 4.5 Most frequent authors
 
 | Author | Articles |
 |---|---|
-| Jennifer Rubin | 5,067 |
+| Jennifer Rubin | 5,072 |
 | George F Will | 3,879 |
 | Paul Krugman | 3,514 |
-| EJ Dionne Jr | 3,078 |
-| David Ignatius | 2,736 |
+| EJ Dionne Jr | 3,080 |
+| David Ignatius | 2,739 |
 | Ellen Goodman | 2,573 |
+| Nicholas Kristof | 2,374 |
 | Thomas L Friedman | 2,366 |
 | Jeff Jacoby | 2,355 |
-| Nicholas Kristof | 2,353 |
 | James Freeman | 2,303 |
 | Maureen Dowd | 2,302 |
 | Richard Cohen | 2,273 |
-| David S Broder | 2,227 |
-| Paul Waldman | 2,153 |
+| David S Broder | 2,228 |
+| Paul Waldman | 2,154 |
 | Joan Vennochi | 2,147 |
 
 ### 4.6 How the names were read
 
 | Read | Count | Share |
 |---|---|---|
-| as_written | 432,166 | 95.3% |
-| recovered | 16,423 | 3.6% |
-| manual_review | 5,071 | 1.1% |
+| as_written | 432,393 | 95.3% |
+| recovered | 16,289 | 3.6% |
+| manual_review | 5,123 | 1.1% |
 
 ## 5. Technical validation
 
-- **Keys:** every article has its own ProQuest id; every link points to an article and an
-  author that exist; every article has at least one author. The build stops otherwise.
+- **Keys:** every article has its own ProQuest id and at least one author; the build stops
+  otherwise. Every link points to an article and an author that exist, by construction: the
+  three tables are written from one reading of the bylines.
 - **Reasons:** they are matched to the records by file and position in the file, and the
   counts per reason add up to the rows parsed. The reasons carry a fingerprint of the columns
   they were decided from and of the code, so reasons computed before a new parse or a change
@@ -294,8 +303,8 @@ Pairs of authors that look alike and are not merged.
 - **Review:** a review file with a repeated case, an unknown verdict or an unreadable
   correction stops the build, and so does a pair judged different that ends up merged. The
   reasons carry a fingerprint of the corrections they were computed with, and the tables carry
-  the fingerprints of the reasons, of both review files and of the code, with the size of
-  every table (`manifest.json`); this document and the lists of cases refuse tables built
+  the fingerprints of the reasons, of both review files, of the code and of every table
+  (`manifest.json`); this document and the lists of cases refuse tables built
   from other inputs or cut short.
 - **Delivery:** before the files are copied, the raw table, the cleaned tables and both
   datasheets are checked against the current records, reasons and review, and the datasheets
@@ -304,19 +313,19 @@ Pairs of authors that look alike and are not merged.
 
 | Kind / review | Count | Share |
 |---|---|---|
-| nickname / not_reviewed | 2,191 | 30.8% |
-| conflicting_names / not_reviewed | 1,648 | 23.2% |
-| no_shared_newspaper / not_reviewed | 1,206 | 17.0% |
-| one_letter_apart / not_reviewed | 693 | 9.8% |
-| nickname / different | 299 | 4.2% |
-| conflicting_names / different | 293 | 4.1% |
-| nickname / unsure | 210 | 3.0% |
-| conflicting_names / unsure | 193 | 2.7% |
-| one_letter_apart / different | 169 | 2.4% |
-| no_shared_newspaper / unsure | 81 | 1.1% |
+| nickname / not_reviewed | 2,194 | 31.1% |
+| conflicting_names / not_reviewed | 1,643 | 23.3% |
+| no_shared_newspaper / not_reviewed | 1,213 | 17.2% |
+| one_letter_apart / not_reviewed | 638 | 9.1% |
+| nickname / different | 300 | 4.3% |
+| conflicting_names / different | 293 | 4.2% |
+| nickname / unsure | 209 | 3.0% |
+| conflicting_names / unsure | 190 | 2.7% |
+| one_letter_apart / different | 170 | 2.4% |
+| no_shared_newspaper / unsure | 82 | 1.2% |
 | no_shared_newspaper / different | 50 | 0.7% |
-| one_letter_apart / unsure | 36 | 0.5% |
-| swapped_names / not_reviewed | 22 | 0.3% |
+| one_letter_apart / unsure | 35 | 0.5% |
+| swapped_names / not_reviewed | 18 | 0.3% |
 | apart_by_review / different | 5 | 0.1% |
 | apart_by_review / not_reviewed | 3 | 0.0% |
 | swapped_names / different | 2 | 0.0% |
@@ -324,13 +333,13 @@ Pairs of authors that look alike and are not merged.
 
 ## 6. Usage notes and limitations
 
-- **Unsigned opinion is absent:** 659,344 opinion pieces have no author, mostly
+- **Unsigned opinion is absent:** 659,444 opinion pieces have no author, mostly
   editorials. They are in the raw table.
-- **Bylines that name nobody:** 11,105 articles, signed by an editorial
+- **Bylines that name nobody:** 11,129 articles, signed by an editorial
   board, a publication or a role.
-- **Authors may still be split:** of the 7,103 look-alike pairs,
-  5,763 were not reviewed, most because one of the two authors has a
-  single article. 522 were reviewed and left unsure.
+- **Authors may still be split:** of the 7,047 look-alike pairs,
+  5,709 were not reviewed: one of the two authors has a single
+  article and the other fewer than twenty. 518 were reviewed and left unsure.
 - **Authors may be wrongly merged:** the rule needs a shared newspaper and compatible names,
   which two people with a common name can meet, across decades too (a father and a son, one
   written with `Jr`; a writer of the 1990s and a historian of the 2020s). In an audit of 100
@@ -348,6 +357,8 @@ Pairs of authors that look alike and are not merged.
 - **Readers' letters:** letters to the editor count as opinion, so many authors with one
   article are readers.
 - **One word is never a name:** pen names of one word and bylines cut to one word are lost.
+- **The name key ignores spaces**, because the export puts stray spaces inside names: `Jane
+  C Hu` and `Jane Chu` are one author. An audit found four such pairs.
 - **Subtler duplicates** (reprints, edited versions under another title, the print and
   online editions of one article under different titles or dates) are not detected.
 - **Language:** a small share of the articles (about 0.4%, estimated once from the text) is
@@ -356,6 +367,9 @@ Pairs of authors that look alike and are not merged.
   notice shared by several articles.
 - **Opinion is taken from ProQuest's labels:** a few arts reviews and news analyses filed
   under an opinion label are in, and opinion columns filed under a news section are out.
+  Records with no section and a generic document type are left out as undecided
+  (`unclear_opinion`); an audit of 100 of them found four signed op-eds, mostly of the Wall
+  Street Journal before 1998.
 
 ## 7. Code availability
 

@@ -4,7 +4,7 @@ template, never in the generated file. -->
 
 # A raw table of U.S. newspaper opinion articles from ProQuest US Newsstream, {{year_min}}–{{year_max}}
 
-Data descriptor, version 1.1 (2026-11-08). Companion to the cleaned dataset derived from this table.
+Data descriptor, version 1.1 (2026-11-09). Companion to the cleaned dataset derived from this table.
 
 ## Abstract
 
@@ -14,7 +14,7 @@ repeated. Each record keeps every metadata field of the export, the article text
 dates, years and identifiers with explicit quality flags, its file of origin, and a hash and
 word count of the text. Apart from repeated records and file footers, nothing was removed or
 corrected, so the table documents the source as delivered, including news items and
-publications outside the query. A companion table assigns every record one exclusion reason. This descriptor
+publications outside the query. A companion file, `econ_corpus_raw_reasons.csv`, assigns every record one exclusion reason. This descriptor
 reports how the data were collected and parsed, what they contain, and where they depart from
 the intended design.
 
@@ -134,8 +134,11 @@ read the CSV with a data-analysis library instead.
 
 ### 3.2 Companion files
 
-- `data/interim/exclusions.parquet`: `source_file`, `record_index` and one exclusion `reason`
-  per row of the parsed table, footers and repeats included (section 6).
+- `econ_corpus_raw_reasons.csv`, delivered next to the table: `source_file`, `record_index`,
+  `doc_id` and one exclusion `reason` for each of its rows (section 6). The reasons of every
+  parsed row, footers and repeats included, are in `data/interim/exclusions.parquet` of the
+  pipeline workspace.
+- `exclusion_counts.csv`, delivered next to the table: rows per reason, of all rows parsed.
 - `reports/tables/raw_by_year.csv` and `reports/tables/raw_by_download_date.csv`: records and
   distinct ids per year, and counts and publication-year range per download date, all as
   parsed, before repeated ids were removed.
@@ -252,9 +255,10 @@ the raw table.
   missing metadata, not opinion, unclear opinion, no text, no author, no person among the
   authors, or kept. Only file footer, repeated id and repeated text leave the shared table;
   the others say which records the cleaned dataset leaves out and do not change this table.
-  Counts: `reports/tables/exclusion_counts.csv`.
+  Counts: `exclusion_counts.csv`.
 - **Subtler duplicates** (reprints, edited versions under another title) are not detected.
-- **Authors:** {{n_with_author}} records ({{with_author_pct}}) name an author. Unsigned pieces,
+- **Authors:** {{n_with_author}} records ({{with_author_pct}}) name an author; ProQuest's
+  `Anonymous` is not counted as one. Unsigned pieces,
   mostly editorials, cannot be linked to a person.
 - **No body text:** {{n_no_body}} records, all in {{n_no_body_files}} files.
 - **Metadata as exported:** values keep ProQuest's stray spaces; use the `*_key` columns to
