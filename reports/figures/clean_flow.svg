@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 732" font-family="sans-serif" font-size="12" fill="#333333">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 794" font-family="sans-serif" font-size="12" fill="#333333">
 <title>From the ProQuest exports to the cleaned dataset</title>
-<rect width="860" height="732" fill="#ffffff"/>
+<rect width="860" height="794" fill="#ffffff"/>
 <text x="30" y="22" font-size="14">From the ProQuest exports to the cleaned dataset</text>
 <rect class="remaining" x="30" y="50" width="230" height="40" fill="#4c78a8" stroke="#4c78a8"/>
 <text x="145.0" y="75" text-anchor="middle" fill="#ffffff">Rows parsed: 1,377,766</text>
@@ -52,6 +52,11 @@
 <line x1="145.0" x2="145.0" y1="648" y2="670" stroke="#333333"/>
 <line x1="145.0" x2="322" y1="659" y2="659" stroke="#333333"/>
 <text class="removed" x="330" y="663"><tspan fill="#f58518" font-weight="bold">− 10,917</tspan>  no_person_author: Byline names no person (an institution, or text with no full name)</text>
-<rect class="remaining" x="30" y="670" width="230" height="40" fill="#4c78a8" stroke="#4c78a8"/>
-<text x="145.0" y="695" text-anchor="middle" fill="#ffffff">Cleaned dataset: 402,638</text>
+<rect class="remaining" x="30" y="670" width="230" height="40" fill="#ffffff" stroke="#4c78a8"/>
+<text x="145.0" y="695" text-anchor="middle" fill="#333333">402,638</text>
+<line x1="145.0" x2="145.0" y1="710" y2="732" stroke="#333333"/>
+<line x1="145.0" x2="322" y1="721" y2="721" stroke="#333333"/>
+<text class="removed" x="330" y="725"><tspan fill="#f58518" font-weight="bold">− 1,873</tspan>  short_or_cartoon: Signed opinion piece under 50 words or under a cartoon heading</text>
+<rect class="remaining" x="30" y="732" width="230" height="40" fill="#4c78a8" stroke="#4c78a8"/>
+<text x="145.0" y="757" text-anchor="middle" fill="#ffffff">Cleaned dataset: 400,765</text>
 </svg>

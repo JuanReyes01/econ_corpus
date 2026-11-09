@@ -256,7 +256,7 @@ the raw table.
 - **Exclusion reasons:** the companion table gives every parsed row one reason: file footer,
   repeated id, publication not queried, repeated text (same body in the same newspaper),
   missing metadata, not opinion, unclear opinion, no text, no author, no person among the
-  authors, or kept. Only file footer, repeated id and repeated text leave the shared table;
+  authors, short or cartoon, or kept. Only file footer, repeated id and repeated text leave the shared table;
   the others say which records the cleaned dataset leaves out and do not change this table.
   Counts: `exclusion_counts.csv`.
 - **Subtler duplicates** are not detected: edited versions of one article, whose text

@@ -23,7 +23,7 @@ documented here.
 
 The dataset supports the study of how economists communicate with the public through
 newspaper opinion pieces. It keeps only what that study needs: opinion pieces, from the
-queried newspapers, with text, signed by a person.
+queried newspapers, with a text of at least 50 words, signed by a person.
 
 | | |
 |---|---|
@@ -60,6 +60,9 @@ give the shared raw table; the others leave only the cleaned dataset (Figure 1).
   A body under 100 words carried by five or more different articles (a title on a date) is a
   notice or a credit ("text not available", a cartoon caption), not text (`no_text`). ProQuest's "Anonymous" and missing bylines are unsigned (`no_author`);
   a byline that names only an institution is `no_person_author`.
+- **A text to read:** a signed opinion piece with a body under 50 words (a cartoon stored
+  as its caption, a teaser, a cut text) or with a title that starts with a cartoon heading
+  (`TOON-OP`, `Op-Comic`) is left out (`short_or_cartoon`).
 
 ### 2.2 Reading the bylines
 
@@ -304,8 +307,9 @@ Pairs of authors that look alike and are not merged.
   stored only as their fixed introduction.
 - **Language:** a small share of the articles (about 0.4%, estimated once from the text) is
   in Spanish, mostly from online editions, although ProQuest labels them English.
-- **Cartoons and very short items** signed by a person are kept when their body is not a
-  notice shared by several articles.
+- **Cartoons** have no label in ProQuest. They are left out when stored as a caption under
+  50 words or under a cartoon heading; a cartoon with a longer caption and no heading
+  stays.
 - **Opinion is taken from ProQuest's labels:** a few arts reviews and news analyses filed
   under an opinion label are in, and opinion columns filed under a news section are out.
   Signed pieces of the opinion pages of USA Today of 1991 to 2012 whose only mark is in

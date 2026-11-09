@@ -10,3 +10,4 @@ unclear_opinion,"Generic document type, no section and no opinion title: may be 
 no_text,"Opinion piece with no text, or only a notice shared by several articles","4,420","1,044,747"
 no_author,Opinion piece that is unsigned or marked Anonymous,"631,192","413,555"
 no_person_author,"Byline names no person (an institution, or text with no full name)","10,917","402,638"
+short_or_cartoon,Signed opinion piece under 50 words or under a cartoon heading,"1,873","400,765"
