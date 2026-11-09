@@ -2,7 +2,7 @@ Reason,Meaning,Records,Share,In raw,Dropped
 file_footer,"Row is the footer of an export file, not an article","2,801",0.2%,no,yes
 duplicate_id,Repeats a ProQuest id; the copy with the longest body is the one kept,"145,118",10.5%,no,yes
 not_queried_newspaper,Publication is not one of the queried newspapers,"12,408",0.9%,yes,yes
-duplicate_text,"Same body, title, date and newspaper as an earlier record","2,908",0.2%,yes,yes
+duplicate_text,"Same body, title, date and newspaper as an earlier record","2,908",0.2%,no,yes
 missing_metadata,"No document type, no section and no opinion title: cannot be classified",885,0.1%,yes,yes
 not_opinion,"A news section, and neither an opinion document type nor an opinion title","125,285",9.1%,yes,yes
 unclear_opinion,"Generic document type, no section and no opinion title: may be opinion","11,153",0.8%,yes,no
