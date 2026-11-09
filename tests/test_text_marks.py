@@ -45,6 +45,42 @@ def test_other_texts_carry_no_rubric(text: str | None) -> None:
     assert rubrics(text) == [False]
 
 
+def polls(*texts: str | None) -> list[bool]:
+    return text_marks.poll_frames(pa.array(texts, type=pa.string()))
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        f"{ENGLISH}\nInstructions: Click the box next to each tweet that amuses you.\n{ENGLISH}",
+        f"{ENGLISH}\n  Which of these top tweets do you find amusing?",
+        "To receive an email alert when the Tweet of the Week poll goes live, sign up.",
+    ],
+)
+def test_a_text_with_the_frame_of_a_poll_is_marked(text: str) -> None:
+    assert polls(text) == [True]
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        ENGLISH,
+        "The instructions: click the box, the mayor said, and nothing happened.",  # mid-line
+        "He wrote Instructions: Click the box twice.",  # the frame opens a line
+        "Which of these top officials will resign first?",
+        "",
+        None,
+    ],
+)
+def test_other_texts_carry_no_poll(text: str | None) -> None:
+    assert polls(text) == [False]
+
+
+def test_marks_not_read_are_none() -> None:
+    assert text_marks.Marks() == text_marks.Marks(None, None, None, None)
+    assert text_marks.Marks(rubric=[True]).english is None
+
+
 def test_the_marks_of_a_table_of_records_come_in_row_order(tmp_path: Path) -> None:
     records = tmp_path / "records.parquet"
     texts = [ENGLISH, None, f"{RUBRIC}\n{ENGLISH}", SPANISH, f"{RUBRIC}\n{SPANISH}"]
@@ -57,3 +93,4 @@ def test_the_marks_of_a_table_of_records_come_in_row_order(tmp_path: Path) -> No
     assert marks.own_words == prose.own_word_counts(pa.array(texts, type=pa.string()))
     assert marks.own_words[1] == 0
     assert marks.own_words[0] == len(ENGLISH.split())
+    assert marks.poll == [False] * len(texts)

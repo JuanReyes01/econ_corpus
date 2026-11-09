@@ -9,6 +9,7 @@ import pytest
 
 from econ_corpus.names import review
 from econ_corpus.raw import exclusions, language, parse, prose, reasons
+from econ_corpus.raw.text_marks import Marks
 from econ_corpus.shared import summaries
 
 DEFAULTS = {
@@ -382,16 +383,26 @@ FEW, ENOUGH = prose.MIN_OWN_WORDS - 1, prose.MIN_OWN_WORDS
 
 def test_a_signed_opinion_piece_with_too_few_words_of_its_author_is_left_out() -> None:
     rows = make_rows({"doc_id": 1}, {"doc_id": 2, "body_sha256": "bbb"})
-    assert exclusions.assign_reasons(rows, own_words=[FEW, ENOUGH]) == ["short_or_cartoon", "kept"]
-    assert exclusions.assign_reasons(rows, own_words=[0, ENOUGH]) == ["short_or_cartoon", "kept"]
+    assert exclusions.assign_reasons(rows, marks=Marks(own_words=[FEW, ENOUGH])) == [
+        "short_or_cartoon",
+        "kept",
+    ]
+    assert exclusions.assign_reasons(rows, marks=Marks(own_words=[0, ENOUGH])) == [
+        "short_or_cartoon",
+        "kept",
+    ]
     assert exclusions.assign_reasons(rows) == ["kept", "kept"]  # no count: nothing to judge
 
 
 def test_the_words_stored_do_not_decide() -> None:
     # A short letter is text; a long page of credits and links is not.
-    assert exclusions.assign_reasons(make_rows({"body_words": 35}), own_words=[ENOUGH]) == ["kept"]
+    assert exclusions.assign_reasons(
+        make_rows({"body_words": 35}), marks=Marks(own_words=[ENOUGH])
+    ) == ["kept"]
     furniture = make_rows({"body_words": 120})
-    assert exclusions.assign_reasons(furniture, own_words=[FEW]) == ["short_or_cartoon"]
+    assert exclusions.assign_reasons(furniture, marks=Marks(own_words=[FEW])) == [
+        "short_or_cartoon"
+    ]
 
 
 def test_the_reasons_table_states_the_least_words() -> None:
@@ -404,13 +415,13 @@ def test_the_reasons_table_states_the_least_words() -> None:
 def test_the_heading_of_a_cartoon_does_not_decide(title: str) -> None:
     # What a cartoonist writes under the drawing is text; the drawing alone leaves no words.
     rows = make_rows({"title": title})
-    assert exclusions.assign_reasons(rows, own_words=[ENOUGH]) == ["kept"]
-    assert exclusions.assign_reasons(rows, own_words=[FEW]) == ["short_or_cartoon"]
+    assert exclusions.assign_reasons(rows, marks=Marks(own_words=[ENOUGH])) == ["kept"]
+    assert exclusions.assign_reasons(rows, marks=Marks(own_words=[FEW])) == ["short_or_cartoon"]
 
 
 def test_a_short_piece_that_fails_an_earlier_rule_keeps_that_reason() -> None:
     def reason(change: dict) -> list[str]:
-        return exclusions.assign_reasons(make_rows(change), own_words=[FEW])
+        return exclusions.assign_reasons(make_rows(change), marks=Marks(own_words=[FEW]))
 
     assert reason({"author": None}) == ["no_author"]
     assert reason({"author": "The Editorial Board"}) == ["no_person_author"]
@@ -427,11 +438,11 @@ def test_a_short_piece_stays_in_the_raw_table() -> None:
 def test_which_copy_of_a_text_stays_does_not_depend_on_its_own_words() -> None:
     # The raw table must be the same with or without this rule.
     rows = make_rows({"doc_id": 1}, {"doc_id": 2, "source_file": LATER})
-    with_rule = exclusions.assign_reasons(rows, own_words=[FEW, FEW])
+    with_rule = exclusions.assign_reasons(rows, marks=Marks(own_words=[FEW, FEW]))
     assert with_rule == ["short_or_cartoon", "duplicate_text"]
     assert exclusions.assign_reasons(rows) == ["kept", "duplicate_text"]
     unsigned_first = make_rows({"doc_id": 1, "author": None}, {"doc_id": 2, "source_file": LATER})
-    assert exclusions.assign_reasons(unsigned_first, own_words=[FEW, FEW]) == [
+    assert exclusions.assign_reasons(unsigned_first, marks=Marks(own_words=[FEW, FEW])) == [
         "duplicate_text",
         "short_or_cartoon",
     ]
@@ -456,6 +467,23 @@ def test_which_copy_of_a_text_stays_does_not_depend_on_the_compiled_heading() ->
 
 
 USA_TODAY = {"publication_key": "usatoday", "title": "Colbert says the speech ran long"}
+
+
+def test_a_poll_of_the_words_of_others_is_a_compiled_page() -> None:
+    rows = make_rows({"doc_id": 1}, {"doc_id": 2, "body_sha256": "bbb"})
+    with_poll = exclusions.assign_reasons(rows, marks=Marks(poll=[True, False]))
+    assert with_poll == ["no_person_author", "kept"]
+    unsigned = make_rows({"author": None})
+    assert exclusions.assign_reasons(unsigned, marks=Marks(poll=[True])) == ["no_author"]
+
+
+def test_write_exclusions_reads_the_frame_of_a_poll_from_the_text(tmp_path: Path) -> None:
+    rows = make_rows({"doc_id": 1}, {"doc_id": 2, "body_sha256": "bbb"})
+    source = tmp_path / "records.parquet"
+    poll = f"{ENGLISH}\nInstructions: Click the box next to each line that amuses you.\n{ENGLISH}"
+    pq.write_table(records_table(rows, [poll, ENGLISH]), source)
+    reasons = exclusions.write_exclusions(source, tmp_path / "out.parquet")
+    assert reasons == ["no_person_author", "kept"]
 
 
 def test_a_short_page_of_usa_today_that_names_a_comedian_is_a_round_up_of_jokes() -> None:
@@ -483,7 +511,10 @@ NEWS = {"doc_type": "NEWSPAPER", "section": "NEWS"}
 def test_the_rubric_of_an_opinion_page_marks_opinion_like_a_title_or_a_section() -> None:
     rows = make_rows(NEWS, {**NEWS, "doc_id": 2, "body_sha256": "bbb"})
     assert exclusions.assign_reasons(rows) == ["not_opinion", "not_opinion"]
-    assert exclusions.assign_reasons(rows, rubric=[True, False]) == ["kept", "not_opinion"]
+    assert exclusions.assign_reasons(rows, marks=Marks(rubric=[True, False])) == [
+        "kept",
+        "not_opinion",
+    ]
 
 
 @pytest.mark.parametrize(
@@ -497,11 +528,15 @@ def test_the_rubric_of_an_opinion_page_marks_opinion_like_a_title_or_a_section()
     ],
 )
 def test_a_piece_under_the_rubric_still_needs_text_and_a_person(change: dict, reason: str) -> None:
-    assert exclusions.assign_reasons(make_rows({**NEWS, **change}), rubric=[True]) == [reason]
+    assert exclusions.assign_reasons(
+        make_rows({**NEWS, **change}), marks=Marks(rubric=[True])
+    ) == [reason]
 
 
 def test_a_piece_under_the_rubric_still_needs_words_of_its_author() -> None:
-    reasons = exclusions.assign_reasons(make_rows(NEWS), rubric=[True], own_words=[FEW])
+    reasons = exclusions.assign_reasons(
+        make_rows(NEWS), marks=Marks(rubric=[True], own_words=[FEW])
+    )
     assert reasons == ["short_or_cartoon"]
 
 
@@ -519,9 +554,12 @@ LOW, HIGH = language.MIN_ENGLISH / 2, language.MIN_ENGLISH * 5
 
 def test_a_signed_opinion_piece_with_too_few_english_words_is_left_out() -> None:
     rows = make_rows({"doc_id": 1}, {"doc_id": 2, "body_sha256": "bbb"})
-    assert exclusions.assign_reasons(rows, english=[LOW, HIGH]) == ["not_english", "kept"]
+    assert exclusions.assign_reasons(rows, marks=Marks(english=[LOW, HIGH])) == [
+        "not_english",
+        "kept",
+    ]
     at_the_limit = [language.MIN_ENGLISH, HIGH]
-    assert exclusions.assign_reasons(rows, english=at_the_limit) == ["kept", "kept"]
+    assert exclusions.assign_reasons(rows, marks=Marks(english=at_the_limit)) == ["kept", "kept"]
     assert exclusions.assign_reasons(rows) == ["kept", "kept"]
 
 
@@ -536,22 +574,27 @@ def test_a_signed_opinion_piece_with_too_few_english_words_is_left_out() -> None
 def test_a_foreign_text_that_fails_an_earlier_rule_keeps_that_reason(
     change: dict, reason: str
 ) -> None:
-    assert exclusions.assign_reasons(make_rows(change), english=[LOW]) == [reason]
+    assert exclusions.assign_reasons(make_rows(change), marks=Marks(english=[LOW])) == [reason]
 
 
 def test_a_foreign_text_with_too_few_words_is_left_out_as_short() -> None:
     rows = make_rows({})
-    assert exclusions.assign_reasons(rows, english=[LOW], own_words=[FEW]) == ["short_or_cartoon"]
+    assert exclusions.assign_reasons(rows, marks=Marks(english=[LOW], own_words=[FEW])) == [
+        "short_or_cartoon"
+    ]
 
 
 def test_which_copy_of_a_text_stays_does_not_depend_on_its_language() -> None:
     # The raw table must be the same with or without this rule.
     rows = make_rows({"doc_id": 1, "author": None}, {"doc_id": 2, "source_file": LATER})
-    assert exclusions.assign_reasons(rows, english=[LOW, LOW]) == ["duplicate_text", "not_english"]
+    assert exclusions.assign_reasons(rows, marks=Marks(english=[LOW, LOW])) == [
+        "duplicate_text",
+        "not_english",
+    ]
 
 
 def test_a_text_with_no_share_is_not_judged_by_its_language() -> None:
-    assert exclusions.assign_reasons(make_rows({}), english=[None]) == ["kept"]
+    assert exclusions.assign_reasons(make_rows({}), marks=Marks(english=[None])) == ["kept"]
 
 
 def test_write_exclusions_reads_the_language_from_the_text(tmp_path: Path) -> None:

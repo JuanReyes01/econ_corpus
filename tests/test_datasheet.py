@@ -611,6 +611,9 @@ def test_letters_to_another_desk_are_not_the_opinion_page() -> None:
         "Jane Doe examines the week in Washington in Best of Late Night",
         "Jane Doe has an idea in Best of Late Night.",
         "EDITORIALS ELSEWHERE; Death and taxes: \xa0 [HOME EDITION ]",
+        "WHAT OTHERS ARE SAYING",
+        "What others are saying: \xa0 [Chicago Final Edition ]",
+        "IN QUOTES Oh Lord, Save Us: \xa0 [NASSAU Edition ]",
     ],
 )
 def test_headings_of_compiled_pages_are_recognised(title: str) -> None:
@@ -629,6 +632,7 @@ def test_headings_of_compiled_pages_are_recognised(title: str) -> None:
         "LOCAL PUNCHLINES: COMEDIANS GIVE THEIR TWO CENTS",
         "The best of late night television is behind us",
         "Editorials elsewhere said the same",
+        "What others are saying about the budget is wrong",
         None,
     ],
 )

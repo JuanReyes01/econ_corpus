@@ -64,7 +64,9 @@ OPINION_TITLE_TAGS = ("(editorial)", "[op-ed", "[editorial", "[letter", "[commen
 # Headings of pages put together from the words of others: jokes of the week, quotes from
 # other newspapers ('Punchlines', 'Best of Late Night', 'IN OTHER WORDS: A sampling of
 # opinions', 'EDITORIALS ELSEWHERE; ...').
-COMPILED_TITLE_STARTS = ("punchlines", "bestoflatenight", "editorialselsewhere;")
+COMPILED_TITLE_STARTS = ("punchlines", "bestoflatenight", "editorialselsewhere;", "inquotes")
+# The same, when the heading is the whole title ('WHAT OTHERS ARE SAYING').
+COMPILED_TITLE_WHOLE = ("whatothersaresaying",)
 COMPILED_TITLE_TAGS = ("asamplingofopinions", "asamplingofotheropinions")
 # The same headings at the end of a title: '...: Punchlines' (cut short as '...: Punchline'),
 # '... in Best of Late Night'.
@@ -163,7 +165,8 @@ def is_compiled_title(title: str | None) -> bool:
     squeezed = re.sub(r"\s+", "", title or "").casefold()
     tagged = any(tag in squeezed for tag in COMPILED_TITLE_TAGS)
     headed = squeezed.startswith(COMPILED_TITLE_STARTS) or COMPILED_TITLE_END_RE.search(squeezed)
-    return bool(headed) or tagged
+    whole = re.sub(r":\[.*$", "", squeezed) in COMPILED_TITLE_WHOLE  # before the edition tag
+    return bool(headed) or tagged or whole
 
 
 def is_late_night_title(title: str | None) -> bool:

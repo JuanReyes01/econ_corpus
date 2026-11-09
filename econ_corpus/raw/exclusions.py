@@ -69,16 +69,17 @@ def _author_reason(byline: str | None, corrections: dict[str, str] | None) -> st
     return "kept" if bylines.people(byline, corrections) else "no_person_author"
 
 
-def _compiled(rows: Articles, i: int, family: str | None) -> bool:
-    """Tell whether a piece is a page compiled from the words of others, going by its title.
+def _compiled(rows: Articles, i: int, family: str | None, *, poll: bool = False) -> bool:
+    """Tell whether a piece is a page compiled from the words of others.
 
-    A heading says so in any newspaper (see `summaries.is_compiled_title`). The round-up of
-    jokes of ROUNDUP_PAPER is also told without one.
+    A heading in the title says so in any newspaper (see `summaries.is_compiled_title`). The
+    round-up of jokes of ROUNDUP_PAPER is also told without one, and a poll on the words of
+    others by the frame in its text (`poll`, see `text_marks.poll_frames`).
     """
     title = rows["title"][i]
     short = (rows["body_words"][i] or 0) < ROUNDUP_WORDS
     roundup = family == ROUNDUP_PAPER and short and summaries.is_late_night_title(title)
-    return summaries.is_compiled_title(title) or roundup
+    return summaries.is_compiled_title(title) or roundup or poll
 
 
 def _kept_copies(rows: Articles, order: list[int]) -> dict[int, int]:
@@ -160,9 +161,7 @@ def _placeholders(rows: Articles, judged: list[int]) -> set[str]:
 def assign_reasons(
     rows: Articles,
     corrections: dict[str, str] | None = None,
-    english: list[float | None] | None = None,
-    rubric: list[bool] | None = None,
-    own_words: list[int] | None = None,
+    marks: text_marks.Marks | None = None,
 ) -> list[str]:
     """Return one reason code per row, with repeats judged in download order.
 
@@ -174,11 +173,12 @@ def assign_reasons(
     are read or on the manual review, because these rows also leave the shared raw table. A
     short body carried by many different articles is a placeholder ("text not available"), not
     text (see `_placeholders`). A page under the heading of a compiled page (jokes, quotes of
-    others) has no author, whoever signs it. A piece that passes every rule is still left
-    out of the cleaned dataset as `short_or_cartoon` when `own_words` gives it fewer than
-    `prose.MIN_OWN_WORDS` words of its author (a drawing, a photograph, a list of links), and
-    as `not_english` when `english` gives its text a share of common English words under
-    `language.MIN_ENGLISH`. Both come from `text_marks.read`; None skips the rule.
+    others, a poll on them) has no author, whoever signs it. A piece that passes every rule is
+    still left out of the cleaned dataset as `short_or_cartoon` when `marks.own_words` gives
+    it fewer than `prose.MIN_OWN_WORDS` words of its author (a drawing, a photograph, a list
+    of links), and as `not_english` when `marks.english` gives its text a share of common
+    English words under `language.MIN_ENGLISH`. The marks come from `text_marks.read`; a
+    mark that is None skips its rule.
     """
     n = len(rows["source_file"])
     file_key = {f: summaries.file_order(f) for f in set(rows["source_file"])}
@@ -193,9 +193,10 @@ def assign_reasons(
     same_text: dict[tuple, list[int]] = {}  # copies of one text, in download order
     by_byline: dict[str | None, str] = {}  # bylines repeat, so each is read once
     qualifies: set[int] = set()  # signed opinion pieces with text, however short
+    marks = marks or text_marks.Marks()
     for i in judged:
         title, sha = rows["title"][i], rows["body_sha256"][i]
-        marked = rubric is not None and rubric[i]
+        marked = marks.rubric is not None and marks.rubric[i]
         reasons[i] = _opinion_reason(rows["doc_type"][i], rows["section"][i], title, rubric=marked)
         if text_key := _text_key(rows, i, families[i]):
             same_text.setdefault(text_key, []).append(i)
@@ -206,15 +207,16 @@ def assign_reasons(
                 by_byline[byline] = _author_reason(byline, corrections)
             has_text = rows["body_chars"][i] and sha not in placeholders
             reasons[i] = by_byline[byline] if has_text else "no_text"
-            if reasons[i] == "kept" and _compiled(rows, i, families[i]):
+            poll = marks.poll is not None and marks.poll[i]
+            if reasons[i] == "kept" and _compiled(rows, i, families[i], poll=poll):
                 reasons[i] = "no_person_author"  # whoever compiled a page is not its author
             if reasons[i] not in ("no_text", "no_author"):
                 qualifies.add(i)
             # Decided last and outside `qualifies`, so the raw table does not depend on it.
-            written = None if own_words is None else own_words[i]  # None: nothing to judge
+            written = None if marks.own_words is None else marks.own_words[i]
             if reasons[i] == "kept" and written is not None and written < prose.MIN_OWN_WORDS:
                 reasons[i] = "short_or_cartoon"
-            share = None if english is None else english[i]  # None: nothing to judge
+            share = None if marks.english is None else marks.english[i]
             if reasons[i] == "kept" and share is not None and share < language.MIN_ENGLISH:
                 reasons[i] = "not_english"
     _mark_repeated_text(same_text.values(), reasons, qualifies, rows["pub_date"])
@@ -250,7 +252,7 @@ def write_exclusions(
     check_parser(parquet)
     table = pq.read_table(parquet, columns=INPUTS)
     marks = text_marks.read(parquet)
-    reasons = assign_reasons(table.to_pydict(), corrections, **marks._asdict())
+    reasons = assign_reasons(table.to_pydict(), corrections, marks)
     # The reasons depend on the review, so they carry its fingerprint (see review.same_review).
     write_reasons(table, reasons, out, {review.STAMP: review.fingerprint(corrections or {})})
     return reasons
