@@ -7,7 +7,7 @@ the shared raw table.
 Lives here: the codes, their meaning and the two flags. Does not live here: the rules that
 assign a reason (exclusions) or what is done with the flags (export, datasheet).
 
-`in_raw` says whether a row belongs to the shared raw table (footers and repeated ids do not);
+`in_raw` says whether a row belongs to the shared raw table (footers and repeats do not);
 `dropped` says whether it leaves the cleaned dataset. Each row gets exactly one reason.
 """
 
@@ -34,7 +34,7 @@ REASONS = [
     {
         "code": "duplicate_text",
         "description": "Same body, title, date and newspaper as an earlier record",
-        "in_raw": True,
+        "in_raw": False,
         "dropped": True,
     },
     {

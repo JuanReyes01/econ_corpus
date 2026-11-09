@@ -14,8 +14,8 @@ sign of being opinion. A record that
 cannot be decided (no section, generic type, no opinion title) is not dropped but flagged
 `unclear_opinion`, to be settled by whoever uses the data. Subtler duplicates come later.
 
-Two flags per reason: `in_raw` says whether the row is part of the shared raw table (footers
-and repeated ids are not), `dropped` whether it leaves the cleaned dataset.
+Two flags per reason: `in_raw` says whether the row is part of the shared raw table (footers,
+repeated ids and repeated text are not), `dropped` whether it leaves the cleaned dataset.
 """
 
 from pathlib import Path

@@ -3,8 +3,8 @@
 Input: the parquet written by `parse` (all metadata fields, parsed columns and the text) and
 the exclusions parquet, which gives every row one reason.
 Output: one UTF-8 CSV with the same columns in the same order, missing values as empty cells.
-File footers and repeated ProQuest ids (the reasons not marked `in_raw`) are left out; every
-other row stays, whatever its reason, so the CSV is the raw table with one row per id.
+File footers, repeated ProQuest ids and repeated text (the reasons not marked `in_raw`) are left
+out; every other row stays, whatever its reason.
 
 Lives here: the streaming filter and conversion. Does not live here: which reasons leave the
 raw table (exclusions) or any change to a value. The CSV holds ProQuest-licensed text, so it is

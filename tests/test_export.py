@@ -11,7 +11,7 @@ import pytest
 from econ_corpus import export, parse
 
 TEXT = 'Line one, with a comma.\n\nA "quoted" line and\ttab.'
-LEFT_OUT = ("file_footer", "duplicate_id")
+LEFT_OUT = ("file_footer", "duplicate_id", "duplicate_text")
 
 
 def write_tables(tmp_path: Path, reasons: list[str], row_group: int = 1000) -> tuple[Path, Path]:
@@ -49,19 +49,17 @@ def test_csv_has_the_columns_of_the_table_in_order(tmp_path: Path) -> None:
         assert next(csv.reader(handle)) == parse.SCHEMA.names
 
 
-def test_footers_and_repeated_ids_are_left_out_and_the_rest_stays_in_order(
-    tmp_path: Path,
-) -> None:
-    reasons = ["kept", "duplicate_id", "not_opinion", "file_footer", "unclear_opinion"]
+def test_footers_and_repeats_are_left_out_and_the_rest_stays_in_order(tmp_path: Path) -> None:
+    reasons = ["kept", "duplicate_id", "not_opinion", "file_footer", "duplicate_text", "kept"]
     records, exclusions = write_tables(tmp_path, reasons)
     assert export.write_csv(records, exclusions, tmp_path / "r.csv") == 3
-    assert [r["record_index"] for r in read_back(tmp_path / "r.csv")] == ["0", "2", "4"]
+    assert [r["record_index"] for r in read_back(tmp_path / "r.csv")] == ["0", "2", "5"]
 
 
 def test_rows_that_are_not_opinion_or_are_not_queried_stay_in_the_raw_csv(
     tmp_path: Path,
 ) -> None:
-    reasons = ["not_opinion", "not_queried_newspaper", "duplicate_text", "missing_metadata"]
+    reasons = ["not_opinion", "not_queried_newspaper", "unclear_opinion", "missing_metadata"]
     records, exclusions = write_tables(tmp_path, reasons)
     assert export.write_csv(records, exclusions, tmp_path / "r.csv") == 4
 

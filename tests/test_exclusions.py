@@ -59,9 +59,9 @@ def test_only_clear_non_opinion_and_duplicates_are_dropped() -> None:
     }
 
 
-def test_only_footers_and_repeated_ids_leave_the_raw_table() -> None:
+def test_only_footers_and_repeats_leave_the_raw_table() -> None:
     outside = {r["code"] for r in exclusions.REASONS if not r["in_raw"]}
-    assert outside == {"file_footer", "duplicate_id"}
+    assert outside == {"file_footer", "duplicate_id", "duplicate_text"}
 
 
 # --- file order --------------------------------------------------------------------
