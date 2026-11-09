@@ -115,6 +115,7 @@ def test_build_writes_every_kind_of_case_with_its_evidence(tmp_path: Path) -> No
         "rejected_to_review": 1,
         "pairs_to_review": 1,
         "merged_to_review": 0,
+        "distant_to_review": 0,
         "unused_parts": 0,
         "unused_pairs": 0,
     }
@@ -244,3 +245,83 @@ def test_decisions_that_apply_to_nothing_are_listed() -> None:
     assert review_cases.unused_pairs(pairs, {"janedoe", "janeqdoe", "annroe"}) == [
         ("annroe", "annroh")
     ]
+
+
+# --- variants of a name that are years apart ---------------------------------------
+
+FAR = [
+    ["author_id", "name", "name_key", "articles", "rule"],
+    ["1", "Jane Doe", "janedoe", "3", "main"],
+    ["1", "Jane Q Doe", "janeqdoe", "1", "shared_newspaper"],
+    ["1", "Jane Quinn Doe", "janequinndoe", "1", "shared_newspaper"],
+    ["1", "Jayne Doe", "jaynedoe", "1", "manual_review"],
+    ["2", "Ann Poe", "annpoe", "2", "main"],
+    ["2", "Ann R Poe", "annrpoe", "1", "shared_newspaper"],
+    ["3", "Richard Roe", "richardroe", "1", "main"],
+]
+SIGNED = {
+    "janedoe": [("Newsday", 1990, "First"), ("Newsday", 1992, "Second"), ("Newsday", None, "x")],
+    "janeqdoe": [("Newsday", 2001, "Third")],
+    "janequinndoe": [("Newsday", 1995, "Fourth")],
+    "jaynedoe": [("Newsday", 2020, "Fifth")],
+    "annpoe": [("Newsday", 2000, "Sixth"), ("Newsday", 2010, "Seventh")],
+    "annrpoe": [("Newsday", 2005, "Eighth")],
+    "richardroe": [("Newsday", 1980, "Ninth")],
+}
+FAR_HEADER = [
+    "key_a", "name_a", "articles_a", "evidence_a",
+    "key_b", "name_b", "articles_b", "evidence_b", "years_apart",
+]  # fmt: skip
+
+
+def test_merged_variants_with_years_between_them_are_listed_with_their_evidence() -> None:
+    table = review_cases.distant_merges(FAR, SIGNED, set(), min_gap=5)
+    assert table[0] == FAR_HEADER
+    assert table[1:] == [
+        [
+            *("janedoe", "Jane Doe", "3", "Newsday:3 1990-1992 | First // Second"),
+            *("janeqdoe", "Jane Q Doe", "1", "Newsday:1 2001-2001 | Third"),
+            "9",
+        ],
+        [
+            *("janeqdoe", "Jane Q Doe", "1", "Newsday:1 2001-2001 | Third"),
+            *("janequinndoe", "Jane Quinn Doe", "1", "Newsday:1 1995-1995 | Fourth"),
+            "6",
+        ],
+    ]
+
+
+def test_variants_closer_than_the_gap_or_joined_by_the_review_are_not_listed() -> None:
+    # 1992 to 1995 is under five years; 2005 falls inside 2000-2010; 'Jayne' was reviewed.
+    keys = {(row[0], row[4]) for row in review_cases.distant_merges(FAR, SIGNED, set(), 5)[1:]}
+    assert keys == {("janedoe", "janeqdoe"), ("janeqdoe", "janequinndoe")}
+    assert len(review_cases.distant_merges(FAR, SIGNED, set(), min_gap=3)) == 1 + 3
+
+
+def test_distant_merges_already_decided_are_not_listed_again() -> None:
+    decided = {("janedoe", "janeqdoe")}
+    table = review_cases.distant_merges(FAR, SIGNED, decided, min_gap=5)
+    assert [(row[0], row[4]) for row in table[1:]] == [("janeqdoe", "janequinndoe")]
+
+
+def test_a_variant_with_no_dated_article_is_not_listed() -> None:
+    undated = SIGNED | {"janeqdoe": [("Newsday", None, "Third")]}
+    assert review_cases.distant_merges(FAR, undated, set(), min_gap=5)[1:] == []
+
+
+def test_build_lists_the_variants_of_an_author_that_are_years_apart(tmp_path: Path) -> None:
+    rows = []
+    signed = [("Doe, Jane", 1990), ("Doe, Jane Q", 2010), ("Roe, Richard", 2010)]
+    for i, (byline, year) in enumerate(signed):
+        row = parse.empty_row("a.txt", i, is_footer=False)
+        row |= {"doc_id": 100 + i, "author": byline, "publication_key": NYT, "pub_year": year}
+        rows.append(row | {"title": f"Title {i}", "text": "Synthetic body.", "has_body": True})
+    records, reasons = tmp_path / "records.parquet", tmp_path / "exclusions.parquet"
+    pq.write_table(pa.Table.from_pylist(rows, schema=parse.SCHEMA), records)
+    write_reasons(pq.read_table(records), ["kept"] * 3, reasons)
+    clean, review_dir = tmp_path / "clean", tmp_path / "review"
+    processed.build(records, reasons, clean)
+    assert review_cases.build(records, reasons, clean, review_dir)["distant_to_review"] == 1
+    (case,) = read(review_dir / "cases" / "distant_to_review.csv")
+    assert (case["key_a"], case["key_b"], case["years_apart"]) == ("janedoe", "janeqdoe", "20")
+    assert case["evidence_b"] == "New York Times:1 2010-2010 | Title 1"

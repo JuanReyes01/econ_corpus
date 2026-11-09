@@ -7,8 +7,9 @@ ambiguous), `names_to_review.csv` (names that may be a place or a publication, l
 and names read by moving pieces around),
 `rejected_to_review.csv` (parts read as nobody, in kept articles and in those left out for
 having no person among their authors), `pairs_to_review.csv` (look-alike authors not yet
-reviewed) and `merged_to_review.csv` (authors merged from a name with a suffix and one
-without), each with the evidence a reviewer needs; and `unused_parts.csv` and
+reviewed), `merged_to_review.csv` (authors merged from a name with a suffix and one
+without) and `distant_to_review.csv` (variants of a name merged into one author that appear
+years apart), each with the evidence a reviewer needs; and `unused_parts.csv` and
 `unused_pairs.csv`, the decisions that apply to nothing any more, to be retired.
 
 Lives here: which cases are worth a review, and the evidence shown. Does not live here: the
@@ -18,6 +19,7 @@ decisions (taken by reading each case and kept in `data/review`, see `review`).
 from collections import Counter, defaultdict
 from collections.abc import Iterable, Iterator
 import csv
+from itertools import combinations
 from pathlib import Path
 import re
 import sys
@@ -28,7 +30,7 @@ import pyarrow.csv as pacsv
 import pyarrow.parquet as pq
 
 from econ_corpus import authors, datasheet, manifest, reasons, review
-from econ_corpus.bylines import is_signed, read_part, split_authors, unscrambled
+from econ_corpus.bylines import is_signed, read_byline, read_part, split_authors, unscrambled
 from econ_corpus.name_words import SUFFIXES, WATCH_WORDS
 from econ_corpus.tables import Table
 
@@ -37,6 +39,7 @@ MIN_ARTICLES = 2  # a pair is reviewed when both authors have at least this many
 FREQUENT = 20  # or when one of them has at least this many
 LONG_NAME = 4  # words in a name from which it is worth a second look
 MIN_SUFFIX_MERGE = 3  # articles each form needs for a suffix merge to be listed
+MIN_GAP = 5  # years with no article between two merged variants for the pair to be listed
 Article = tuple[str, int | None, str | None]  # newspaper, year, title
 
 
@@ -105,6 +108,45 @@ def suffix_merges(names: Table, decided: set[tuple[str, str]], min_articles: int
             rows.append([v[c] for v in pair for c in cells])
     header = ["key_a", "name_a", "articles_a", "key_b", "name_b", "articles_b"]
     return [header, *sorted(rows)]
+
+
+def distant_merges(
+    names: Table,
+    signed: dict[str, list[Article]],
+    decided: set[tuple[str, str]],
+    min_gap: int = MIN_GAP,
+) -> Table:
+    """List the pairs of variants merged by the rule that appear `min_gap` or more years apart.
+
+    Two people with one name are merged when they wrote for the same newspaper in different
+    decades (a father and a son, a writer of the 1990s and one of the 2020s); the years
+    between the last article of one variant and the first of the other are the sign. `signed`
+    holds the articles signed under each name key. Variants joined by the review were read
+    by a reviewer, pairs already judged are left out, and so are variants with no dated article.
+    """
+    by_author: defaultdict[str, list[dict[str, str]]] = defaultdict(list)
+    for row in _dicts(names):
+        if row["rule"] != "manual_review":
+            by_author[row["author_id"]].append(row)
+    rows = []
+    for variants in by_author.values():
+        for a, b in combinations(sorted(variants, key=lambda v: v["name_key"]), 2):
+            spans = [
+                sorted(year for _, year, _ in signed.get(v["name_key"], []) if year)
+                for v in (a, b)
+            ]
+            if not all(spans) or (a["name_key"], b["name_key"]) in decided:
+                continue
+            gap = max(spans[1][0] - spans[0][-1], spans[0][0] - spans[1][-1])
+            if gap >= min_gap:
+                cells = [
+                    [v["name_key"], v["name"], v["articles"], evidence(signed[v["name_key"]])]
+                    for v in (a, b)
+                ]
+                rows.append([*cells[0], *cells[1], str(gap)])
+    cells = ("key", "name", "articles", "evidence")
+    header = [f"{c}_{side}" for side in "ab" for c in cells]
+    return [[*header, "years_apart"], *sorted(rows)]
 
 
 def rejected_parts(bylines: Iterable[str | None], decided: set[str]) -> Counter:
@@ -182,6 +224,20 @@ def _reading(part: str) -> str:
     return "; ".join(authors.display(name) for name in read_part(part)[0])
 
 
+def _by_variant(art: dict[str, list], corrections: dict[str, str]) -> dict[str, list[Article]]:
+    """Return the articles signed under each name key, reading the bylines as `processed` does."""
+    read: dict[str | None, set[str]] = {}  # bylines repeat, so each distinct one is read once
+    signed: defaultdict[str, list[Article]] = defaultdict(list)
+    cells = zip(art["author"], art["newspaper"], art["pub_year"], art["title"], strict=True)
+    for byline, *article in cells:
+        if byline not in read:
+            names = read_byline(byline, corrections)
+            read[byline] = {authors.name_key(name) for name, _ in names}
+        for key in read[byline]:
+            signed[key].append(tuple(article))
+    return signed
+
+
 def _pair_rows(clean: Path, article: dict[str, Article]) -> Table:
     """Return the pairs to review with, for each author, its key, name, articles and evidence."""
     docs: defaultdict[str, list[Article]] = defaultdict(list)
@@ -227,6 +283,7 @@ def build(records: Path, reasons_file: Path, clean: Path, review_dir: Path) -> d
     names = _read(clean / "author_names.csv")
     keys = {row[names[0].index("name_key")] for row in names[1:]}
     judged = review.load_pairs(review_dir / review.PAIRS_FILE)
+    signed = _by_variant(art, review.load_parts(review_dir / review.PARTS_FILE))
     # A kept article can also hold a part that names nobody, next to one that names a person.
     rejected = rejected_parts([*unread, *art["author"]], decided).most_common()
     article = dict(
@@ -242,6 +299,7 @@ def build(records: Path, reasons_file: Path, clean: Path, review_dir: Path) -> d
         "rejected_to_review": [["part", "times"], *([part, str(n)] for part, n in rejected)],
         "pairs_to_review": _pair_rows(clean, article),
         "merged_to_review": suffix_merges(names, set(judged), MIN_SUFFIX_MERGE),
+        "distant_to_review": distant_merges(names, signed, set(judged)),
         "unused_parts": [
             ["part"],
             *([part] for part in unused_parts(every_byline.unique().to_pylist(), decided)),
