@@ -70,6 +70,16 @@ def _bare(token: str) -> str:
     return token.replace(".", "").casefold()
 
 
+def _abbrev(token: str) -> str:
+    """Return a word as a title or suffix would be looked up: casefolded, no final period.
+
+    Initials written with periods inside ('M.R.', 'J.R.') are never a title or a suffix, so
+    they give an empty string.
+    """
+    stem = token.rstrip(".")
+    return "" if "." in stem else stem.casefold()
+
+
 def split_authors(raw: str | None) -> list[str]:
     """Split a byline into parts, one per author as written.
 
@@ -81,8 +91,8 @@ def split_authors(raw: str | None) -> list[str]:
         text = piece.strip()
         if not text:
             continue
-        if _bare(text) in SUFFIXES and parts:
-            parts[-1] = f"{parts[-1]}, {SUFFIXES[_bare(text)]}"
+        if _abbrev(text) in SUFFIXES and parts:
+            parts[-1] = f"{parts[-1]}, {SUFFIXES[_abbrev(text)]}"
         elif "," in text:
             parts.append(text)
         else:
@@ -102,7 +112,7 @@ def _are_name_words(tokens: list[str]) -> bool:
 
 
 def _drop_honorifics(tokens: list[str]) -> list[str]:
-    while tokens and _bare(tokens[0]) in HONORIFICS:
+    while tokens and _abbrev(tokens[0]) in HONORIFICS:
         tokens = tokens[1:]
     return tokens
 
@@ -110,8 +120,8 @@ def _drop_honorifics(tokens: list[str]) -> list[str]:
 def _natural(text: str, suffix: str) -> Name | None:
     """Read 'Given Family', optionally with a suffix as the last word."""
     tokens = _drop_honorifics(text.split())
-    if tokens and not suffix and _bare(tokens[-1]) in SUFFIXES:
-        suffix, tokens = SUFFIXES[_bare(tokens[-1])], tokens[:-1]
+    if tokens and not suffix and _abbrev(tokens[-1]) in SUFFIXES:
+        suffix, tokens = SUFFIXES[_abbrev(tokens[-1])], tokens[:-1]
     if not 2 <= len(tokens) <= MAX_NATURAL or not _are_name_words(tokens):  # noqa: PLR2004
         return None
     # Hyphenated words are checked piece by piece ('Times-Union').
@@ -146,8 +156,10 @@ def parse_name(part: str) -> Name | None:
     """Return the person a part names, or None if it is not clearly a person's name."""
     sides = [side.strip() for side in part.split(",")]
     suffix = ""
-    if len(sides) > 1 and _bare(sides[-1]) in SUFFIXES:
-        suffix, sides = SUFFIXES[_bare(sides[-1])], sides[:-1]
+    # 'Doe, John, Jr' and 'John Doe, Jr' end in a suffix; in 'Doe, JR' the JR is a given name.
+    names_before = len(sides) > 2 or len(sides[0].split()) > 1  # noqa: PLR2004
+    if names_before and _abbrev(sides[-1]) in SUFFIXES:
+        suffix, sides = SUFFIXES[_abbrev(sides[-1])], sides[:-1]
     if len(sides) == 1:
         return _natural(sides[0], suffix)
     if len(sides) == 2:  # noqa: PLR2004
@@ -170,7 +182,7 @@ def _leading_name(part: str) -> Name | None:
             words.append(word[:-2])
             break
         ends_sentence = word.endswith(".") and not INITIALS_RE.fullmatch(word)
-        if ends_sentence and bare not in HONORIFICS and bare not in SUFFIXES:
+        if ends_sentence and _abbrev(word) not in HONORIFICS and _abbrev(word) not in SUFFIXES:
             words.append(word[:-1])
             break
         words.append(word)
@@ -234,16 +246,29 @@ def name_key(name: Name) -> str:
     return fold(f"{name.given}{name.family}{name.suffix}")
 
 
-def people(raw: str | None) -> list[Name]:
-    """Return the persons a byline names, in order, each once."""
-    seen: set[str] = set()
-    names = []
+def read_byline(
+    raw: str | None, corrections: dict[str, str] | None = None
+) -> list[tuple[Name, str]]:
+    """Return the persons a byline names, in order, each once, with how each was read.
+
+    A part listed in `corrections` (decisions of the manual review) is read from its corrected
+    byline and marked 'manual_review'; the others are 'as_written' or 'recovered'.
+    """
+    found: dict[str, tuple[Name, str]] = {}
     for part in split_authors(raw):
-        for name in read_part(part)[0]:
-            if name_key(name) not in seen:
-                seen.add(name_key(name))
-                names.append(name)
-    return names
+        if corrections and part in corrections:
+            names = [n for p in split_authors(corrections[part]) if (n := parse_name(p))]
+            how = "manual_review"
+        else:
+            names, how = read_part(part)
+        for name in names:
+            found.setdefault(name_key(name), (name, how))
+    return list(found.values())
+
+
+def people(raw: str | None, corrections: dict[str, str] | None = None) -> list[Name]:
+    """Return the persons a byline names, in order, each once."""
+    return [name for name, _ in read_byline(raw, corrections)]
 
 
 def is_signed(raw: str | None) -> bool:

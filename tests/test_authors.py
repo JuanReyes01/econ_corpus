@@ -281,3 +281,59 @@ def test_read_part_says_how_the_names_were_read() -> None:
 def test_people_include_recovered_names() -> None:
     raw = "Jane Doe. Springfield; The Editorial Board; Roe, Richard"
     assert authors.people(raw) == [Name("Jane", "Doe", ""), Name("Richard", "Roe", "")]
+
+
+# --- corrections from the manual review --------------------------------------------
+
+
+def test_read_byline_gives_each_person_once_with_how_it_was_read() -> None:
+    raw = "Doe, Jane; Richard Roe. Springfield; DOE, JANE; The Editorial Board"
+    assert authors.read_byline(raw) == [
+        (Name("Jane", "Doe", ""), "as_written"),
+        (Name("Richard", "Roe", ""), "recovered"),
+    ]
+
+
+def test_a_corrected_part_is_read_from_its_correction() -> None:
+    corrections = {"Jane Doe, Springfield": "Doe, Jane"}
+    assert authors.read_byline("Jane Doe, Springfield; Roe, Richard", corrections) == [
+        (Name("Jane", "Doe", ""), "manual_review"),
+        (Name("Richard", "Roe", ""), "as_written"),
+    ]
+
+
+def test_a_correction_can_name_two_people_or_nobody() -> None:
+    corrections = {"Jane Doe, Richard Roe": "Doe, Jane; Roe, Richard", "Doe Roe, Ann": ""}
+    assert [n for n, _ in authors.read_byline("Jane Doe, Richard Roe", corrections)] == [
+        Name("Jane", "Doe", ""),
+        Name("Richard", "Roe", ""),
+    ]
+    assert authors.read_byline("Doe Roe, Ann", corrections) == []
+
+
+def test_people_use_the_corrections() -> None:
+    assert authors.people("Doe Roe, Ann", {"Doe Roe, Ann": ""}) == []
+    assert authors.people("Doe Roe, Ann") == [Name("Ann", "Doe Roe", "")]
+
+
+# --- initials that look like a title or a suffix -----------------------------------
+
+
+@pytest.mark.parametrize(
+    ("part", "expected"),
+    [
+        ("Doe, M.R.", Name("M.R.", "Doe", "")),
+        ("M.S. Doe", Name("M.S.", "Doe", "")),
+        ("Doe, J.R.", Name("J.R.", "Doe", "")),
+        ("J.R. Doe", Name("J.R.", "Doe", "")),
+        ("Doe, JR", Name("JR", "Doe", "")),
+    ],
+)
+def test_initials_are_not_taken_for_a_title_or_a_suffix(part: str, expected: Name) -> None:
+    assert authors.parse_name(part) == expected
+
+
+def test_a_suffix_after_a_full_name_is_still_a_suffix() -> None:
+    assert authors.parse_name("John Doe, Jr.") == Name("John", "Doe", "Jr")
+    assert authors.parse_name("Doe, John, JR") == Name("John", "Doe", "Jr")
+    assert authors.split_authors("Doe, John; J.R.") == ["Doe, John", "J.R."]
