@@ -8,11 +8,14 @@ Lives here: the reasons table and the rules that assign a reason. Does not live 
 rows themselves (the raw table is never modified) or the descriptions of the data (datasheet).
 
 Rules are applied in the order of REASONS; the first one that matches decides. Only
-obvious cases are handled: publications that were not queried, repeated ProQuest ids,
+obvious cases are handled: repeated ProQuest ids, publications that were not queried,
 identical text with the same title, date and newspaper, and records in a news section with no
 sign of being opinion. A record that
 cannot be decided (no section, generic type, no opinion title) is not dropped but flagged
 `unclear_opinion`, to be settled by whoever uses the data. Subtler duplicates come later.
+
+Two flags per reason: `in_raw` says whether the row is part of the shared raw table (footers
+and repeated ids are not), `dropped` whether it leaves the cleaned dataset.
 """
 
 from pathlib import Path
@@ -21,54 +24,12 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 
 from econ_corpus import datasheet, summaries
+from econ_corpus.reasons import REASONS
 from econ_corpus.tables import Articles, Table
 
-# The reasons table: code and meaning, in the order the rules are applied.
-REASONS = [
-    {
-        "code": "file_footer",
-        "description": "Row is the footer of an export file, not an article",
-        "dropped": True,
-    },
-    {
-        "code": "not_queried_newspaper",
-        "description": "Publication is not one of the queried newspapers",
-        "dropped": True,
-    },
-    {
-        "code": "duplicate_id",
-        "description": "Repeats a ProQuest id seen in an earlier download",
-        "dropped": True,
-    },
-    {
-        "code": "duplicate_text",
-        "description": "Same body, title, date and newspaper as an earlier record",
-        "dropped": True,
-    },
-    {
-        "code": "missing_metadata",
-        "description": "No document type, no section and no opinion title: cannot be classified",
-        "dropped": True,
-    },
-    {
-        "code": "not_opinion",
-        "description": "A news section, and neither an opinion document type nor an opinion title",
-        "dropped": True,
-    },
-    {
-        "code": "unclear_opinion",
-        "description": "Generic document type, no section and no opinion title: may be opinion",
-        "dropped": False,
-    },
-    {
-        "code": "kept",
-        "description": "Shows an opinion signal and passes every rule",
-        "dropped": False,
-    },
-]
 COLUMNS = [
     "is_footer", "source_file", "record_index", "doc_id", "body_sha256", "title", "pub_date",
-    "publication_key", "doc_type", "section",
+    "publication_key", "doc_type", "section", "body_chars",
 ]  # fmt: skip
 
 
@@ -89,18 +50,37 @@ def _opinion_reason(doc_type: str | None, section: str | None, title: str | None
     return "unclear_opinion" if section is None else "not_opinion"
 
 
+def _kept_copies(rows: Articles, order: list[int]) -> dict[int, int]:
+    """Return, for each ProQuest id, the row to keep: the longest body, then the earliest download.
+
+    A later copy can be the only one with text (some downloads came out without body), so
+    the earliest copy alone is not a safe choice.
+    """
+    kept: dict[int, int] = {}
+    for i in order:
+        doc_id = rows["doc_id"][i]
+        if rows["is_footer"][i] or doc_id is None:
+            continue
+        # Strictly longer, so on a tie the earliest copy stays.
+        if doc_id not in kept or (rows["body_chars"][i] or 0) > (
+            rows["body_chars"][kept[doc_id]] or 0
+        ):
+            kept[doc_id] = i
+    return kept
+
+
 def assign_reasons(rows: Articles) -> list[str]:
     """Return one reason code per row, with duplicates judged in download order.
 
-    The earliest download of a repeated article is the one that is judged on its merits; its
-    later copies are duplicates, so each article is counted once.
+    Of the copies of a ProQuest id, only the one chosen by `_kept_copies` is judged on its
+    merits; the others are `duplicate_id`, so each article is counted once.
     """
     n = len(rows["source_file"])
     file_key = {f: summaries.file_order(f) for f in set(rows["source_file"])}
     order = sorted(
         range(n), key=lambda i: (file_key[rows["source_file"][i]], rows["record_index"][i])
     )
-    seen_ids: set[int] = set()
+    kept = _kept_copies(rows, order)
     seen_text: set[tuple] = set()
     reasons = [""] * n
     for i in order:
@@ -110,20 +90,20 @@ def assign_reasons(rows: Articles) -> list[str]:
             rows["title"][i],
             rows["pub_date"][i],
         )
-        text_key = (sha, title, day, summaries.newspaper_family(rows["publication_key"][i]))
+        family = summaries.newspaper_family(rows["publication_key"][i])
+        text_key = (sha, title, day, family)
         if rows["is_footer"][i]:
             reasons[i] = "file_footer"
-        elif summaries.newspaper_family(rows["publication_key"][i]) == "Other":
-            reasons[i] = "not_queried_newspaper"
-        elif doc_id is not None and doc_id in seen_ids:
+        elif doc_id is not None and kept[doc_id] != i:
             reasons[i] = "duplicate_id"
+        elif family == "Other":
+            reasons[i] = "not_queried_newspaper"
         elif sha and title and day and text_key in seen_text:
             reasons[i] = "duplicate_text"
         else:
             reasons[i] = _opinion_reason(rows["doc_type"][i], rows["section"][i], title)
-        if doc_id is not None:
-            seen_ids.add(doc_id)
-        if sha and title and day and not rows["is_footer"][i]:
+        # A copy that was dropped as a repeated id must not make the kept copy look repeated.
+        if sha and title and day and reasons[i] not in ("file_footer", "duplicate_id"):
             seen_text.add(text_key)
     return reasons
 
@@ -140,12 +120,14 @@ def reason_counts(reasons: list[str]) -> Table:
             r["description"],
             summaries.num(counts[r["code"]]),
             summaries.pct(counts[r["code"]], total),
+            "yes" if r["in_raw"] else "no",
             "yes" if r["dropped"] else "no",
         ]
         for r in REASONS
     ]
-    header = ["Reason", "Meaning", "Records", "Share", "Dropped"]
-    return [header, *body, ["Total", "", summaries.num(total), summaries.pct(total, total), ""]]
+    header = ["Reason", "Meaning", "Records", "Share", "In raw", "Dropped"]
+    total_row = ["Total", "", summaries.num(total), summaries.pct(total, total), "", ""]
+    return [header, *body, total_row]
 
 
 def write_exclusions(parquet: Path, out: Path) -> list[str]:

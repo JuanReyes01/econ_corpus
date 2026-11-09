@@ -14,6 +14,7 @@ DEFAULTS = {
     "record_index": 0,
     "doc_id": 1,
     "body_sha256": "aaa",
+    "body_chars": 100,
     "title": "Sample title",
     "pub_date": date(2020, 1, 2),
     "publication_key": "newyorktimes,lateedition(eastcoast);newyork,n.y.",
@@ -56,6 +57,11 @@ def test_only_clear_non_opinion_and_duplicates_are_dropped() -> None:
         "missing_metadata",
         "not_opinion",
     }
+
+
+def test_only_footers_and_repeated_ids_leave_the_raw_table() -> None:
+    outside = {r["code"] for r in exclusions.REASONS if not r["in_raw"]}
+    assert outside == {"file_footer", "duplicate_id"}
 
 
 # --- file order --------------------------------------------------------------------
@@ -123,10 +129,10 @@ def test_publication_outside_the_queried_newspapers_is_dropped() -> None:
     assert reasons_of(other) == ["not_queried_newspaper"]
 
 
-def test_every_copy_of_a_non_queried_publication_gets_that_reason() -> None:
+def test_a_repeated_non_queried_publication_is_still_a_repeated_id() -> None:
     other = {"publication_key": "laopinión;losangeles,calif."}
     second = {**other, "source_file": "ProQuestDocuments-2024-11-23_1.txt"}
-    assert reasons_of(other, second) == ["not_queried_newspaper", "not_queried_newspaper"]
+    assert reasons_of(other, second) == ["not_queried_newspaper", "duplicate_id"]
 
 
 def test_missing_publication_is_not_treated_as_non_queried() -> None:
@@ -140,6 +146,24 @@ def test_repeated_id_keeps_the_earliest_download_whatever_the_row_order() -> Non
     later = {"source_file": "ProQuestDocuments-2024-12-01_2.txt"}
     earlier = {"source_file": "ProQuestDocuments-2024-11-22_9.txt"}
     assert reasons_of(later, earlier) == ["duplicate_id", "kept"]
+
+
+def test_repeated_id_keeps_the_copy_with_the_longest_body_even_if_it_is_later() -> None:
+    earlier_empty = {"source_file": "ProQuestDocuments-2024-11-22_1.txt", "body_chars": 0}
+    later_full = {"source_file": "ProQuestDocuments-2024-12-01_1.txt", "body_chars": 500}
+    assert reasons_of(earlier_empty, later_full) == ["duplicate_id", "kept"]
+
+
+def test_repeated_id_with_equal_bodies_keeps_the_earliest_download() -> None:
+    earlier = {"source_file": "ProQuestDocuments-2024-11-22_1.txt", "body_chars": 300}
+    later = {"source_file": "ProQuestDocuments-2024-12-01_1.txt", "body_chars": 300}
+    assert reasons_of(later, earlier) == ["duplicate_id", "kept"]
+
+
+def test_a_missing_body_length_counts_as_zero() -> None:
+    no_body = {"source_file": "ProQuestDocuments-2024-11-22_1.txt", "body_chars": None}
+    with_body = {"source_file": "ProQuestDocuments-2024-12-01_1.txt", "body_chars": 10}
+    assert reasons_of(no_body, with_body) == ["duplicate_id", "kept"]
 
 
 def test_numeric_file_suffix_decides_the_earliest_copy() -> None:
@@ -185,11 +209,13 @@ def test_reason_counts_add_up_and_list_every_reason() -> None:
     reasons = ["kept", "kept", "not_opinion", "file_footer"]
     rows = exclusions.reason_counts(reasons)
     assert [r[0] for r in rows[1:-1]] == [r["code"] for r in exclusions.REASONS]
-    assert rows[-1] == ["Total", "", "4", "100.0%", ""]
+    assert rows[-1] == ["Total", "", "4", "100.0%", "", ""]
     counts = {r[0]: r[2] for r in rows[1:-1]}
     assert counts["kept"] == "2"
     assert counts["duplicate_id"] == "0"
-    assert rows[0][-1] == "Dropped"
+    assert rows[0][-2:] == ["In raw", "Dropped"]
+    assert {r[0]: r[-2] for r in rows[1:-1]}["duplicate_id"] == "no"
+    assert {r[0]: r[-2] for r in rows[1:-1]}["kept"] == "yes"
     assert {r[0]: r[-1] for r in rows[1:-1]}["not_opinion"] == "yes"
     assert {r[0]: r[-1] for r in rows[1:-1]}["unclear_opinion"] == "no"
 
