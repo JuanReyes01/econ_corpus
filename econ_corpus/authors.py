@@ -35,6 +35,8 @@ class Name(NamedTuple):
 
 
 WORD_RE = re.compile(r"[^\W\d_]+(?:['\u2019.\-][^\W\d_]+)*\.?")  # letters, with ' - . inside
+BY_RE = re.compile(r"^by\s+", re.IGNORECASE)
+MC_RE = re.compile(r"(Ma?c)([A-Z][A-Z'\u2019\-]*)")  # 'McDOE', 'MacDOE'
 INITIALS_RE = re.compile(r"(?:[^\W\d_]\.)+")  # 'J.' or 'J.Q.R.'
 MAX_NATURAL, MAX_FAMILY, MAX_GIVEN = 5, 3, 4  # most words a name, or one side of it, may have
 
@@ -93,6 +95,8 @@ def _drop_honorifics(tokens: list[str]) -> list[str]:
 def given_first(text: str, suffix: str = "") -> Name | None:
     """Read 'Given Family', optionally with a suffix as the last word or given apart."""
     tokens = _drop_honorifics(text.split())
+    while len(tokens) > 2 and lookup(tokens[-1]) in DEGREES:  # noqa: PLR2004 ('Jane Doe MD')
+        tokens = tokens[:-1]
     if tokens and not suffix and abbreviation(tokens[-1]) in SUFFIXES:
         suffix, tokens = SUFFIXES[abbreviation(tokens[-1])], tokens[:-1]
     if not 2 <= len(tokens) <= MAX_NATURAL or not _are_name_words(tokens):  # noqa: PLR2004
@@ -104,27 +108,37 @@ def given_first(text: str, suffix: str = "") -> Name | None:
     start = len(tokens) - 1
     while start > 1 and is_particle(tokens[start - 1]):
         start -= 1
-    if all(lookup(t) in ARTICLES for t in tokens[:start]):  # 'Le Monde' is not a person
+    # 'Le Monde' is not a person, and one letter is not a family name ('Jane Z').
+    if all(lookup(t) in ARTICLES for t in tokens[:start]) or len(lookup(tokens[-1])) == 1:
         return None
     return Name(" ".join(tokens[:start]), " ".join(tokens[start:]), suffix)
 
 
 def _family_first(family: str, given: str, suffix: str) -> Name | None:
     """Read 'Family, Given', the form ProQuest writes for most authors."""
+    given = BY_RE.sub("", given)  # 'DOE, By JANE'
+    if abbreviation(family) in HONORIFICS or INITIALS_RE.fullmatch(family):
+        # A title or a state where the family name goes ('Sen, Jane Doe', 'N.J., Jane Doe'):
+        # the name is what follows, if it reads as one.
+        moved = given_first(given, suffix)
+        if moved:
+            return moved
     family_words, given_words = family.split(), _drop_honorifics(given.split())
     if not 1 <= len(family_words) <= MAX_FAMILY or not 1 <= len(given_words) <= MAX_GIVEN:
         return None
-    if not _are_name_words(family_words + given_words):
-        return None
-    if all(lookup(t) in DEGREES for t in given_words) or lookup(family) in ROLE_WORDS:
-        return None
     # One word before the comma can be a family name that is also an institution word
     # ('Press, Jane'); several words holding one ('The Times, London') are an institution.
-    if _has_org_word(given_words) or (len(family_words) > 1 and _has_org_word(family_words)):
-        return None
-    if not given_words[0][0].isupper() or not any(has_capital(t) for t in family_words):
-        return None
-    return Name(" ".join(given_words), " ".join(family_words), suffix)
+    # 'and' among the given names means two people ('Doe, Jane Roe and Ann').
+    refused = (
+        not _are_name_words(family_words + given_words)
+        or lookup(family) in ROLE_WORDS
+        or "and" in map(lookup, given_words)
+        or _has_org_word(given_words)
+        or (len(family_words) > 1 and _has_org_word(family_words))
+        or not given_words[0][0].isupper()
+        or not any(has_capital(t) for t in family_words)
+    )
+    return None if refused else Name(" ".join(given_words), " ".join(family_words), suffix)
 
 
 def parse_name(part: str) -> Name | None:
@@ -132,6 +146,8 @@ def parse_name(part: str) -> Name | None:
     sides = [side.strip() for side in part.split(",")]
     suffix = ""
     # 'Doe, John, Jr' and 'John Doe, Jr' end in a suffix; in 'Doe, JR' the JR is a given name.
+    while len(sides) > 1 and sides[-1] and all(lookup(t) in DEGREES for t in sides[-1].split()):
+        sides = sides[:-1]  # a degree after the name ('Doe, Jane, M.D.')
     names_before = len(sides) > 2 or len(sides[0].split()) > 1  # noqa: PLR2004
     if names_before and abbreviation(sides[-1]) in SUFFIXES:
         suffix, sides = SUFFIXES[abbreviation(sides[-1])], sides[:-1]
@@ -157,8 +173,15 @@ def reviewed_name(part: str) -> Name | None:
     return Name(sides[1], sides[0], suffix)
 
 
+def _in_capitals(word: str) -> bool:
+    return word.isupper() or bool(MC_RE.fullmatch(word))
+
+
 def _normal_case(word: str) -> str:
-    """Capitalise each run of letters of a word in capitals: O'DOE-ROE gives O'Doe-Roe."""
+    """Give normal casing to a word in capitals: O'DOE-ROE is O'Doe-Roe, McDOE is McDoe."""
+    mc = MC_RE.fullmatch(word)
+    if mc:
+        return mc[1] + _normal_case(mc[2])
     cased = re.sub(r"[^\W\d_]+", lambda m: m[0].capitalize(), word)
     return re.sub("(['\u2019])S$", r"\1s", cased)  # a possessive keeps its small s
 
@@ -167,8 +190,8 @@ def display(name: Name) -> str:
     """Return the name given-name first; a name written in capitals gets normal casing."""
     words = f"{name.given} {name.family}".split()
     # Lower-case particles ('del') do not count when deciding that a name is in capitals.
-    if all(w.isupper() for w in words if not (w.islower() and is_particle(w))):
-        words = [w if "." in w or not w.isupper() else _normal_case(w) for w in words]
+    if all(_in_capitals(w) for w in words if not (w.islower() and is_particle(w))):
+        words = [w if "." in w or not _in_capitals(w) else _normal_case(w) for w in words]
     return " ".join([*words, name.suffix]).strip()
 
 

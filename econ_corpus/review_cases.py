@@ -5,8 +5,9 @@ parts already decided in a review.
 Output, in `data/review/cases/`: `parts_to_review.csv` (byline parts whose reading is
 ambiguous), `names_to_review.csv` (names that may be a place or a publication),
 `rejected_to_review.csv` (parts read as nobody in articles left out for having no person
-among their authors) and `pairs_to_review.csv` (look-alike authors not yet reviewed), each
-with the evidence a reviewer needs.
+among their authors), `pairs_to_review.csv` (look-alike authors not yet reviewed) and
+`merged_to_review.csv` (authors merged from a name with a suffix and one without), each with
+the evidence a reviewer needs.
 
 Lives here: which cases are worth a review, and the evidence shown. Does not live here: the
 decisions (taken by reading each case and kept in `data/review`, see `review`).
@@ -25,10 +26,12 @@ import pyarrow.parquet as pq
 
 from econ_corpus import authors, datasheet, reasons, review
 from econ_corpus.bylines import is_signed, read_part, split_authors
-from econ_corpus.name_words import WATCH_WORDS
+from econ_corpus.name_words import SUFFIXES, WATCH_WORDS
 from econ_corpus.tables import Table
 
 MIN_ARTICLES = 2  # a pair is reviewed when both authors have at least this many articles
+LONG_NAME = 4  # words in a name from which it is worth a second look
+MIN_SUFFIX_MERGE = 3  # articles each form needs for a suffix merge to be listed
 Article = tuple[str, int | None, str | None]  # newspaper, year, title
 
 
@@ -51,13 +54,43 @@ def ambiguous_parts(bylines: Iterable[str | None], decided: set[str]) -> Counter
 
 
 def watched_parts(bylines: Iterable[str | None], decided: set[str]) -> Counter:
-    """Count the parts read as a person whose name holds a place or publication word."""
+    """Count the parts read as a person whose name deserves a second look.
+
+    Either the name holds a place or publication word, or it has four or more words, which is
+    often two people or a name with something attached.
+    """
     found: Counter = Counter()
     for part in _parts(bylines, decided):
-        words = [w for name in read_part(part)[0] for w in authors.display(name).split()]
-        if any(authors.fold(piece) in WATCH_WORDS for w in words for piece in w.split("-")):
+        names = read_part(part)[0]
+        words = [w for name in names for w in authors.display(name).split()]
+        long = any(len(f"{n.given} {n.family}".split()) >= LONG_NAME for n in names)
+        if long or any(authors.fold(p) in WATCH_WORDS for w in words for p in w.split("-")):
             found[part] += 1
     return found
+
+
+def suffix_merges(names: Table, decided: set[tuple[str, str]], min_articles: int) -> Table:
+    """List the authors merged by the rule from a name with a suffix and one without.
+
+    'John Doe' and 'John Doe Jr' are usually one person, but can be father and son; when both
+    forms are frequent the merge is worth a look. Pairs already judged are left out.
+    """
+    by_author: defaultdict[str, list[dict[str, str]]] = defaultdict(list)
+    for row in _dicts(names):
+        by_author[row["author_id"]].append(row)
+    cells = ("name_key", "name", "articles")
+    rows = []
+    for variants in by_author.values():
+        suffixed = [v for v in variants if v["name"].split()[-1] in SUFFIXES.values()]
+        plain = [v for v in variants if v not in suffixed]
+        if not suffixed or not plain:
+            continue
+        pair = [max(group, key=lambda v: int(v["articles"])) for group in (plain, suffixed)]
+        keys = tuple(sorted(v["name_key"] for v in pair))
+        if keys not in decided and all(int(v["articles"]) >= min_articles for v in pair):
+            rows.append([v[c] for v in pair for c in cells])
+    header = ["key_a", "name_a", "articles_a", "key_b", "name_b", "articles_b"]
+    return [header, *sorted(rows)]
 
 
 def rejected_parts(bylines: Iterable[str | None], decided: set[str]) -> Counter:
@@ -164,6 +197,11 @@ def build(records: Path, reasons_file: Path, clean: Path, review_dir: Path) -> d
         "names_to_review": _part_rows(watched, papers),
         "rejected_to_review": [["part", "times"], *([part, str(n)] for part, n in rejected)],
         "pairs_to_review": _pair_rows(clean, article),
+        "merged_to_review": suffix_merges(
+            _read(clean / "author_names.csv"),
+            set(review.load_pairs(review_dir / review.PAIRS_FILE)),
+            MIN_SUFFIX_MERGE,
+        ),
     }
     for name, table in tables.items():
         datasheet.write_csv(table, review_dir / "cases" / f"{name}.csv")

@@ -19,7 +19,6 @@ from econ_corpus.authors import Name
 from econ_corpus.name_words import HONORIFICS, SUFFIXES
 
 JOINER_RE = re.compile(r"\s+(?:and|&)\s+", re.IGNORECASE)
-BY_RE = re.compile(r"^by\s+", re.IGNORECASE)
 LIST_RE = re.compile(r",|\s+(?:and|&)\s+", re.IGNORECASE)  # separators of a list of names
 NAME_END_RE = re.compile(r",|\s-\s|\d")  # what ends a name that other text follows
 POSSESSIVES = ("'s", "\u2019s")
@@ -44,7 +43,7 @@ def split_authors(raw: str | None) -> list[str]:
         elif "," in text:
             parts.append(text)
         else:
-            parts += [p.strip() for p in JOINER_RE.split(BY_RE.sub("", text)) if p.strip()]
+            parts += [p.strip() for p in JOINER_RE.split(authors.BY_RE.sub("", text)) if p.strip()]
     return parts
 
 
@@ -55,7 +54,9 @@ def _leading_name(part: str) -> Name | None:
     or the first lower-case word. A name written twice in a row is read once.
     """
     words: list[str] = []
-    for word in NAME_END_RE.split(BY_RE.sub("", part.strip()), maxsplit=1)[0].split():
+    for word in NAME_END_RE.split(authors.BY_RE.sub("", part.strip()), maxsplit=1)[0].split():
+        if not any(c.isalnum() for c in word):
+            continue  # a stray period or dash inside the name
         if not authors.has_capital(word) and not authors.is_particle(word):
             break
         if word.endswith(POSSESSIVES):
@@ -76,15 +77,31 @@ def _leading_name(part: str) -> Name | None:
     return authors.given_first(" ".join(words))
 
 
+def _unscrambled(part: str) -> list[Name]:
+    """Put back co-authors that the export scrambled around the last family name.
+
+    'Jane Roe and Ann Doe' is exported as 'Doe, Jane Roe and Ann': the family name of the
+    last author comes first, and her given name is left at the end.
+    """
+    family, _, rest = part.partition(",")
+    pieces = [piece.strip() for piece in LIST_RE.split(rest)]
+    others = [authors.given_first(piece) for piece in pieces[:-1]]
+    last = authors.parse_name(f"{family.strip()}, {pieces[-1]}")
+    return [*others, last] if others and last and all(others) else []
+
+
 def recover_names(part: str) -> list[Name]:
     """Return the persons in a part that `authors.parse_name` cannot read as written.
 
-    Either the part is a list of names ('Jane Doe, Richard Roe and Ann Poe') or it starts
-    with a full name followed by other text.
+    The part is a list of names ('Jane Doe, Richard Roe and Ann Poe'), or co-authors scrambled
+    by the export, or it starts with a full name followed by other text.
     """
     listed = [authors.given_first(piece.strip()) for piece in LIST_RE.split(part)]
     if len(listed) > 1 and all(listed):
         return [name for name in listed if name]
+    unscrambled = _unscrambled(part)
+    if unscrambled:
+        return unscrambled
     name = _leading_name(part)
     return [name] if name else []
 

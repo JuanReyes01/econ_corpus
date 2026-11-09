@@ -6,7 +6,7 @@ from pathlib import Path
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from econ_corpus import exclusions, summaries
+from econ_corpus import exclusions, review, summaries
 
 DEFAULTS = {
     "is_footer": False,
@@ -140,8 +140,9 @@ def test_a_repeated_non_queried_publication_is_still_a_repeated_id() -> None:
     assert reasons_of(other, second) == ["not_queried_newspaper", "duplicate_id"]
 
 
-def test_missing_publication_is_not_treated_as_non_queried() -> None:
-    assert reasons_of({"publication_key": None}) == ["kept"]
+def test_a_record_without_publication_or_id_cannot_be_classified() -> None:
+    assert reasons_of({"publication_key": None}) == ["missing_metadata"]
+    assert reasons_of({"doc_id": None}) == ["missing_metadata"]
 
 
 # --- text and authors ---------------------------------------------------------------
@@ -267,6 +268,30 @@ def test_a_byline_that_names_no_person_still_counts_as_signed_when_choosing_the_
     assert reasons_of(board, signed) == ["no_person_author", "duplicate_text"]
 
 
+def test_stray_spaces_and_case_in_the_title_do_not_hide_a_repeated_text() -> None:
+    first = {"doc_id": 1}
+    second = {"doc_id": 2, "title": "Sam ple  TITLE", "source_file": LATER}
+    assert reasons_of(first, second) == ["kept", "duplicate_text"]
+
+
+def copies_of_one_body(n: int) -> list[dict]:
+    """Build n different articles that all carry the same body, as a placeholder would."""
+    return [{"doc_id": i, "title": f"Title {i}", "body_sha256": "ppp"} for i in range(1, n + 1)]
+
+
+def test_a_body_shared_by_many_different_articles_is_a_placeholder_not_text() -> None:
+    assert reasons_of(*copies_of_one_body(exclusions.PLACEHOLDER_MIN)) == (
+        ["no_text"] * exclusions.PLACEHOLDER_MIN
+    )
+    few = exclusions.PLACEHOLDER_MIN - 1
+    assert reasons_of(*copies_of_one_body(few)) == ["kept"] * few
+
+
+def test_copies_of_one_id_do_not_make_a_body_a_placeholder() -> None:
+    rows = [{"doc_id": 1, "record_index": i} for i in range(exclusions.PLACEHOLDER_MIN + 5)]
+    assert reasons_of(*rows).count("kept") == 1
+
+
 def test_same_text_with_another_title_is_not_an_obvious_duplicate() -> None:
     first = {"doc_id": 1}
     second = {"doc_id": 2, "title": "Another title"}
@@ -316,4 +341,8 @@ def test_write_exclusions_keeps_one_row_per_input_row(tmp_path: Path) -> None:
     exclusions.write_exclusions(source, out)
     result = pq.read_table(out).to_pydict()
     assert result["reason"] == ["kept", "not_opinion", "file_footer"]
+    stamp = pq.read_schema(out).metadata[b"byline_parts"].decode()
+    assert stamp == review.fingerprint({})
+    exclusions.write_exclusions(source, out, {"Doe Roe, Ann": "Doe, Ann"})
+    assert pq.read_schema(out).metadata[b"byline_parts"].decode() != stamp
     assert set(result) == {"source_file", "record_index", "reason"}

@@ -22,7 +22,7 @@ import pyarrow.compute as pc
 import pyarrow.csv as pacsv
 import pyarrow.parquet as pq
 
-from econ_corpus import authors, datasheet, identity, reasons, review, summaries
+from econ_corpus import authors, datasheet, identity, lookalikes, reasons, review, summaries
 from econ_corpus.authors import Name
 from econ_corpus.bylines import read_byline
 from econ_corpus.tables import Table
@@ -83,8 +83,8 @@ def author_tables(
     pairs of name keys judged 'same', 'different' or 'unsure'.
     """
     seen, per_article = _read_bylines(doc_ids, bylines, newspapers, corrections)
-    by_rule = identity.resolve(seen)
     judged = {v: [pair for pair, d in decisions.items() if d == v] for v in ("same", "different")}
+    by_rule = identity.resolve(seen, apart=judged["different"])
     resolved = identity.resolve(seen, same=judged["same"], apart=judged["different"])
     reviewed = review.verdicts(decisions, resolved)
     ids = {head: i for i, head in enumerate(sorted(set(resolved.values())), start=1)}
@@ -116,7 +116,7 @@ def author_tables(
             kind,
             reviewed.get((a, b), "not_reviewed"),
         ]
-        for a, b, kind in identity.candidates(seen, resolved)
+        for a, b, kind in lookalikes.candidates(seen, resolved)
     ]
     side = ["author_id", "name", "articles"]
     return {
@@ -165,6 +165,7 @@ def build(
     """
     corrections = review.load_parts(review_dir / review.PARTS_FILE) if review_dir else {}
     decisions = review.load_pairs(review_dir / review.PAIRS_FILE) if review_dir else {}
+    review.same_review(reasons_file, corrections)
     kept = pc.equal(reasons.load(records, reasons_file), "kept")
     rows = pq.read_table(records, columns=["doc_id", "author", "publication_key"]).filter(kept)
     newspapers = [summaries.newspaper_family(k) for k in rows["publication_key"].to_pylist()]

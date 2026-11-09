@@ -81,10 +81,8 @@ def _label_facts(articles: Articles) -> dict[str, str]:
     """Return document-type and language numbers."""
     n = len(articles["title"])
     labels = [summaries.split_labels(v) for v in articles["doc_type"]]
-    outside = sum(
-        bool(each) and not any(x.casefold() in summaries.QUERIED_DOC_TYPES for x in each)
-        for each in labels
-    )
+    keys = [{summaries.label_key(x) for x in each} for each in labels]
+    outside = sum(bool(each) and not each & summaries.QUERIED_DOC_TYPES for each in keys)
     english = sum(k == "english" for k in articles["language_key"])
     opinion_doc = [any(map(summaries.is_opinion_label, each)) for each in labels]
     opinion_sec = [summaries.is_opinion_section(sec) for sec in articles["section"]]
@@ -97,7 +95,7 @@ def _label_facts(articles: Articles) -> dict[str, str]:
         "news_label_opinion_section_pct": summaries.pct(news_in_opinion, n),
         "no_opinion_signal_n": summaries.num(no_signal),
         "no_opinion_signal_pct": summaries.pct(no_signal, n),
-        "n_doc_type_labels": summaries.num(len({d for d in articles["doc_type"] if d})),
+        "n_doc_type_labels": summaries.num(len(set().union(*keys))),
         "n_outside_doc_types": summaries.num(outside),
         "outside_doc_types_pct": summaries.pct(outside, n),
         "english_only_pct": summaries.pct(english, n),

@@ -90,3 +90,16 @@ def test_a_part_or_a_pair_listed_twice_is_refused(tmp_path: Path) -> None:
     )
     with pytest.raises(ValueError, match="twice"):
         review.load_pairs(pairs)
+
+
+def test_fingerprint_depends_on_the_corrections_not_on_their_order() -> None:
+    one = {"Jane Doe, Springfield": "Doe, Jane", "Example Board, The": ""}
+    same = dict(reversed(one.items()))
+    assert review.fingerprint(one) == review.fingerprint(same)
+    assert review.fingerprint(one) != review.fingerprint({**one, "Example Board, The": "Doe, Al"})
+    assert review.fingerprint({}) != review.fingerprint(one)
+
+
+def test_an_empty_replacement_counts_as_kept_as_read() -> None:
+    counts = review.outcome_counts([{"replacement": ""}, {"replacement": "Doe, Jane"}], [])
+    assert (counts["n_parts_keep"], counts["n_parts_corrected"]) == (1, 1)

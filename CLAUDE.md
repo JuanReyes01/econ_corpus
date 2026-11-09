@@ -1,6 +1,6 @@
 # econ_corpus
 
-Build and audit a corpus of U.S. newspaper opinion articles (ProQuest) to study how economists communicate. Phase 1 is a data-quality audit of the raw downloads, not modeling.
+Build and audit a corpus of U.S. newspaper opinion articles (ProQuest) to study how economists communicate. The pipeline produces a raw table and a cleaned dataset, each with a datasheet; no modeling yet.
 
 ## Code rules (the owner wants to understand every change)
 
@@ -18,15 +18,15 @@ Build and audit a corpus of U.S. newspaper opinion articles (ProQuest) to study 
 - Old converter code: `/home/juanc/data/econ_corpus/legacy/CreateDatabase.ipynb`.
 - Legacy repo with EDA and slim-table code to reuse selectively: `/home/juanc/code/econ/econ_comm_analysis` (see `src/article_processing_pipeline/eda.py`, `slim.py`).
 
-## Known facts about the raw data (from the legacy audit)
+## Known facts about the raw data (see docs/datasheet_raw.md for the numbers)
 
-- ProQuest export inserts stray spaces inside metadata values ('En glish', 'Per iódicos', 'Aug 29, 202 2'). The body text is clean. Normalize before comparing categories and re-parse dates, years and ids.
-- The "newspapers only" filter never worked: 30% of records are blogs/podcasts/websites, almost all from the '(Online)' editions of NYT, Washington Post, Chicago Tribune, LA Times, Tampa Bay Times.
-- Search query had no publication qualifier: about 494 unrelated publications slipped in.
-- Duplicate `id_proQuest` come from overlapping download rounds across files (none inside one file). The 2014 spike is this artifact.
-- Old converter flaws: 27.6% of records have no 'Materia' line so the text absorbs the metadata block; each file footer became an empty row; 5 files from 2024-12-04 have no body; the 3 files of 2025-01-26 never made it into the CSV.
+- ProQuest export inserts stray spaces inside metadata values ('En glish', 'Per iódicos', 'Aug 29, 202 2'), titles and author names included. The body text is clean. Normalize before comparing categories and re-parse dates, years and ids.
+- 30% of records are labelled blog/podcast/website: they are the '(Online)' editions of NYT, Washington Post, Chicago Tribune, LA Times and Tampa Bay Times, added on purpose. The label belongs to the edition, not to the article.
+- About 295 publications outside the ten queried newspapers appear (reason `not_queried_newspaper`).
+- Duplicate ProQuest ids come from overlapping download rounds across files (none inside one file). The 2014 spike is this artifact.
+- 27.6% of records have no 'Materia' line; 5 files from 2024-12-04 have no body.
 - About 51% of records have no author (anonymous, editorial boards, unsigned).
 
-## Intended inclusion criteria (to confirm)
+## Inclusion criteria of the cleaned dataset (settled, see docs/decisions.md)
 
-Opinion pieces (Commentary, Editorial, Opinions) signed by a person, in English, from the 11 target newspapers.
+Opinion pieces (by document type, section or title), from the 10 queried newspapers, with text, signed by at least one person. The pipeline order and commands are in README.md.

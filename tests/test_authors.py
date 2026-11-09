@@ -108,7 +108,6 @@ def test_initials_with_periods_are_accepted() -> None:
         "Jane Doe,",  # empty given name
         "Staff, Example Opinions",
         "Jane Doe, Example Staff",
-        "Jane Q. Doe, MD",  # a degree, not a given name
         'Doe, Jane "JD"',
         "Jane Doe, Richard Roe and Ann Poe",
         "One Two Three Four Five Six",
@@ -471,3 +470,69 @@ def test_a_family_name_with_no_capital_at_all_is_still_refused() -> None:
 def test_a_recovered_name_goes_on_through_a_small_first_letter_with_a_capital_inside() -> None:
     recovered = bylines.recover_names("Dr. Jane al-Doe is a member of the Example parliament.")
     assert recovered == [Name("Jane", "al-Doe", "")]
+
+
+# --- found in the audit ------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "part",
+    [
+        "Jane Q. Doe, MD",
+        "Jane Q. Doe MD",
+        "Jane Q. Doe M.D.",
+        "Doe, Jane Q., M.D.",
+        "Doe, Jane Q., PhD",
+    ],
+)
+def test_a_degree_after_the_name_is_dropped(part: str) -> None:
+    assert authors.name_key(authors.parse_name(part)) == "janeqdoe"
+
+
+@pytest.mark.parametrize(
+    ("part", "expected"),
+    [
+        ("DOE, By JANE", Name("JANE", "DOE", "")),  # 'By' left inside the byline
+        ("Sen, Jane Doe", Name("Jane", "Doe", "")),  # a title where the family name goes
+        ("N.J., Jane Q. Doe", Name("Jane Q.", "Doe", "")),  # a state where the family name goes
+        ("State Rep Jane Doe", Name("Jane", "Doe", "")),
+        ("Vice President Jane Doe", Name("Jane", "Doe", "")),
+        ("Retired Brigadier General Jane Doe", Name("Jane", "Doe", "")),
+        ("Sister Jane Doe", Name("Jane", "Doe", "")),
+    ],
+)
+def test_titles_and_debris_around_a_name_are_dropped(part: str, expected: Name) -> None:
+    assert authors.parse_name(part) == expected
+
+
+@pytest.mark.parametrize(
+    "part", ["Doe, Jane Roe and Ann", "Doe, Jane & Ann", "Jane Z", "Mayor Doe"]
+)
+def test_these_parts_do_not_read_as_one_person(part: str) -> None:
+    assert authors.parse_name(part) is None
+
+
+def test_co_authors_scrambled_by_the_export_are_put_back() -> None:
+    # 'Jane Roe and Ann Doe' is exported as 'Doe, Jane Roe and Ann'.
+    assert bylines.recover_names("Doe, Jane Roe and Ann") == [
+        Name("Jane", "Roe", ""),
+        Name("Ann", "Doe", ""),
+    ]
+    three = bylines.recover_names("Doe, Jane Roe, Al Poe and Ann Q.")
+    assert [authors.name_key(n) for n in three] == ["janeroe", "alpoe", "annqdoe"]
+
+
+def test_a_given_name_cut_off_and_holding_a_list_is_unscrambled_too() -> None:
+    names = bylines.read_byline("Doe; , Jane Roe and Ann")
+    assert [authors.name_key(n) for n, _ in names] == ["janeroe", "anndoe"]
+
+
+def test_a_stray_period_inside_a_name_does_not_cut_it() -> None:
+    assert bylines.recover_names("Jane Z . Doe") == [Name("Jane Z", "Doe", "")]
+
+
+def test_capitals_fix_knows_mc_and_mac() -> None:
+    assert authors.display(Name("JANE", "McDOE", "")) == "Jane McDoe"
+    assert authors.display(Name("JANE Q", "MacDOE", "")) == "Jane Q MacDoe"
+    assert authors.display(Name("Jane", "McDoe", "")) == "Jane McDoe"
+    assert authors.display(Name("JANE", "MACE", "")) == "Jane Mace"

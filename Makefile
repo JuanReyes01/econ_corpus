@@ -4,7 +4,7 @@
 
 PROJECT_NAME = econ_corpus
 PYTHON_VERSION = 3.12
-PYTHON_INTERPRETER = python
+PYTHON_INTERPRETER = uv run python
 
 #################################################################################
 # COMMANDS                                                                      #
@@ -40,40 +40,83 @@ format:
 
 
 
-## Build the datasheet of the raw table (needs data/interim/records.parquet and exclusions.parquet)
-.PHONY: datasheet
-datasheet:
-	uv run python -m econ_corpus.datasheet
+#################################################################################
+# PIPELINE (run in this order; README.md explains each step)                    #
+#################################################################################
+
+RAW_DIR ?= /home/juanc/data/econ_corpus/raw/ProQuestDownloads
+DELIVERY ?= /home/juanc/data/econ_corpus/delivery
+
+## 1. Parse the ProQuest exports in RAW_DIR into data/interim/records.parquet (about 5 minutes)
+.PHONY: parse
+parse:
+	uv run python -m econ_corpus.parse $(RAW_DIR)
 
 
-## Give every row of the raw table one exclusion reason (needs data/interim/records.parquet)
+## 2. Give every parsed row one reason (needs step 1; applies data/review)
 .PHONY: exclusions
 exclusions:
 	uv run python -m econ_corpus.exclusions
 
 
-## Write the raw table as a shareable CSV (needs data/interim/records.parquet and exclusions.parquet)
+## 3a. Write the raw table as a shareable CSV (needs step 2)
 .PHONY: export
 export:
 	uv run python -m econ_corpus.export
 
 
-## Write the cleaned tables: articles, authors and their links (run `make exclusions` first; both apply data/review)
+## 3b. Build the datasheet of the raw table (needs step 2)
+.PHONY: datasheet
+datasheet:
+	uv run python -m econ_corpus.datasheet
+
+
+## 4. Write the cleaned tables: articles, authors and their links (needs step 2)
 .PHONY: processed
 processed:
 	uv run python -m econ_corpus.processed
 
 
-## Build the datasheet of the cleaned dataset (run `make processed` first)
+## 5. List the author cases that need a manual review (needs step 4)
+.PHONY: review-cases
+review-cases:
+	uv run python -m econ_corpus.review_cases
+
+
+## 6. Build the datasheet of the cleaned dataset (needs step 4)
 .PHONY: datasheet-clean
 datasheet-clean:
 	uv run python -m econ_corpus.datasheet_clean
 
 
-## List the author cases that need a manual review (run `make processed` first)
-.PHONY: review-cases
-review-cases:
-	uv run python -m econ_corpus.review_cases
+## Steps 2 to 3b in order: everything of the raw table
+.PHONY: raw
+raw: exclusions export datasheet
+
+
+## Steps 2 and 4 to 6 in order: everything of the cleaned dataset
+.PHONY: cleaned
+cleaned: exclusions processed review-cases datasheet-clean
+
+
+## Render the two datasheets as PDF (needs google-chrome)
+.PHONY: pdf
+pdf:
+	uv run python -m econ_corpus.pdf docs/datasheet_raw.md docs/datasheet_clean.md
+
+
+## Assemble the delivery folder in DELIVERY from the current outputs (needs `make pdf`)
+.PHONY: delivery
+delivery:
+	mkdir -p $(DELIVERY)/2_raw_csv $(DELIVERY)/3_clean
+	test -e $(DELIVERY)/1_raw_txt || cp -al $(RAW_DIR) $(DELIVERY)/1_raw_txt
+	ln -f data/processed/econ_corpus_raw.csv $(DELIVERY)/2_raw_csv/
+	cp docs/datasheet_raw.pdf $(DELIVERY)/2_raw_csv/
+	ln -f data/processed/clean/*.csv $(DELIVERY)/3_clean/
+	cp docs/datasheet_clean.pdf $(DELIVERY)/3_clean/
+	rm -rf $(DELIVERY)/3_clean/review
+	cp -r data/review $(DELIVERY)/3_clean/review
+	cp docs/delivery_readme.md $(DELIVERY)/README.md
 
 
 ## Run tests

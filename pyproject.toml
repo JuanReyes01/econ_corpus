@@ -26,6 +26,7 @@ default-groups = ["dev"]
 
 [dependency-groups]
 dev = [
+    "markdown>=3.11.3",
     "pre-commit>=4.7.0",
     "pytest",
     "ruff",

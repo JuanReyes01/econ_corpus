@@ -376,6 +376,23 @@ def test_facts_count_records_outside_the_three_queried_document_types() -> None:
     assert facts["outside_doc_types_pct"] == "50.0%"
 
 
+def test_document_type_labels_are_counted_one_by_one_without_stray_spaces() -> None:
+    articles = make_articles(
+        {"doc_type": "News"},
+        {"doc_type": "New s"},
+        {"doc_type": "Commentary, NEWS"},
+        {"doc_type": None},
+    )
+    facts = datasheet.facts(articles)
+    assert facts["n_doc_type_labels"] == "2"
+    assert facts["n_outside_doc_types"] == "0"
+
+
+def test_newsday_of_another_country_is_not_the_queried_newsday() -> None:
+    assert summaries.newspaper_family("newsday,combinededitions;longisland,n.y.") == "Newsday"
+    assert summaries.newspaper_family("newsday;bulawayo,zimbabwe") == "Other"
+
+
 def test_facts_derive_the_numbers_quoted_in_the_prose() -> None:
     articles = make_articles(
         {"publication_key": NYT_ONLINE, "source_type_key": BLOG},

@@ -342,3 +342,33 @@ def test_underscore_rule_inside_body_is_reported_not_a_failure(tmp_path: Path) -
     assert result["records"] == 1
     assert result["odd_rules"] == 1
     assert result["ok"] is True
+
+
+# --- found in the audit ------------------------------------------------------------
+
+
+def test_a_body_paragraph_that_starts_with_a_label_already_read_stays_in_the_body() -> None:
+    body = "First paragraph.\n\nEditorial: this paragraph belongs to the body."
+    row = parse_one(make_record(body=body, extra={"Editorial": "Example Publisher Inc"}))
+    assert row["publisher"] == "Example Publisher Inc"
+    assert row["text"] == body
+    assert row["title"] == "Sample title"
+
+
+def test_parse_folder_reads_the_files_in_name_order_and_checks_each(tmp_path: Path) -> None:
+    raw = tmp_path / "raw"
+    raw.mkdir()
+    write_file(raw, "b.txt", [make_record()])
+    write_file(raw, "a.txt", [make_record(), make_record()])
+    (raw / "notes.md").write_text("not an export")
+    out = tmp_path / "interim" / "records.parquet"
+    checks = parse.parse_folder(raw, out)
+    assert [c["source_file"] for c in checks] == ["a.txt", "b.txt"]
+    assert all(c["ok"] for c in checks)
+    table = pq.read_table(out, columns=["source_file", "record_index"])
+    assert table["source_file"].to_pylist() == ["a.txt", "a.txt", "a.txt", "b.txt", "b.txt"]
+
+
+def test_parse_folder_refuses_a_folder_without_exports(tmp_path: Path) -> None:
+    with pytest.raises(FileNotFoundError):
+        parse.parse_folder(tmp_path, tmp_path / "records.parquet")

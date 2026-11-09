@@ -17,6 +17,7 @@ from datetime import date
 import hashlib
 from pathlib import Path
 import re
+import sys
 
 import pyarrow as pa
 import pyarrow.parquet as pq
@@ -199,13 +200,16 @@ def read_metadata(lines: list[str], floor: int) -> tuple[dict[str, str], int]:
     as long as each block starts with a known label. Scanning forward cannot work: the
     optional 'Materia' line means there is no fixed first label, and body lines such as
     'Credit: ...' look exactly like labels. Walking back from 'Base de datos', and
-    stopping at the first block without a known label, leaves the body intact.
+    stopping at the first block without a known label or with a label already read, leaves
+    the body intact.
     """
     fields, meta_start = {}, len(lines)
     for start, end in reversed(_blocks(lines, floor)):
         m = LABEL_RE.match(lines[start])
         key = LABEL_KEYS.get(compact(m[1])) if m else None
-        if key is None:
+        if key is None or key in fields:
+            # A label read twice: the block above is a paragraph of the body that happens to
+            # start like a label, and the real field is the one already read.
             break
         fields[key] = _value(m[2], lines[start + 1 : end])
         meta_start = start
@@ -323,3 +327,26 @@ def write_parquet(paths: list[Path], out: Path) -> list[dict]:
             writer.write_table(pa.Table.from_pylist(parse_text(text, name), schema=SCHEMA))
             checks.append(check_text(text, name))
     return checks
+
+
+def parse_folder(raw_dir: Path, out: Path) -> list[dict]:
+    """Parse every .txt export of a folder, in file-name order; return the sanity checks."""
+    paths = sorted(Path(raw_dir).glob("*.txt"))
+    if not paths:
+        msg = f"no .txt exports in {raw_dir}"
+        raise FileNotFoundError(msg)
+    return write_parquet(paths, out)
+
+
+def main() -> None:
+    """Parse the folder given on the command line into the repo's default table."""
+    checks = parse_folder(Path(sys.argv[1]), Path("data/interim/records.parquet"))
+    failed = [c["source_file"] for c in checks if not c["ok"]]
+    records = sum(c["records"] for c in checks)
+    print(f"{len(checks):,} files, {records:,} records, {len(failed)} failed the check")  # noqa: T201
+    if failed:
+        sys.exit("files that failed the sanity check: " + ", ".join(failed))
+
+
+if __name__ == "__main__":
+    main()

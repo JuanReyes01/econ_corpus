@@ -7,7 +7,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 
-from econ_corpus import parse, processed
+from econ_corpus import parse, processed, review
 
 A, B = "Example Daily", "Sample Times"
 NYT = "newyorktimes,lateedition(eastcoast);newyork,n.y."
@@ -174,13 +174,22 @@ def test_the_rule_decides_a_pair_the_review_was_unsure_about() -> None:
     assert body(tables["author_candidates"]) == []
 
 
+def test_a_variant_joined_only_by_the_review_is_not_credited_to_the_rule() -> None:
+    rows = ((10, "Doe, Jane", A), (11, "Doe, Jane Q", A), (12, "Doe, Jane Quinn", A))
+    rows += ((13, "Doe, Jane Quinn", A),)
+    decisions = {("janedoe", "janequinndoe"): "different", ("janeqdoe", "janequinndoe"): "same"}
+    tables = tables_for(*rows, decisions=decisions)
+    rules = {row[2]: row[4] for row in body(tables["author_names"])}
+    assert rules == {"janedoe": "main", "janequinndoe": "main", "janeqdoe": "manual_review"}
+
+
 # --- files --------------------------------------------------------------------------
 
 
 KEYS = {"source_file": ["a.txt"] * 4, "record_index": [0, 1, 2, 3]}
 
 
-def write_inputs(tmp_path: Path) -> tuple[Path, Path]:
+def write_inputs(tmp_path: Path, corrections: dict[str, str] | None = None) -> tuple[Path, Path]:
     """Write a records parquet and its reasons: two kept articles, one dropped, one footer."""
     rows = []
     bylines = ["Doe, Jane", "The Editorial Board", "Roe, Richard; Doe, Jane", None]
@@ -194,7 +203,9 @@ def write_inputs(tmp_path: Path) -> tuple[Path, Path]:
     pq.write_table(pa.Table.from_pylist(rows, schema=parse.SCHEMA), records, row_group_size=2)
     reasons = tmp_path / "exclusions.parquet"
     codes = ["kept", "no_person_author", "kept", "file_footer"]
-    pq.write_table(pa.table({**KEYS, "reason": codes}), reasons, row_group_size=3)
+    stamp = {"byline_parts": review.fingerprint(corrections or {})}
+    table = pa.table({**KEYS, "reason": codes}).replace_schema_metadata(stamp)
+    pq.write_table(table, reasons, row_group_size=3)
     return records, reasons
 
 
@@ -229,7 +240,7 @@ def test_build_links_only_articles_and_authors_that_exist(tmp_path: Path) -> Non
 
 
 def test_build_applies_the_review_files_when_they_exist(tmp_path: Path) -> None:
-    records, reasons = write_inputs(tmp_path)
+    records, reasons = write_inputs(tmp_path, {"Roe, Richard": "Rowe, Richard"})
     review_dir = tmp_path / "review"
     review_dir.mkdir()
     (review_dir / "byline_parts.csv").write_text(
@@ -268,3 +279,14 @@ def test_build_refuses_a_kept_article_without_a_proquest_id(tmp_path: Path) -> N
     pq.write_table(pa.table({**keys, "reason": ["kept"]}), reasons)
     with pytest.raises(ValueError, match="ProQuest id"):
         processed.build(records, reasons, tmp_path / "clean")
+
+
+def test_build_refuses_reasons_computed_with_other_review_files(tmp_path: Path) -> None:
+    records, reasons = write_inputs(tmp_path)  # reasons computed without any review
+    review_dir = tmp_path / "review"
+    review_dir.mkdir()
+    (review_dir / "byline_parts.csv").write_text(
+        'part,replacement,reason\n"Roe, Richard","Rowe, Richard",spelling\n', encoding="utf-8"
+    )
+    with pytest.raises(ValueError, match="review"):
+        processed.build(records, reasons, tmp_path / "clean", review_dir=review_dir)

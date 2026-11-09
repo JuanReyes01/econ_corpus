@@ -12,11 +12,16 @@ case, see docs/decisions.md) or what a decision changes (authors, identity, proc
 
 from collections import Counter
 import csv
+import hashlib
+import json
 from pathlib import Path
+
+import pyarrow.parquet as pq
 
 from econ_corpus import authors
 
 PARTS_FILE, PAIRS_FILE = "byline_parts.csv", "author_pairs.csv"
+STAMP = "byline_parts"  # metadata key of the reasons file that holds the fingerprint
 AS_READ = {"keep", "unsure", ""}  # the part stays as the rules read it
 NOBODY = "nobody"
 CAUTION = {"same": 0, "unsure": 1, "different": 2}  # of two verdicts, the higher stays
@@ -111,12 +116,30 @@ def outcome_counts(parts: list[dict[str, str]], pairs: list[dict[str, str]]) -> 
     verdicts = Counter(row["decision"].strip().casefold() for row in pairs)
     return {
         "n_review_parts": len(parts),
-        "n_parts_corrected": len(parts) - marks["keep"] - marks[NOBODY] - marks["unsure"],
+        "n_parts_corrected": len(parts) - sum(marks[m] for m in (*AS_READ, NOBODY)),
         "n_parts_nobody": marks[NOBODY],
-        "n_parts_keep": marks["keep"],
+        "n_parts_keep": marks["keep"] + marks[""],  # an empty replacement keeps the reading
         "n_parts_unsure": marks["unsure"],
         "n_review_pairs": len(pairs),
         "n_pairs_same": verdicts["same"],
         "n_pairs_different": verdicts["different"],
         "n_pairs_unsure": verdicts["unsure"],
     }
+
+
+def fingerprint(corrections: dict[str, str]) -> str:
+    """Return a short code that changes whenever a correction is added, removed or edited."""
+    return hashlib.sha256(json.dumps(sorted(corrections.items())).encode()).hexdigest()[:16]
+
+
+def same_review(reasons_file: Path, corrections: dict[str, str]) -> None:
+    """Refuse a reasons file that was computed with other corrections than these.
+
+    The corrections decide whether a byline names a person, so reasons computed before a
+    review round would keep or leave out the wrong articles.
+    """
+    stored = pq.read_schema(reasons_file).metadata or {}
+    stamp = stored.get(STAMP.encode(), fingerprint({}).encode()).decode()
+    if stamp != fingerprint(corrections):
+        msg = f"{reasons_file.name} was computed with other review files: run the exclusions again"
+        raise ValueError(msg)

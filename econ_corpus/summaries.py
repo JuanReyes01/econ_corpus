@@ -21,7 +21,7 @@ INTENDED_NEWSPAPERS = {
     "bostonglobe": "Boston Globe",
     "chicagotribune": "Chicago Tribune",
     "usatoday": "USA Today",
-    "newsday": "Newsday",
+    "newsday,": "Newsday",  # the Long Island editions; a Newsday of Zimbabwe also exists
     "tampabaytimes": "Tampa Bay Times",
     "startribune": "Star Tribune",
 }
@@ -74,6 +74,11 @@ def split_labels(value: str | None) -> list[str]:
     if value is None:
         return []
     return [part.strip() for part in value.split(",") if part.strip()]
+
+
+def label_key(label: str) -> str:
+    """Return a label without spaces and casefolded, to compare it despite stray spaces."""
+    return "".join(label.split()).casefold()
 
 
 def download_date(source_file: str) -> str | None:

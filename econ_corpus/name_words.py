@@ -9,7 +9,15 @@ institution, and words worth a second look. Does not live here: how they are use
 
 SUFFIXES = {"jr": "Jr", "sr": "Sr", "ii": "II", "iii": "III", "iv": "IV"}
 HONORIFICS = {"dr", "prof", "professor", "rev", "sen", "rep", "gov", "mr", "mrs", "ms", "sir"}
-HONORIFICS |= {"rabbi", "msgr"}
+HONORIFICS |= {"rabbi", "msgr", "sister", "father", "pastor", "reverend", "doctor"}
+# Offices and ranks written before a name ('State Rep Jane Doe', 'Vice President Jane Doe').
+HONORIFICS |= {
+    "state", "vice", "deputy", "former", "retired", "president", "senator", "representative",
+    "governor", "mayor", "legis", "legislator", "assemb", "assemblyman", "assemblywoman", "ald",
+    "alderman", "congressman", "congresswoman", "councilman", "councilwoman", "supervisor",
+    "commissioner", "secretary", "ambassador", "general", "gen", "brigadier", "colonel", "col",
+    "captain", "capt", "lieutenant", "lt", "sergeant", "sgt", "admiral",
+}  # fmt: skip
 DEGREES = {"md", "phd", "esq", "jd", "dds", "rn", "mba", "dvm", "mph"}
 
 # Words that belong to the family name ('Jane van Doe').
@@ -53,4 +61,33 @@ WATCH_WORDS = {
     "street", "avenue", "london", "paris", "tokyo", "jerusalem", "moscow", "washington",
     "boston", "chicago", "texas", "california", "florida", "york", "angeles", "jersey",
     "public", "life", "top", "council", "post", "press", "service", "senator",
+    # Towns that follow the name of a reader in letters to the editor.
+    "manhattan", "brooklyn", "bronx", "queens", "mineola", "syosset", "huntington",
+    "hempstead", "babylon", "massapequa", "smithtown", "islip", "bayside", "flushing",
+    "freeport", "levittown", "hicksville", "merrick", "bellmore", "wantagh", "plainview",
+    "commack", "patchogue", "riverhead", "oceanside", "jericho", "amityville", "copiague",
+    "lindenhurst", "farmingdale", "bethpage", "woodmere", "northport", "setauket", "greenlawn",
+    "whitestone", "sunnyside", "albany", "evanston", "naperville",
+}  # fmt: skip
+
+# Short forms of first names that are not simply their beginning ('Tim' for 'Timothy' needs
+# no entry). Used only to list pairs of authors for review, never to merge them.
+NICKNAMES = {
+    "bill": {"william"}, "billy": {"william"}, "will": {"william"}, "bob": {"robert"},
+    "bobby": {"robert"}, "rob": {"robert"}, "jim": {"james"}, "jimmy": {"james"},
+    "joe": {"joseph"}, "joey": {"joseph"}, "jack": {"john"}, "johnny": {"john"},
+    "dick": {"richard"}, "rick": {"richard"}, "rich": {"richard"}, "ted": {"edward", "theodore"},
+    "ed": {"edward", "edwin", "edmund"}, "eddie": {"edward"}, "larry": {"lawrence", "laurence"},
+    "chuck": {"charles"}, "charlie": {"charles"}, "steve": {"stephen", "steven"},
+    "mike": {"michael"}, "tom": {"thomas"}, "tommy": {"thomas"}, "tony": {"anthony"},
+    "dave": {"david"}, "andy": {"andrew"}, "drew": {"andrew"}, "al": {"albert", "alan", "alfred"},
+    "hank": {"henry"}, "harry": {"harold", "henry"}, "jerry": {"gerald", "jerome"},
+    "gene": {"eugene"}, "bernie": {"bernard"}, "danny": {"daniel"},
+    "kate": {"katherine", "catherine"},
+    "kathy": {"katherine", "kathleen"}, "cathy": {"catherine"}, "liz": {"elizabeth"},
+    "beth": {"elizabeth"}, "betsy": {"elizabeth"}, "peggy": {"margaret"}, "meg": {"margaret"},
+    "maggie": {"margaret"}, "sue": {"susan"}, "debbie": {"deborah"}, "jenny": {"jennifer"},
+    "abe": {"abraham"}, "ben": {"benjamin"}, "fred": {"frederick", "alfred"}, "ron": {"ronald"},
+    "ken": {"kenneth"}, "greg": {"gregory"}, "jeff": {"jeffrey", "geoffrey"},
+    "pat": {"patrick", "patricia"},
 }  # fmt: skip

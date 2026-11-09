@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pyarrow as pa
 import pyarrow.parquet as pq
+import pytest
 
 from econ_corpus import datasheet_clean, parse, processed
 
@@ -100,10 +101,11 @@ def test_build_writes_the_datasheet_the_flow_figure_and_the_flow_table(tmp_path:
     out = tmp_path / "datasheet.md"
     datasheet_clean.build(
         clean,
+        records,
         reasons,
         tmp_path / "review",
-        template,
-        out,
+        template=template,
+        out_md=out,
         tables_dir=tmp_path / "tables",
         figures_dir=tmp_path / "figures",
     )
@@ -114,3 +116,29 @@ def test_build_writes_the_datasheet_the_flow_figure_and_the_flow_table(tmp_path:
     assert "| Jane Doe | 2 |" in text
     assert (tmp_path / "figures" / "clean_flow.svg").read_text().startswith("<svg")
     assert (tmp_path / "tables" / "clean_flow.csv").exists()
+
+
+def test_build_refuses_tables_that_do_not_match_the_reasons(tmp_path: Path) -> None:
+    rows = [parse.empty_row("a.txt", i, is_footer=False) for i in range(2)]
+    for i, row in enumerate(rows):
+        row |= {"doc_id": 100 + i, "author": "Doe, Jane", "publication_key": NYT, "pub_year": 2020}
+        row |= {"title": f"Title {i}", "text": "Synthetic body.", "has_body": True}
+    records, reasons = tmp_path / "records.parquet", tmp_path / "exclusions.parquet"
+    pq.write_table(pa.Table.from_pylist(rows, schema=parse.SCHEMA), records)
+    keys = {"source_file": ["a.txt"] * 2, "record_index": [0, 1]}
+    pq.write_table(pa.table({**keys, "reason": ["kept", "no_author"]}), reasons)
+    processed.build(records, reasons, tmp_path / "clean")
+    pq.write_table(pa.table({**keys, "reason": ["kept", "kept"]}), reasons)  # reasons move on
+    template = tmp_path / "template.md"
+    template.write_text("Articles: {{n_articles}}\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="processed"):
+        datasheet_clean.build(
+            tmp_path / "clean",
+            records,
+            reasons,
+            tmp_path / "review",
+            template=template,
+            out_md=tmp_path / "out.md",
+            tables_dir=tmp_path,
+            figures_dir=tmp_path,
+        )

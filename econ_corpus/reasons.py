@@ -38,13 +38,13 @@ REASONS = [
     },
     {
         "code": "duplicate_text",
-        "description": "Same body, title, date and newspaper as an earlier record",
+        "description": "Same body, title, date and newspaper as another record, which stays",
         "in_raw": False,
         "dropped": True,
     },
     {
         "code": "missing_metadata",
-        "description": "No document type, no section and no opinion title: cannot be classified",
+        "description": "No publication, no id, or no document type and section: unclassifiable",
         "in_raw": True,
         "dropped": True,
     },
@@ -62,7 +62,7 @@ REASONS = [
     },
     {
         "code": "no_text",
-        "description": "Opinion piece with no body text",
+        "description": "Opinion piece with no body text, or a placeholder shared by many records",
         "in_raw": True,
         "dropped": True,
     },

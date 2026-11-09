@@ -10,24 +10,26 @@ rows themselves (the raw table is never modified) or the descriptions of the dat
 Rules are applied in the order of REASONS; the first one that matches decides. Only
 obvious cases are handled: repeated ProQuest ids, publications that were not queried,
 identical text with the same title, date and newspaper, and records in a news section with no
-sign of being opinion. A record that
-cannot be decided (no section, generic type, no opinion title) is not dropped but flagged
-`unclear_opinion`, to be settled by whoever uses the data. Subtler duplicates come later.
+sign of being opinion. A record that cannot be decided (no section, generic type, no opinion
+title) is `unclear_opinion`: it stays in the raw table and is left out of the cleaned dataset.
+An opinion piece then needs text and a person among its authors. Subtler duplicates come later.
 
 Two flags per reason: `in_raw` says whether the row is part of the shared raw table (footers,
 repeated ids and repeated text are not), `dropped` whether it leaves the cleaned dataset.
 """
 
+from collections import Counter
 from collections.abc import Iterable
 from pathlib import Path
 
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from econ_corpus import bylines, datasheet, review, summaries
+from econ_corpus import bylines, datasheet, parse, review, summaries
 from econ_corpus.reasons import REASONS
 from econ_corpus.tables import Articles, Table
 
+PLACEHOLDER_MIN = 20  # a body carried by this many different articles is not their text
 COLUMNS = [
     "is_footer", "source_file", "record_index", "doc_id", "body_sha256", "title", "pub_date",
     "publication_key", "doc_type", "section", "body_chars", "author",
@@ -88,6 +90,19 @@ def _mark_repeated_text(
                 reasons[i] = "duplicate_text"
 
 
+def _before_judging(rows: Articles, i: int, kept: dict[int, int], family: str | None) -> str:
+    """Return the reason of a row that is not judged on its content, or '' if it is."""
+    doc_id = rows["doc_id"][i]
+    if rows["is_footer"][i]:
+        return "file_footer"
+    if doc_id is not None and kept[doc_id] != i:
+        return "duplicate_id"
+    if family == "Other":
+        return "not_queried_newspaper"
+    # Without a publication the newspaper cannot be checked; without an id there is no key.
+    return "missing_metadata" if family is None or doc_id is None else ""
+
+
 def assign_reasons(rows: Articles, corrections: dict[str, str] | None = None) -> list[str]:
     """Return one reason code per row, with repeats judged in download order.
 
@@ -97,7 +112,8 @@ def assign_reasons(rows: Articles, corrections: dict[str, str] | None = None) ->
     is none; the others are `duplicate_text`. So each article is counted once and a signed copy
     is not lost to an unsigned one. "Signed" means any byline other than Anonymous: the choice
     must not depend on how names are read or on the manual review, because these rows also
-    leave the shared raw table.
+    leave the shared raw table. A body carried by many different articles is a placeholder
+    ("text not available"), not text.
     """
     n = len(rows["source_file"])
     file_key = {f: summaries.file_order(f) for f in set(rows["source_file"])}
@@ -105,30 +121,27 @@ def assign_reasons(rows: Articles, corrections: dict[str, str] | None = None) ->
         range(n), key=lambda i: (file_key[rows["source_file"][i]], rows["record_index"][i])
     )
     kept = _kept_copies(rows, order)
+    families = [summaries.newspaper_family(key) for key in rows["publication_key"]]
+    reasons = [_before_judging(rows, i, kept, families[i]) for i in range(n)]
+    judged = [i for i in order if not reasons[i]]
+    carried = Counter(rows["body_sha256"][i] for i in judged)  # articles carrying each body
     same_text: dict[tuple, list[int]] = {}  # copies of one text, in download order
     by_byline: dict[str | None, str] = {}  # bylines repeat, so each is read once
     qualifies: set[int] = set()  # signed opinion pieces with text
-    reasons = [""] * n
-    for i in order:
-        doc_id, title = rows["doc_id"][i], rows["title"][i]
-        family = summaries.newspaper_family(rows["publication_key"][i])
-        if rows["is_footer"][i]:
-            reasons[i] = "file_footer"
-        elif doc_id is not None and kept[doc_id] != i:
-            reasons[i] = "duplicate_id"
-        elif family == "Other":
-            reasons[i] = "not_queried_newspaper"
-        else:
-            reasons[i] = _opinion_reason(rows["doc_type"][i], rows["section"][i], title)
-            text_key = (rows["body_sha256"][i], title, rows["pub_date"][i], family)
-            if all(text_key[:3]):
-                same_text.setdefault(text_key, []).append(i)
+    for i in judged:
+        title, sha = rows["title"][i], rows["body_sha256"][i]
+        reasons[i] = _opinion_reason(rows["doc_type"][i], rows["section"][i], title)
+        if sha and title and rows["pub_date"][i]:
+            # Titles are compared without ProQuest's stray spaces, like every other metadata.
+            text_key = (sha, parse.compact(title), rows["pub_date"][i], families[i])
+            same_text.setdefault(text_key, []).append(i)
         if reasons[i] == "kept":
             # An opinion piece stays only with text and with a person among its authors.
             byline = rows["author"][i]
             if byline not in by_byline:
                 by_byline[byline] = _author_reason(byline, corrections)
-            reasons[i] = by_byline[byline] if rows["body_chars"][i] else "no_text"
+            has_text = rows["body_chars"][i] and carried[sha] < PLACEHOLDER_MIN
+            reasons[i] = by_byline[byline] if has_text else "no_text"
             if reasons[i] not in ("no_text", "no_author"):
                 qualifies.add(i)
     _mark_repeated_text(same_text.values(), reasons, qualifies)
@@ -165,7 +178,9 @@ def write_exclusions(
     reasons = assign_reasons(rows, corrections)
     out.parent.mkdir(parents=True, exist_ok=True)
     keys = {k: rows[k] for k in ("source_file", "record_index")}
-    pq.write_table(pa.table({**keys, "reason": reasons}), out)
+    # The reasons depend on the review, so they carry its fingerprint (see review.same_review).
+    stamp = {review.STAMP: review.fingerprint(corrections or {})}
+    pq.write_table(pa.table({**keys, "reason": reasons}).replace_schema_metadata(stamp), out)
     return reasons
 
 

@@ -18,10 +18,9 @@ import sys
 
 import pyarrow as pa
 import pyarrow.csv as pacsv
-import pyarrow.parquet as pq
 
 from econ_corpus import clean_tables, datasheet, figures, review, summaries, tables
-from econ_corpus.reasons import LEFT_OUT, REASONS
+from econ_corpus.reasons import LEFT_OUT, REASONS, load
 
 Rows = list[dict[str, str]]
 AUTHORS_PER_ARTICLE = [("1", 1, 1), ("2", 2, 2), ("3", 3, 3), ("4", 4, 4), ("5 or more", 5, None)]
@@ -128,8 +127,15 @@ def _rows(path: Path) -> Rows:
         return list(csv.DictReader(handle))
 
 
-def read_inputs(clean: Path, reasons_file: Path, review_dir: Path) -> Inputs:
-    """Read the cleaned tables, the reasons and the review files."""
+def read_inputs(clean: Path, records: Path, reasons_file: Path, review_dir: Path) -> Inputs:
+    """Read the cleaned tables, the reasons and the review files.
+
+    The three must belong together: the reasons are matched to the records by key, they must
+    have been computed with these review files, and they must keep as many articles as the
+    cleaned table holds. Otherwise the datasheet would mix two states of the pipeline.
+    """
+    review.same_review(reasons_file, review.load_parts(review_dir / review.PARTS_FILE))
+    codes = load(records, reasons_file).to_pylist()
     columns = ["newspaper", "edition", "pub_year"]
     art = pacsv.read_csv(
         clean / "articles.csv",
@@ -138,6 +144,9 @@ def read_inputs(clean: Path, reasons_file: Path, review_dir: Path) -> Inputs:
             include_columns=columns, column_types={"pub_year": pa.int64()}
         ),
     ).to_pydict()
+    if codes.count("kept") != len(art["newspaper"]):
+        msg = "the cleaned tables do not match the reasons: run processed again"
+        raise ValueError(msg)
     return Inputs(
         authors=_rows(clean / "authors.csv"),
         names=_rows(clean / "author_names.csv"),
@@ -146,7 +155,7 @@ def read_inputs(clean: Path, reasons_file: Path, review_dir: Path) -> Inputs:
         newspapers=art["newspaper"],
         editions=art["edition"],
         years=art["pub_year"],
-        reasons=pq.read_table(reasons_file, columns=["reason"])["reason"].to_pylist(),
+        reasons=codes,
         parts=_rows(review_dir / review.PARTS_FILE),
         pairs=_rows(review_dir / review.PAIRS_FILE),
     )
@@ -154,16 +163,17 @@ def read_inputs(clean: Path, reasons_file: Path, review_dir: Path) -> Inputs:
 
 def build(  # noqa: PLR0913 (one argument per input or output file)
     clean: Path,
+    records: Path,
     reasons_file: Path,
     review_dir: Path,
+    *,
     template: Path,
     out_md: Path,
-    *,
     tables_dir: Path,
     figures_dir: Path,
 ) -> None:
     """Read the cleaned dataset, fill the template and write the datasheet and the flow."""
-    inputs = read_inputs(clean, reasons_file, review_dir)
+    inputs = read_inputs(clean, records, reasons_file, review_dir)
     shown = described(inputs)
     values = facts(inputs) | {name: tables.md_table(rows) for name, rows in shown.items()}
     out_md.write_text(
@@ -180,10 +190,11 @@ def main() -> None:
     """Build the datasheet of the cleaned dataset from the repo's default locations."""
     build(
         Path("data/processed/clean"),
+        Path("data/interim/records.parquet"),
         Path("data/interim/exclusions.parquet"),
         Path("data/review"),
-        Path("docs/datasheet_clean.template.md"),
-        Path("docs/datasheet_clean.md"),
+        template=Path("docs/datasheet_clean.template.md"),
+        out_md=Path("docs/datasheet_clean.md"),
         tables_dir=Path("reports/tables"),
         figures_dir=Path("reports/figures"),
     )

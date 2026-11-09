@@ -22,7 +22,7 @@
 <rect class="bar as-parsed" x="125.8" y="325.3" width="7.2" height="9.7" fill="#4c78a8"/>
 <rect class="bar shared-table" x="133.0" y="326.0" width="7.2" height="9.0" fill="#f58518"/>
 <rect class="bar as-parsed" x="143.8" y="325.3" width="7.2" height="9.7" fill="#4c78a8"/>
-<rect class="bar shared-table" x="151.0" y="325.3" width="7.2" height="9.7" fill="#f58518"/>
+<rect class="bar shared-table" x="151.0" y="325.4" width="7.2" height="9.6" fill="#f58518"/>
 <rect class="bar as-parsed" x="161.8" y="316.5" width="7.2" height="18.5" fill="#4c78a8"/>
 <rect class="bar shared-table" x="169.0" y="317.8" width="7.2" height="17.2" fill="#f58518"/>
 <text x="169.0" y="351" text-anchor="middle">1985</text>
@@ -93,7 +93,7 @@
 <rect class="bar shared-table" x="709.0" y="295.3" width="7.2" height="39.7" fill="#f58518"/>
 <text x="709.0" y="351" text-anchor="middle">2015</text>
 <rect class="bar as-parsed" x="719.8" y="284.8" width="7.2" height="50.2" fill="#4c78a8"/>
-<rect class="bar shared-table" x="727.0" y="296.1" width="7.2" height="38.9" fill="#f58518"/>
+<rect class="bar shared-table" x="727.0" y="296.2" width="7.2" height="38.8" fill="#f58518"/>
 <rect class="bar as-parsed" x="737.8" y="267.6" width="7.2" height="67.4" fill="#4c78a8"/>
 <rect class="bar shared-table" x="745.0" y="272.3" width="7.2" height="62.7" fill="#f58518"/>
 <rect class="bar as-parsed" x="755.8" y="264.3" width="7.2" height="70.7" fill="#4c78a8"/>
@@ -108,7 +108,7 @@
 <rect class="bar as-parsed" x="827.8" y="278.9" width="7.2" height="56.1" fill="#4c78a8"/>
 <rect class="bar shared-table" x="835.0" y="281.4" width="7.2" height="53.6" fill="#f58518"/>
 <rect class="bar as-parsed" x="845.8" y="289.0" width="7.2" height="46.0" fill="#4c78a8"/>
-<rect class="bar shared-table" x="853.0" y="291.6" width="7.2" height="43.4" fill="#f58518"/>
+<rect class="bar shared-table" x="853.0" y="291.7" width="7.2" height="43.3" fill="#f58518"/>
 <rect class="bar as-parsed" x="863.8" y="298.9" width="7.2" height="36.1" fill="#4c78a8"/>
 <rect class="bar shared-table" x="871.0" y="300.8" width="7.2" height="34.2" fill="#f58518"/>
 <rect x="650" y="10" width="12" height="12" fill="#4c78a8"/>

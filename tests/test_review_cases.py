@@ -113,6 +113,7 @@ def test_build_writes_every_kind_of_case_with_its_evidence(tmp_path: Path) -> No
         "names_to_review": 1,
         "rejected_to_review": 1,
         "pairs_to_review": 1,
+        "merged_to_review": 0,
     }
     cases = review_dir / "cases"
     assert [r["part"] for r in read(cases / "parts_to_review.csv")] == ["Jane Doe, Springfield"]
@@ -129,3 +130,38 @@ def test_build_writes_every_kind_of_case_with_its_evidence(tmp_path: Path) -> No
     assert (pair["name_a"], pair["articles_a"]) == ("Alyssa Haywood", "2")
     assert pair["evidence_a"] == "New York Times:2 2020-2020 | Title 0 // Title 1"
     assert pair["evidence_b"] == "New York Times:2 2020-2020 | Title 2 // Title 3"
+
+
+def test_names_of_four_or_more_words_are_watched() -> None:
+    bylines = ["Jane Mary Ann Doe", "Doe, Jane Mary Ann", "Jane Mary Doe", "Jane Doe Jr"]
+    assert review_cases.watched_parts(bylines, set()) == {
+        "Jane Mary Ann Doe": 1,
+        "Doe, Jane Mary Ann": 1,
+    }
+
+
+def test_a_name_ending_in_a_town_is_watched() -> None:
+    assert review_cases.watched_parts(["Jane Doe Syosset"], set()) == {"Jane Doe Syosset": 1}
+
+
+NAMES = [
+    ["author_id", "name", "name_key", "articles", "rule"],
+    ["1", "James Doe", "jamesdoe", "40", "main"],
+    ["1", "James Doe Jr", "jamesdoejr", "21", "shared_newspaper"],
+    ["2", "John Roe Jr", "johnroejr", "30", "main"],
+    ["2", "John Roe", "johnroe", "2", "shared_newspaper"],
+    ["3", "Ann Poe", "annpoe", "9", "main"],
+    ["3", "Ann Q Poe", "annqpoe", "9", "shared_newspaper"],
+]
+
+
+def test_merged_names_with_and_without_a_suffix_are_listed_when_both_are_frequent() -> None:
+    assert review_cases.suffix_merges(NAMES, set(), min_articles=3) == [
+        ["key_a", "name_a", "articles_a", "key_b", "name_b", "articles_b"],
+        ["jamesdoe", "James Doe", "40", "jamesdoejr", "James Doe Jr", "21"],
+    ]
+
+
+def test_suffix_merges_already_decided_are_not_listed_again() -> None:
+    decided = {("jamesdoe", "jamesdoejr")}
+    assert review_cases.suffix_merges(NAMES, decided, min_articles=3)[1:] == []
