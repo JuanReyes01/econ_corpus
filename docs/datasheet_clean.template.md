@@ -62,7 +62,8 @@ give the shared raw table; the others leave only the cleaned dataset (Figure 1).
   a byline that names only an institution is `no_person_author`, and so is a page compiled
   from the words of others, told by its byline (`Compiled by ...`) or by its heading
   (`Punchlines`, `Best of Late Night`, `In Other Words: A sampling of opinions`, `Editorials
-  elsewhere`).
+  elsewhere`). The round-up of late-night jokes of USA Today often has no heading: there, a
+  piece under 300 words whose title names a late-night comedian or show is that page.
 - **A text to read:** a signed opinion piece with a body under 50 words (a cartoon stored
   as its caption, a teaser, a cut text) or with a title that starts with a cartoon heading
   (`TOON-OP`, `Op-Comic`, `Panel Discussion`) is left out (`short_or_cartoon`).
@@ -293,8 +294,10 @@ Pairs of authors that look alike and are not merged.
   editorials. They are in the raw table.
 - **No person as author:** {{n_no_person_author}} articles, signed by an editorial board, a
   publication or a role, or compiled from the words of others. A compiled page is left out
-  when its byline or its heading says so: about 140 pages of late-night jokes of USA Today
-  that carry no heading stay, and so may pages under headings not listed.
+  when its byline or its heading says so; pages under headings not listed may stay. The
+  rule for the pages of USA Today with no heading goes by the names in the title, so a short
+  piece of that newspaper about a person of the same family name would be left out too; no
+  such piece was found among the 173 it leaves out.
 - **Authors may still be split:** of the {{n_candidates}} look-alike pairs,
   {{n_candidates_not_reviewed}} were not reviewed: one of the two authors has a single
   article and the other fewer than twenty. {{n_candidates_unsure}} were reviewed and left unsure.

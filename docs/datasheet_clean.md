@@ -9,7 +9,7 @@ Data descriptor, version 1.0 (2026-11-09). Derived from the raw table described 
 
 ## Abstract
 
-The dataset holds 398,696 opinion articles signed by at least one person, published
+The dataset holds 398,523 opinion articles signed by at least one person, published
 1980–2024 in ten U.S. newspapers with the highest circulation, and the
 86,636 authors who signed them. Articles and authors are separate tables joined by a
 link table, since an article can have several authors and an author many articles. The
@@ -27,9 +27,9 @@ queried newspapers, with an English text of at least 50 words, signed by a perso
 
 | | |
 |---|---|
-| Articles | 398,696 |
+| Articles | 398,523 |
 | Authors | 86,636 |
-| Article–author links | 446,715 |
+| Article–author links | 446,542 |
 | Newspapers | 10 |
 | Publication years | 1980–2024 |
 | Articles with one author | 93.2% |
@@ -58,9 +58,9 @@ give the shared raw table; the others leave only the cleaned dataset (Figure 1).
 | unclear_opinion | Generic document type, no section and no opinion title: may be opinion | 11,079 | 1,049,167 |
 | no_text | Opinion piece with no text, or only a notice shared by several articles | 4,420 | 1,044,747 |
 | no_author | Opinion piece that is unsigned or marked Anonymous | 631,192 | 413,555 |
-| no_person_author | No person as author: an institution, no full name, or a compiled page | 11,423 | 402,132 |
-| short_or_cartoon | Signed opinion piece under 50 words or under a cartoon heading | 1,919 | 400,213 |
-| not_english | Signed opinion piece whose text is not in English (mostly Spanish) | 1,517 | 398,696 |
+| no_person_author | No person as author: an institution, no full name, or a compiled page | 11,596 | 401,959 |
+| short_or_cartoon | Signed opinion piece under 50 words or under a cartoon heading | 1,919 | 400,040 |
+| not_english | Signed opinion piece whose text is not in English (mostly Spanish) | 1,517 | 398,523 |
 
 - **Opinion:** a record is opinion if its document type, its section or its title marks it
   as commentary, editorial, op-ed or letters. Records with no such mark are left out, either
@@ -76,7 +76,8 @@ give the shared raw table; the others leave only the cleaned dataset (Figure 1).
   a byline that names only an institution is `no_person_author`, and so is a page compiled
   from the words of others, told by its byline (`Compiled by ...`) or by its heading
   (`Punchlines`, `Best of Late Night`, `In Other Words: A sampling of opinions`, `Editorials
-  elsewhere`).
+  elsewhere`). The round-up of late-night jokes of USA Today often has no heading: there, a
+  piece under 300 words whose title names a late-night comedian or show is that page.
 - **A text to read:** a signed opinion piece with a body under 50 words (a cartoon stored
   as its caption, a teaser, a cut text) or with a title that starts with a cartoon heading
   (`TOON-OP`, `Op-Comic`, `Panel Discussion`) is left out (`short_or_cartoon`).
@@ -123,7 +124,7 @@ give the shared raw table; the others leave only the cleaned dataset (Figure 1).
   author is a piece of that sentence. A name followed by a small word that may be a piece
   of it cut off by a stray space (`Jane Do e Roe`, `Jane Do rgan`) is not read: it goes
   to the manual review.
-- Of 446,715 links, 425,420 (95.2%) were read as
+- Of 446,542 links, 425,247 (95.2%) were read as
   written, 16,357 were recovered and 4,938 come from the manual
   review (section 2.4). Each link records how it was read.
 
@@ -261,15 +262,15 @@ Pairs of authors that look alike and are not merged.
 |---|---|---|---|---|---|
 | Washington Post | 105,347 | 49,865 | 44,584 | 10,898 | 26.4% |
 | New York Times | 96,312 | 66,727 | 29,585 | 0 | 24.2% |
-| Los Angeles Times | 58,007 | 32,692 | 9,855 | 15,460 | 14.5% |
+| Los Angeles Times | 58,007 | 32,692 | 9,855 | 15,460 | 14.6% |
 | Boston Globe | 41,174 | 23,311 | 5,721 | 12,142 | 10.3% |
 | Wall Street Journal | 37,399 | 1,942 | 35,457 | 0 | 9.4% |
 | Newsday | 20,474 | 20,474 | 0 | 0 | 5.1% |
 | Chicago Tribune | 19,510 | 4,236 | 11,812 | 3,462 | 4.9% |
-| USA Today | 18,472 | 2,889 | 15,580 | 3 | 4.6% |
+| USA Today | 18,299 | 2,889 | 15,407 | 3 | 4.6% |
 | Tampa Bay Times | 1,525 | 98 | 1,427 | 0 | 0.4% |
 | Star Tribune | 476 | 476 | 0 | 0 | 0.1% |
-| Total | 398,696 | 202,710 | 154,021 | 41,965 | 100.0% |
+| Total | 398,523 | 202,710 | 153,848 | 41,965 | 100.0% |
 
 ### 4.2 Decades
 
@@ -278,15 +279,15 @@ Pairs of authors that look alike and are not merged.
 | 1980s | 30,876 | 7.7% |
 | 1990s | 48,980 | 12.3% |
 | 2000s | 74,225 | 18.6% |
-| 2010s | 130,774 | 32.8% |
-| 2020s | 113,826 | 28.5% |
+| 2010s | 130,626 | 32.8% |
+| 2020s | 113,801 | 28.6% |
 | Unknown year | 15 | 0.0% |
 
 ### 4.3 Authors per article
 
 | Authors | Articles | Share |
 |---|---|---|
-| 1 | 371,452 | 93.2% |
+| 1 | 371,279 | 93.2% |
 | 2 | 19,406 | 4.9% |
 | 3 | 2,946 | 0.7% |
 | 4 | 1,727 | 0.4% |
@@ -298,8 +299,8 @@ Pairs of authors that look alike and are not merged.
 |---|---|---|
 | 1 | 51,647 | 59.6% |
 | 2 to 9 | 30,323 | 35.0% |
-| 10 to 99 | 4,263 | 4.9% |
-| 100 or more | 403 | 0.5% |
+| 10 to 99 | 4,264 | 4.9% |
+| 100 or more | 402 | 0.5% |
 
 ### 4.5 Most frequent authors
 
@@ -325,7 +326,7 @@ Pairs of authors that look alike and are not merged.
 
 | Read | Count | Share |
 |---|---|---|
-| as_written | 425,420 | 95.2% |
+| as_written | 425,247 | 95.2% |
 | recovered | 16,357 | 3.7% |
 | manual_review | 4,938 | 1.1% |
 
@@ -373,10 +374,12 @@ Pairs of authors that look alike and are not merged.
 
 - **Unsigned opinion is absent:** 631,192 opinion pieces have no author, mostly
   editorials. They are in the raw table.
-- **No person as author:** 11,423 articles, signed by an editorial board, a
+- **No person as author:** 11,596 articles, signed by an editorial board, a
   publication or a role, or compiled from the words of others. A compiled page is left out
-  when its byline or its heading says so: about 140 pages of late-night jokes of USA Today
-  that carry no heading stay, and so may pages under headings not listed.
+  when its byline or its heading says so; pages under headings not listed may stay. The
+  rule for the pages of USA Today with no heading goes by the names in the title, so a short
+  piece of that newspaper about a person of the same family name would be left out too; no
+  such piece was found among the 173 it leaves out.
 - **Authors may still be split:** of the 7,220 look-alike pairs,
   5,799 were not reviewed: one of the two authors has a single
   article and the other fewer than twenty. 529 were reviewed and left unsure.
