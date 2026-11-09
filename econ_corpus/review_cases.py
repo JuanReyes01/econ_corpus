@@ -8,8 +8,8 @@ and names read by moving pieces around),
 `rejected_to_review.csv` (parts read as nobody, in kept articles and in those left out for
 having no person among their authors), `pairs_to_review.csv` (look-alike authors not yet
 reviewed), `merged_to_review.csv` (authors merged from a name with a suffix and one
-without) and `distant_to_review.csv` (variants of a name merged into one author that appear
-years apart), each with the evidence a reviewer needs; and `unused_parts.csv` and
+without) and `distant_to_review.csv` (variants of one author that appear years apart),
+each with the evidence a reviewer needs; and `unused_parts.csv` and
 `unused_pairs.csv`, the decisions that apply to nothing any more, to be retired.
 
 Lives here: which cases are worth a review, and the evidence shown. Does not live here: the
@@ -39,7 +39,7 @@ MIN_ARTICLES = 2  # a pair is reviewed when both authors have at least this many
 FREQUENT = 20  # or when one of them has at least this many
 LONG_NAME = 4  # words in a name from which it is worth a second look
 MIN_SUFFIX_MERGE = 3  # articles each form needs for a suffix merge to be listed
-MIN_GAP = 5  # years with no article between two merged variants for the pair to be listed
+MIN_GAP = 5  # years from the last article of a variant to the first of another to list them
 Article = tuple[str, int | None, str | None]  # newspaper, year, title
 
 
@@ -116,18 +116,19 @@ def distant_merges(
     decided: set[tuple[str, str]],
     min_gap: int = MIN_GAP,
 ) -> Table:
-    """List the pairs of variants merged by the rule that appear `min_gap` or more years apart.
+    """List the pairs of variants of one author that appear `min_gap` or more years apart.
 
     Two people with one name are merged when they wrote for the same newspaper in different
     decades (a father and a son, a writer of the 1990s and one of the 2020s); the years
     between the last article of one variant and the first of the other are the sign. `signed`
-    holds the articles signed under each name key. Variants joined by the review were read
-    by a reviewer, pairs already judged are left out, and so are variants with no dated article.
+    holds the articles signed under each name key. Every pair of variants is compared,
+    whatever joined them: a verdict of the review is on one pair, and says nothing of the
+    other variants of the two authors it joins. Pairs already judged are left out, and so
+    are variants with no dated article.
     """
     by_author: defaultdict[str, list[dict[str, str]]] = defaultdict(list)
     for row in _dicts(names):
-        if row["rule"] != "manual_review":
-            by_author[row["author_id"]].append(row)
+        by_author[row["author_id"]].append(row)
     rows = []
     for variants in by_author.values():
         for a, b in combinations(sorted(variants, key=lambda v: v["name_key"]), 2):

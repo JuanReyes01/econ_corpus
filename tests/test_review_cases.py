@@ -258,6 +258,10 @@ FAR = [
     ["2", "Ann Poe", "annpoe", "2", "main"],
     ["2", "Ann R Poe", "annrpoe", "1", "shared_newspaper"],
     ["3", "Richard Roe", "richardroe", "1", "main"],
+    ["4", "Tom Lee", "tomlee", "1", "main"],
+    ["4", "Tom B Lee", "tomblee", "1", "shared_newspaper"],
+    ["5", "Ann Lee", "annlee", "1", "main"],
+    ["5", "Ann B Lee", "annblee", "1", "shared_newspaper"],
 ]
 SIGNED = {
     "janedoe": [("Newsday", 1990, "First"), ("Newsday", 1992, "Second"), ("Newsday", None, "x")],
@@ -267,6 +271,10 @@ SIGNED = {
     "annpoe": [("Newsday", 2000, "Sixth"), ("Newsday", 2010, "Seventh")],
     "annrpoe": [("Newsday", 2005, "Eighth")],
     "richardroe": [("Newsday", 1980, "Ninth")],
+    "tomlee": [("Newsday", 2000, "Tenth")],
+    "tomblee": [("Newsday", 2004, "Eleventh")],
+    "annlee": [("Newsday", 2005, "Twelfth")],
+    "annblee": [("Newsday", 2000, "Thirteenth")],
 }
 FAR_HEADER = [
     "key_a", "name_a", "articles_a", "evidence_a",
@@ -274,50 +282,65 @@ FAR_HEADER = [
 ]  # fmt: skip
 
 
-def test_merged_variants_with_years_between_them_are_listed_with_their_evidence() -> None:
-    table = review_cases.distant_merges(FAR, SIGNED, set(), min_gap=5)
+def far_pairs(decided: set[tuple[str, str]] = frozenset(), **gap: int) -> list[tuple[str, ...]]:
+    table = review_cases.distant_merges(FAR, SIGNED, set(decided), **gap)
+    return [(row[0], row[4], row[8]) for row in table[1:]]
+
+
+def test_variants_of_an_author_with_years_between_them_are_listed_in_order() -> None:
+    # Exactly five years are enough, four are not; 2005 falls inside 2000-2010.
+    assert far_pairs() == [
+        ("annblee", "annlee", "5"),
+        ("janedoe", "janeqdoe", "9"),
+        ("janedoe", "jaynedoe", "28"),
+        ("janeqdoe", "janequinndoe", "6"),
+        ("janeqdoe", "jaynedoe", "19"),
+        ("janequinndoe", "jaynedoe", "25"),
+    ]
+    assert ("tomblee", "tomlee", "4") in far_pairs(min_gap=4)
+    assert ("janedoe", "janequinndoe", "3") in far_pairs(min_gap=3)
+
+
+def test_a_distant_merge_is_listed_with_the_evidence_of_each_variant() -> None:
+    table = review_cases.distant_merges(FAR, SIGNED, set())
     assert table[0] == FAR_HEADER
-    assert table[1:] == [
-        [
-            *("janedoe", "Jane Doe", "3", "Newsday:3 1990-1992 | First // Second"),
-            *("janeqdoe", "Jane Q Doe", "1", "Newsday:1 2001-2001 | Third"),
-            "9",
-        ],
-        [
-            *("janeqdoe", "Jane Q Doe", "1", "Newsday:1 2001-2001 | Third"),
-            *("janequinndoe", "Jane Quinn Doe", "1", "Newsday:1 1995-1995 | Fourth"),
-            "6",
-        ],
+    assert table[2] == [
+        *("janedoe", "Jane Doe", "3", "Newsday:3 1990-1992 | First // Second"),
+        *("janeqdoe", "Jane Q Doe", "1", "Newsday:1 2001-2001 | Third"),
+        "9",
     ]
 
 
-def test_variants_closer_than_the_gap_or_joined_by_the_review_are_not_listed() -> None:
-    # 1992 to 1995 is under five years; 2005 falls inside 2000-2010; 'Jayne' was reviewed.
-    keys = {(row[0], row[4]) for row in review_cases.distant_merges(FAR, SIGNED, set(), 5)[1:]}
-    assert keys == {("janedoe", "janeqdoe"), ("janeqdoe", "janequinndoe")}
-    assert len(review_cases.distant_merges(FAR, SIGNED, set(), min_gap=3)) == 1 + 3
+def test_a_variant_joined_by_the_review_is_compared_with_the_others_too() -> None:
+    # Its verdict was on one pair; the other variants of the author were never set against it.
+    assert sum("jaynedoe" in pair for pair in far_pairs()) == len(["jane", "janeq", "janequinn"])
 
 
 def test_distant_merges_already_decided_are_not_listed_again() -> None:
-    decided = {("janedoe", "janeqdoe")}
-    table = review_cases.distant_merges(FAR, SIGNED, decided, min_gap=5)
-    assert [(row[0], row[4]) for row in table[1:]] == [("janeqdoe", "janequinndoe")]
+    assert ("janedoe", "janeqdoe", "9") not in far_pairs({("janedoe", "janeqdoe")})
+    assert len(far_pairs({("janedoe", "janeqdoe")})) == len(far_pairs()) - 1
 
 
 def test_a_variant_with_no_dated_article_is_not_listed() -> None:
     undated = SIGNED | {"janeqdoe": [("Newsday", None, "Third")]}
-    assert review_cases.distant_merges(FAR, undated, set(), min_gap=5)[1:] == []
+    table = review_cases.distant_merges(FAR, undated, set())
+    assert not any("janeqdoe" in row for row in table[1:])
 
 
-def test_build_lists_the_variants_of_an_author_that_are_years_apart(tmp_path: Path) -> None:
+def far_records(tmp_path: Path, signed: list[tuple[str, int]]) -> tuple[Path, Path]:
     rows = []
-    signed = [("Doe, Jane", 1990), ("Doe, Jane Q", 2010), ("Roe, Richard", 2010)]
     for i, (byline, year) in enumerate(signed):
         row = parse.empty_row("a.txt", i, is_footer=False)
         row |= {"doc_id": 100 + i, "author": byline, "publication_key": NYT, "pub_year": year}
         rows.append(row | {"title": f"Title {i}", "text": "Synthetic body.", "has_body": True})
-    records, reasons = tmp_path / "records.parquet", tmp_path / "exclusions.parquet"
+    records = tmp_path / "records.parquet"
     pq.write_table(pa.Table.from_pylist(rows, schema=parse.SCHEMA), records)
+    return records, tmp_path / "exclusions.parquet"
+
+
+def test_build_lists_the_variants_of_an_author_that_are_years_apart(tmp_path: Path) -> None:
+    signed = [("Doe, Jane", 1990), ("Doe, Jane Q", 2010), ("Roe, Richard", 2010)]
+    records, reasons = far_records(tmp_path, signed)
     write_reasons(pq.read_table(records), ["kept"] * 3, reasons)
     clean, review_dir = tmp_path / "clean", tmp_path / "review"
     processed.build(records, reasons, clean)
@@ -325,3 +348,29 @@ def test_build_lists_the_variants_of_an_author_that_are_years_apart(tmp_path: Pa
     (case,) = read(review_dir / "cases" / "distant_to_review.csv")
     assert (case["key_a"], case["key_b"], case["years_apart"]) == ("janedoe", "janeqdoe", "20")
     assert case["evidence_b"] == "New York Times:1 2010-2010 | Title 1"
+    # Once the pair is judged, it is not listed again.
+    (review_dir / "author_pairs.csv").write_text(
+        "key_a,key_b,decision,reason\njaneqdoe,janedoe,unsure,\n", encoding="utf-8"
+    )
+    processed.build(records, reasons, clean, review_dir=review_dir)
+    assert review_cases.build(records, reasons, clean, review_dir)["distant_to_review"] == 0
+
+
+def test_build_reads_the_bylines_with_the_corrections_of_the_review(tmp_path: Path) -> None:
+    records, reasons = far_records(
+        tmp_path, [("Doe, Jane", 1990), ("Jane Q Doe, Springfield", 2010)]
+    )
+    review_dir = tmp_path / "review"
+    review_dir.mkdir()
+    (review_dir / "byline_parts.csv").write_text(
+        'part,replacement,reason\n"Jane Q Doe, Springfield","Doe, Jane Q",a town\n',
+        encoding="utf-8",
+    )
+    corrections = review.load_parts(review_dir / "byline_parts.csv")
+    stamps = {review.STAMP: review.fingerprint(corrections)}
+    write_reasons(pq.read_table(records), ["kept"] * 2, reasons, stamps)
+    clean = tmp_path / "clean"
+    processed.build(records, reasons, clean, review_dir=review_dir)
+    assert review_cases.build(records, reasons, clean, review_dir)["distant_to_review"] == 1
+    (case,) = read(review_dir / "cases" / "distant_to_review.csv")
+    assert (case["key_a"], case["key_b"]) == ("janedoe", "janeqdoe")
