@@ -91,8 +91,14 @@ REASONS = [
         "dropped": True,
     },
     {
+        "code": "not_english",
+        "description": "Signed opinion piece whose text is not in English (mostly Spanish)",
+        "in_raw": True,
+        "dropped": True,
+    },
+    {
         "code": "kept",
-        "description": "Opinion piece with at least 50 words of text, signed by a person",
+        "description": "Opinion piece with at least 50 words of English text, signed by a person",
         "in_raw": True,
         "dropped": False,
     },

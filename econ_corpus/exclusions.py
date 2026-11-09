@@ -14,8 +14,8 @@ identical text in the same newspaper, and records in a news section with no sign
 opinion. A record that cannot be decided (no section, generic type, no opinion
 title) is `unclear_opinion`: it stays in the raw table and is left out of the cleaned dataset.
 An opinion piece then needs text and a person among its authors, and at least MIN_WORDS words
-under a title that is not the heading of a cartoon. Copies whose text differs (edited
-versions) come later.
+of English text under a title that is not the heading of a cartoon. Copies whose text
+differs (edited versions) come later.
 
 Two flags per reason: `in_raw` says whether the row is part of the shared raw table (footers,
 repeated ids and repeated text are not), `dropped` whether it leaves the cleaned dataset.
@@ -27,7 +27,7 @@ from pathlib import Path
 
 import pyarrow.parquet as pq
 
-from econ_corpus import bylines, datasheet, export, parse, review, summaries
+from econ_corpus import bylines, datasheet, export, language, parse, review, summaries
 from econ_corpus.reasons import INPUTS, REASONS, check_parser, write_reasons
 from econ_corpus.tables import Articles, Table
 
@@ -139,7 +139,11 @@ def _placeholders(rows: Articles, judged: list[int]) -> set[str]:
     return {sha for sha, found in articles.items() if len(found) >= PLACEHOLDER_ARTICLES}
 
 
-def assign_reasons(rows: Articles, corrections: dict[str, str] | None = None) -> list[str]:
+def assign_reasons(
+    rows: Articles,
+    corrections: dict[str, str] | None = None,
+    english: list[float | None] | None = None,
+) -> list[str]:
     """Return one reason code per row, with repeats judged in download order.
 
     Of the copies of a ProQuest id, only the one chosen by `_kept_copies` is judged on its
@@ -150,7 +154,9 @@ def assign_reasons(rows: Articles, corrections: dict[str, str] | None = None) ->
     are read or on the manual review, because these rows also leave the shared raw table. A
     short body carried by many different articles is a placeholder ("text not available"), not
     text (see `_placeholders`). A piece that passes every rule is still left out of the cleaned
-    dataset as `short_or_cartoon` under MIN_WORDS words or under the heading of a cartoon.
+    dataset as `short_or_cartoon` under MIN_WORDS words or under the heading of a cartoon, and
+    as `not_english` when `english` (see `language.shares_of`; None skips the rule) gives its
+    text a share of common English words under `language.MIN_ENGLISH`.
     """
     n = len(rows["source_file"])
     file_key = {f: summaries.file_order(f) for f in set(rows["source_file"])}
@@ -183,6 +189,9 @@ def assign_reasons(rows: Articles, corrections: dict[str, str] | None = None) ->
             short = (rows["body_words"][i] or 0) < MIN_WORDS
             if reasons[i] == "kept" and (short or summaries.is_cartoon_title(title)):
                 reasons[i] = "short_or_cartoon"
+            share = None if english is None else english[i]  # None: nothing to judge
+            if reasons[i] == "kept" and share is not None and share < language.MIN_ENGLISH:
+                reasons[i] = "not_english"
     _mark_repeated_text(same_text.values(), reasons, qualifies, rows["pub_date"])
     return reasons
 
@@ -215,7 +224,7 @@ def write_exclusions(
     """Assign a reason to every row of the parsed table and write them next to their keys."""
     check_parser(parquet)
     table = pq.read_table(parquet, columns=INPUTS)
-    reasons = assign_reasons(table.to_pydict(), corrections)
+    reasons = assign_reasons(table.to_pydict(), corrections, language.shares_of(parquet))
     # The reasons depend on the review, so they carry its fingerprint (see review.same_review).
     write_reasons(table, reasons, out, {review.STAMP: review.fingerprint(corrections or {})})
     return reasons

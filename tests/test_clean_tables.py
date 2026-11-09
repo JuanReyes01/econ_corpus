@@ -8,7 +8,7 @@ REASONS = ["kept", "kept", "file_footer", "no_author", "duplicate_id", "not_opin
 def test_flow_starts_with_the_rows_that_leave_the_raw_table() -> None:
     steps = clean_tables.flow(REASONS)
     assert [s.code for s in steps[:3]] == ["file_footer", "duplicate_id", "duplicate_text"]
-    assert steps[-1].code == "short_or_cartoon"
+    assert steps[-1].code == "not_english"
     assert "kept" not in [s.code for s in steps]
 
 
@@ -25,7 +25,8 @@ def test_flow_counts_what_each_step_removes_and_what_remains() -> None:
 def test_flow_names_the_two_tables_it_passes_through() -> None:
     steps = {s.code: s for s in clean_tables.flow(REASONS)}
     assert steps["duplicate_text"].reached == "Shared raw table"
-    assert steps["short_or_cartoon"].reached == "Cleaned dataset"
+    assert steps["not_english"].reached == "Cleaned dataset"
+    assert steps["short_or_cartoon"].reached == ""
     assert steps["no_person_author"].reached == ""
     assert steps["not_opinion"].reached == ""
 
