@@ -606,7 +606,6 @@ def test_a_note_about_someone_who_did_not_write_names_nobody(part: str) -> None:
         "Jane Doe of Springfield",
         "Jane Doe is a teacher",
         "Jane Doe writes about Springfield schools",
-        "Jane Doe teaches",
     ],
 )
 def test_a_sentence_about_the_author_still_names_her(part: str) -> None:
@@ -897,3 +896,90 @@ def test_regressions_found_while_comparing_readings() -> None:
     raw = "This article was written jointly by Jane Doe, Example president; "
     raw += "Richard Roe, Example Borough president"
     assert Name("Richard", "Roe", "") in bylines.people(raw)
+
+
+# --- findings of the fourth independent audit -----------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        # A town where the family name goes; the note gives the name without it.
+        ("Springfield, Jane Doe; Jane Doe, an author, lives in", [JANE]),
+        # Given and family name the wrong way round; the note has them in order.
+        ("Jane, Doe; Jane Doe lives in Springfield.", [JANE]),
+        # The note is cut at an abbreviation: its name is a piece of the one before.
+        ("Roe, Jane McC; Jane McC. Roe Jr. is a senator.", [Name("Jane McC", "Roe", "")]),
+        # A slip of one letter in the note.
+        ("DOE, JANE H; Jane H. Dow lives in Springfield.", [Name("JANE H", "DOE", "")]),
+        # The note adds a middle initial.
+        ("Doe, Jane; Jane Q. Doe is a teacher.", [JANE]),
+    ],
+)
+def test_a_note_that_repeats_the_author_adds_no_second_author(raw: str, expected: list) -> None:
+    assert bylines.people(raw) == expected
+
+
+def test_a_note_about_another_person_still_adds_her() -> None:
+    assert bylines.people("Doe, Jane; Richard Roe is a teacher.") == [
+        JANE,
+        Name("Richard", "Roe", ""),
+    ]
+
+
+@pytest.mark.parametrize(
+    "part", ["Jane Do rgan", "Jane Doe teaches", "Former Example Security chief"]
+)
+def test_one_small_word_after_a_name_is_left_for_review(part: str) -> None:
+    assert bylines.read_part(part) == ([], "")
+
+
+def test_an_ordinal_suffix_stays_with_a_recovered_name() -> None:
+    raw = "Jane Doe 3d; Jane Doe 3d lives in Springfield."
+    assert bylines.people(raw) == [Name("Jane", "Doe", "III")]
+
+
+def test_a_cut_note_counts_only_after_a_moved_word() -> None:
+    assert bylines.people("By Jane Doe III. Jane Doe III is") == [Name("Jane", "Doe", "III")]
+    assert bylines.people("traveling., Jane Doe; Roe is, A M") == [JANE]
+    assert bylines.people("ill., Jane Doe; Ann Roe is") == [JANE]
+
+
+def test_a_sentence_that_ended_inside_a_part_hides_nobody() -> None:
+    raw = "Doe, Jane; Jane Doe is a former editorial writer. ANN POE; Roe, Richard"
+    assert Name("Richard", "Roe", "") in bylines.people(raw)
+
+
+@pytest.mark.parametrize("part", ["Cardinal Jane Doe", "Det. Jane Doe", "Archbishop Jane Doe"])
+def test_more_titles_before_a_name_are_dropped(part: str) -> None:
+    assert bylines.people(part) == [JANE]
+
+
+def test_bank_is_a_family_name() -> None:
+    assert bylines.people("By Jane Bank") == [Name("Jane", "Bank", "")]
+
+
+def test_a_note_that_spells_the_author_the_same_way_changes_nothing() -> None:
+    assert bylines.read_byline("Doe, Jane Q; Jane Q. Doe lives in Springfield.") == [
+        (Name("Jane Q", "Doe", ""), "as_written")
+    ]
+
+
+def test_regressions_found_while_comparing_readings_again() -> None:
+    # A family name that is also a title ends the name like any other word.
+    assert bylines.people("JANE BISHOP. Jane Bishop (D-Springfield) represents the district") == [
+        Name("JANE", "BISHOP", "")
+    ]
+    # Initials inside an unfinished sentence do not end it.
+    raw = "Jane Q.Doe; Doe was a speechwriter for Presidents John F. Poe; Roe, Richard"
+    assert bylines.people(raw) == [Name("Jane Q.", "Doe", "")]
+    glued = bylines.read_part("Jane Q DoeReader essay")
+    assert glued == ([Name("Jane Q", "Doe", "")], "as_written")
+
+
+def test_a_family_name_cut_before_is_starts_no_sentence() -> None:
+    assert Name("Richard", "Roe", "") in bylines.people("Do is, Jane G; Roe, Richard")
+
+
+def test_a_note_cut_after_lives_still_names_its_author() -> None:
+    assert bylines.read_part("Jane Doe lives") == ([JANE], "recovered")

@@ -5,7 +5,7 @@ Output: `manifest.json` in the folder of the cleaned tables, and a check that re
 built from other reasons, other review files or other rules than the ones at hand, or tables
 that are not the ones the build wrote.
 
-Lives here: the fingerprints of the inputs, the sizes of the tables and their comparison. Does
+Lives here: the fingerprints of the inputs and of the tables, and their comparison. Does
 not live here: the tables (processed) or what the later steps do with them (review_cases,
 datasheet_clean, check).
 """
@@ -21,7 +21,7 @@ FILE = "manifest.json"
 
 
 def current(clean: Path, reasons_file: Path, review_dir: Path | None) -> dict[str, str]:
-    """Return the fingerprints of the inputs and the sizes of the tables as they are now."""
+    """Return the fingerprints of the inputs and of the tables as they are now."""
     stamps = pq.read_schema(reasons_file).metadata or {}
     parts = review.load_parts(review_dir / review.PARTS_FILE) if review_dir else {}
     pairs = review.load_pairs(review_dir / review.PAIRS_FILE) if review_dir else {}
@@ -32,8 +32,8 @@ def current(clean: Path, reasons_file: Path, review_dir: Path | None) -> dict[st
         "byline_parts": review.fingerprint(parts),
         "author_pairs": review.fingerprint(pairs),
     }
-    sizes = {table.name: str(table.stat().st_size) for table in sorted(clean.glob("*.csv"))}
-    return inputs | sizes
+    tables = {table.name: reasons.file_digest(table) for table in sorted(clean.glob("*.csv"))}
+    return inputs | tables
 
 
 def clear(clean: Path) -> None:
@@ -42,7 +42,7 @@ def clear(clean: Path) -> None:
 
 
 def write(clean: Path, reasons_file: Path, review_dir: Path | None) -> None:
-    """Record next to the cleaned tables what they were built from and how large they are."""
+    """Record next to the cleaned tables what they were built from and what they hold."""
     found = current(clean, reasons_file, review_dir)
     (clean / FILE).write_text(json.dumps(found, indent=2) + "\n", encoding="utf-8")
 

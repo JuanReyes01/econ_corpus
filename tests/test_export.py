@@ -104,3 +104,21 @@ def test_the_export_is_stamped_with_what_it_was_made_from(tmp_path: Path) -> Non
     assert export.is_current(records, reasons, out)
     write_reasons(pq.read_table(records), ["kept", "kept", "kept"], reasons)
     assert not export.is_current(records, reasons, out)
+
+
+def test_an_export_edited_in_place_is_not_current(tmp_path: Path) -> None:
+    records, reasons = write_tables(tmp_path, ["kept", "kept"])
+    out = tmp_path / "raw.csv"
+    export.write_csv(records, reasons, out)
+    out.write_text(out.read_text(encoding="utf-8").replace("Title 1", "Title 9"), encoding="utf-8")
+    assert not export.is_current(records, reasons, out)
+
+
+def test_the_reasons_of_the_raw_table_are_written_next_to_it(tmp_path: Path) -> None:
+    records, reasons = write_tables(tmp_path, ["kept", "duplicate_id", "not_opinion"])
+    out = tmp_path / "raw.csv"
+    export.write_csv(records, reasons, out)
+    rows = read_back(tmp_path / "raw_reasons.csv")
+    found = [(r["record_index"], r["reason"]) for r in rows]
+    assert found == [("0", "kept"), ("2", "not_opinion")]
+    assert set(rows[0]) == {"source_file", "record_index", "doc_id", "reason"}

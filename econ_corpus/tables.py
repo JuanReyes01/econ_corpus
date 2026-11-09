@@ -12,7 +12,7 @@ decision about which records to keep (exclusions).
 from collections import Counter, defaultdict
 from collections.abc import Callable
 
-from econ_corpus import summaries
+from econ_corpus import bylines, summaries
 
 Articles = dict[str, list]
 Table = list[list[str]]
@@ -39,7 +39,7 @@ def newspaper_table(articles: Articles) -> Table:
         counts["Records"] += 1
         counts[summaries.edition(key) if key else "none"] += 1
         counts["Blog/podcast/website"] += source == BLOG_LABEL
-        counts["With author"] += author is not None
+        counts["With author"] += bylines.is_signed(author)
     header = ["Newspaper", "Records", "Print", "Online", "Pre-1997", "Blog/podcast/website"]
     names = [*summaries.INTENDED_NEWSPAPERS.values(), "Other", "No metadata"]
     total = Counter(sum(stats.values(), Counter()))
@@ -62,7 +62,7 @@ def _period_table(articles: Articles, label: Callable[[int | None], str], first:
     ):
         period = label(year)
         records[period] += 1
-        signed[period] += author is not None
+        signed[period] += bylines.is_signed(author)
         if doc_id is not None:
             ids[period].add(doc_id)
     body = [
@@ -127,7 +127,7 @@ def doc_type_table(articles: Articles) -> Table:
     signed: Counter = Counter()
     for value, author in zip(articles["doc_type"], articles["author"], strict=True):
         for label in summaries.split_labels(value):
-            signed[labels.add(label)] += author is not None
+            signed[labels.add(label)] += bylines.is_signed(author)
     body = [[name, summaries.num(n), summaries.pct(signed[k], n)] for k, name, n in labels.top()]
     return [["Document type", "Records", "With author"], *body]
 

@@ -133,3 +133,10 @@ def test_a_part_that_no_byline_can_produce_is_refused(tmp_path: Path, part: str)
     path = write(tmp_path / "parts.csv", f'part,replacement,reason\n"{part}",NOBODY,\n')
     with pytest.raises(ValueError, match="never match"):
         review.load_parts(path)
+
+
+def test_a_folder_with_only_the_case_lists_is_still_no_review(tmp_path: Path) -> None:
+    (tmp_path / "cases").mkdir()
+    (tmp_path / "cases" / "pairs_to_review.csv").write_text("kind\n", encoding="utf-8")
+    (tmp_path / ".gitkeep").write_text("", encoding="utf-8")
+    assert review.folder(tmp_path) == tmp_path

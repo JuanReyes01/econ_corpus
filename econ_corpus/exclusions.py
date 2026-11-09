@@ -25,7 +25,7 @@ from pathlib import Path
 import pyarrow.parquet as pq
 
 from econ_corpus import bylines, datasheet, parse, review, summaries
-from econ_corpus.reasons import INPUTS, REASONS, write_reasons
+from econ_corpus.reasons import INPUTS, REASONS, check_parser, write_reasons
 from econ_corpus.tables import Articles, Table
 
 # A body shorter than PLACEHOLDER_WORDS carried by PLACEHOLDER_ARTICLES or more different
@@ -186,6 +186,7 @@ def write_exclusions(
     parquet: Path, out: Path, corrections: dict[str, str] | None = None
 ) -> list[str]:
     """Assign a reason to every row of the parsed table and write them next to their keys."""
+    check_parser(parquet)
     table = pq.read_table(parquet, columns=INPUTS)
     reasons = assign_reasons(table.to_pydict(), corrections)
     # The reasons depend on the review, so they carry its fingerprint (see review.same_review).

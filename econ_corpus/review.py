@@ -43,7 +43,9 @@ def folder(path: Path) -> Path:
         )
         raise FileNotFoundError(msg)
     missing = [name for name in (PARTS_FILE, PAIRS_FILE) if not (path / name).exists()]
-    if any(path.iterdir()) and missing:
+    # The case lists that step 5 writes into `cases/` and hidden files do not make a review.
+    held = [f for f in path.iterdir() if f.is_file() and not f.name.startswith(".")]
+    if held and missing:
         msg = f"the review folder {path} holds files but not {' or '.join(missing)}"
         raise FileNotFoundError(msg)
     return path

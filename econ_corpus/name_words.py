@@ -18,6 +18,7 @@ HONORIFICS |= {
     "alderman", "congressman", "congresswoman", "councilman", "councilwoman", "supervisor",
     "commissioner", "secretary", "ambassador", "general", "gen", "brigadier", "colonel", "col",
     "captain", "capt", "lieutenant", "lt", "sergeant", "sgt", "admiral", "adm", "rear",
+    "cardinal", "bishop", "archbishop", "deacon", "det", "detective",
     "sens", "senators", "reps", "representatives", "drs", "revs", "us",
 }  # fmt: skip
 DEGREES = {"md", "phd", "esq", "jd", "dds", "rn", "mba", "dvm", "mph"}
@@ -55,7 +56,7 @@ ORG_WORDS = {
     "community", "institution", "corporation", "police", "veterans", "llp",
     # Roles, bodies and column rubrics read as names in the third audit.
     "coordinator", "reporter", "correspondent", "professor", "captain", "supreme", "army",
-    "navy", "health", "federation", "comptroller", "initiative", "bank", "relations",
+    "navy", "health", "federation", "comptroller", "initiative", "relations",
     "republicans", "democrats", "legal", "defense", "exception", "sketch", "myths", "topic",
     "surgeon", "ceo",
 }  # fmt: skip
@@ -75,7 +76,7 @@ ROLE_WORDS |= {
 # Any other small word right after a name may be a piece that a stray space cut off it.
 SENTENCE_WORDS = {
     "is", "was", "are", "were", "has", "had", "will", "of", "from", "in", "at", "for", "with",
-    "on", "to", "the", "a", "an", "who", "as", "by", "and", "or",
+    "on", "to", "the", "a", "an", "who", "as", "by", "and", "or", "lives",
 }  # fmt: skip
 
 # Words of places and publications that are also family names ('Jane Washington'). A name

@@ -4,8 +4,9 @@ Input: the records, the reasons, the review folder, the raw CSV, the cleaned tab
 datasheet templates and the two datasheets.
 Output: the list of outputs that are stale, empty when everything belongs together.
 
-Lives here: running the guards of the other steps in one place and building both datasheets
-again to compare them with the ones on disk. Does not live here: the guards themselves
+Lives here: running the guards of the other steps in one place, and building again both
+datasheets with their tables and figures and the lists of review cases, to compare them with
+the ones on disk. Does not live here: the guards themselves
 (reasons, manifest, export) or the copying (the Makefile).
 
 The delivery folder is copied from the working outputs, so this check is what ties one
@@ -15,10 +16,19 @@ the raw CSV and the cleaned tables from the reasons, and the datasheets from all
 
 from dataclasses import dataclass
 from pathlib import Path
+import shutil
 import sys
 import tempfile
 
-from econ_corpus import datasheet, datasheet_clean, export, manifest, reasons, review
+from econ_corpus import (
+    datasheet,
+    datasheet_clean,
+    export,
+    manifest,
+    reasons,
+    review,
+    review_cases,
+)
 
 
 @dataclass
@@ -34,6 +44,8 @@ class Paths:
     raw_md: Path
     clean_template: Path
     clean_md: Path
+    tables: Path
+    figures: Path
 
 
 def stale(paths: Paths) -> list[str]:
@@ -47,8 +59,9 @@ def stale(paths: Paths) -> list[str]:
     if not export.is_current(paths.records, paths.reasons, paths.raw_csv):
         problems.append(f"{paths.raw_csv.name} was not made from these reasons: run export again")
     with tempfile.TemporaryDirectory() as scratch:
-        raw, clean = Path(scratch) / "raw.md", Path(scratch) / "clean.md"
-        side = {"tables_dir": Path(scratch), "figures_dir": Path(scratch)}
+        work = Path(scratch)
+        raw, clean = work / paths.raw_md.name, work / paths.clean_md.name
+        side = {"tables_dir": work / "tables", "figures_dir": work / "figures"}
         datasheet.build(paths.records, paths.reasons, paths.raw_template, raw, **side)
         datasheet_clean.build(
             paths.clean,
@@ -59,9 +72,22 @@ def stale(paths: Paths) -> list[str]:
             out_md=clean,
             **side,
         )
-        for built, on_disk in ((raw, paths.raw_md), (clean, paths.clean_md)):
-            if built.read_text(encoding="utf-8") != on_disk.read_text(encoding="utf-8"):
-                problems.append(f"{on_disk.name} is not what the data gives now: build it again")
+        # The case lists are built from a copy of the review files, never into the folder.
+        (work / "review").mkdir()
+        for name in (review.PARTS_FILE, review.PAIRS_FILE):
+            if (paths.review / name).exists():
+                shutil.copy(paths.review / name, work / "review" / name)
+        review_cases.build(paths.records, paths.reasons, paths.clean, work / "review")
+        built = [(raw, paths.raw_md), (clean, paths.clean_md)]
+        for folder, on_disk in (
+            (work / "tables", paths.tables),
+            (work / "figures", paths.figures),
+            (work / "review" / "cases", paths.review / "cases"),
+        ):
+            built += [(file, on_disk / file.name) for file in sorted(folder.glob("*"))]
+        for new, old in built:
+            if not old.exists() or new.read_bytes() != old.read_bytes():
+                problems.append(f"{old.name} is not what the data gives now: build it again")
     return problems
 
 
@@ -78,6 +104,8 @@ def main() -> None:
             raw_md=Path("docs/datasheet_raw.md"),
             clean_template=Path("docs/datasheet_clean.template.md"),
             clean_md=Path("docs/datasheet_clean.md"),
+            tables=Path("reports/tables"),
+            figures=Path("reports/figures"),
         )
     )
     if problems:

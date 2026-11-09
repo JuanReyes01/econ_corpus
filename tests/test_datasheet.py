@@ -315,7 +315,7 @@ def test_build_describes_the_shared_table_and_counts_what_was_removed(tmp_path: 
     footer = {k: [None] for k in columns} | {"is_footer": [True], "record_index": [4]}
     merged = {k: columns[k] + footer[k] for k in columns}
     parquet = tmp_path / "records.parquet"
-    pq.write_table(pa.table(merged), parquet)
+    pq.write_table(pa.table(merged).replace_schema_metadata(parse.stamp()), parquet)
     reasons = tmp_path / "exclusions.parquet"
     codes = ["kept", "duplicate_id", "kept", "duplicate_text", "file_footer"]
     keys = {"source_file": merged["source_file"], "record_index": merged["record_index"]}
@@ -561,3 +561,16 @@ def test_opinion_page_headings_in_titles_are_recognised(title: str) -> None:
 )
 def test_titles_that_only_hold_the_word_opinion_are_not_headings(title: str) -> None:
     assert not summaries.is_opinion_title(title)
+
+
+@pytest.mark.parametrize(
+    "section", ["Outlook", "PLUM-LINE", "Right-Turn", "kristof", "Post-Partisan"]
+)
+def test_opinion_sections_without_an_opinion_word(section: str) -> None:
+    assert summaries.is_opinion_section(section)
+
+
+def test_anonymous_is_not_an_author_in_the_tables() -> None:
+    articles = make_articles({"author": "Anonymous"}, {"author": "Doe, Jane"}, {"author": None})
+    assert tables.doc_type_table(articles)[1] == ["Commentary", "3", "33.3%"]
+    assert tables.newspaper_table(articles)[-1][-1] == "33.3%"

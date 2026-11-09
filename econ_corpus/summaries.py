@@ -38,8 +38,10 @@ OPINION_SECTION_WORDS = (
 )  # fmt: skip
 
 # Section labels that are an opinion section without holding one of those words: 'EPg' is
-# the editorial page of the Boston Globe before 1997.
-OPINION_SECTIONS = {"epg"}
+# the editorial page of the Boston Globe before 1997, 'Outlook' the Sunday opinion section of
+# the Washington Post, and the others are opinion blogs of the Post and the New York Times.
+OPINION_SECTIONS = {"epg", "outlook", "plum-line", "right-turn", "kristof", "post-partisan"}
+OPINION_SECTIONS |= {"posteverything", "volokh-conspiracy"}
 
 # A document-type label containing one of these words is treated as an opinion label.
 OPINION_LABEL_WORDS = ("opinion", "editorial", "commentary", "op-ed", "op/ed", "letter", "column")

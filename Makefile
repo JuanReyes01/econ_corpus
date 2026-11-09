@@ -116,15 +116,17 @@ check:
 
 ## Copy the current outputs into the delivery folder DELIVERY (checks them and renders the PDFs)
 # Everything is a copy, never a link: a later run of the pipeline must not change what was
-# delivered. `check` stops the delivery when an output is stale, so the files of one delivery
+# delivered. The three folders are written anew each time, so nothing old stays in them. `check` stops the delivery when an output is stale, so the files of one delivery
 # belong to one state of the pipeline.
 .PHONY: delivery
 delivery: check pdf
+	rm -rf $(DELIVERY)/1_raw_txt $(DELIVERY)/2_raw_csv $(DELIVERY)/3_clean
 	mkdir -p $(DELIVERY)/2_raw_csv $(DELIVERY)/3_clean
-	test -e $(DELIVERY)/1_raw_txt || cp -r --reflink=auto $(RAW_DIR) $(DELIVERY)/1_raw_txt
-	cp --reflink=auto --remove-destination data/processed/econ_corpus_raw.csv docs/datasheet_raw.pdf $(DELIVERY)/2_raw_csv/
-	cp --reflink=auto --remove-destination data/processed/clean/*.csv data/processed/clean/manifest.json docs/datasheet_clean.pdf $(DELIVERY)/3_clean/
-	rm -rf $(DELIVERY)/3_clean/review
+	cp -r --reflink=auto $(RAW_DIR) $(DELIVERY)/1_raw_txt
+	cp --reflink=auto data/processed/econ_corpus_raw.csv data/processed/econ_corpus_raw_reasons.csv $(DELIVERY)/2_raw_csv/
+	cp docs/datasheet_raw.pdf reports/tables/exclusion_counts.csv $(DELIVERY)/2_raw_csv/
+	cp --reflink=auto data/processed/clean/*.csv $(DELIVERY)/3_clean/
+	cp data/processed/clean/manifest.json docs/datasheet_clean.pdf $(DELIVERY)/3_clean/
 	cp -r data/review $(DELIVERY)/3_clean/review
 	cp docs/delivery_readme.md $(DELIVERY)/README.md
 

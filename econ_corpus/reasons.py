@@ -20,6 +20,8 @@ import pyarrow as pa
 import pyarrow.csv as pacsv
 import pyarrow.parquet as pq
 
+from econ_corpus import parse
+
 # The reasons table: code and meaning, in the order the rules are applied.
 REASONS = [
     {
@@ -114,6 +116,15 @@ def rules_fingerprint(package: Path | None = None) -> str:
     return digest.hexdigest()[:16]
 
 
+def file_digest(path: Path) -> str:
+    """Return a short code that changes whenever a byte of the file changes."""
+    digest = hashlib.blake2b(digest_size=8)
+    with path.open("rb") as handle:
+        while chunk := handle.read(1 << 24):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
 def fingerprint(table: pa.Table) -> str:
     """Return a short code that changes whenever a value of the table changes.
 
@@ -126,6 +137,14 @@ def fingerprint(table: pa.Table) -> str:
         pacsv.write_csv(batch, sink, options)
         digest.update(sink.getvalue())
     return digest.hexdigest()[:16]
+
+
+def check_parser(records: Path) -> None:
+    """Refuse a table of records that this version of the parser did not write."""
+    written_by = (pq.read_schema(records).metadata or {}).get(parse.STAMP.encode(), b"").decode()
+    if written_by != parse.code_fingerprint():
+        msg = f"{records.name} was written by another version of parse.py: run parse again"
+        raise ValueError(msg)
 
 
 def write_reasons(
@@ -160,6 +179,7 @@ def load(records: Path, reasons: Path) -> pa.ChunkedArray:
     if not table.select(KEYS).equals(rows.select(KEYS)):
         msg = f"the rows of {reasons.name} and {records.name} differ: run the exclusions again"
         raise ValueError(msg)
+    check_parser(records)
     stamps = pq.read_schema(reasons).metadata or {}
     found = {
         "it has no fingerprint": RECORDS_STAMP.encode() not in stamps,

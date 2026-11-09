@@ -406,3 +406,25 @@ def test_a_good_table_survives_a_parse_that_fails(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match=r"b\.txt"):
         parse.parse_folder(raw, out)
     assert out.read_bytes() == good
+
+
+@pytest.mark.parametrize(
+    "spoiled", [" " + parse.SEPARATOR, parse.SEPARATOR + "_", parse.SEPARATOR + "\u00a0"]
+)
+def test_a_line_that_is_almost_a_separator_fails_the_check(spoiled: str) -> None:
+    text = make_file([make_record(), make_record()]).replace(parse.SEPARATOR, spoiled, 1)
+    assert parse.check_text(text, "a.txt")["ok"] is False
+
+
+def test_a_long_rule_inside_a_body_is_not_a_spoiled_separator() -> None:
+    text = make_file([make_record(body="Sign here:\n" + "_" * 68 + "\nThanks.")])
+    assert parse.check_text(text, "a.txt")["ok"] is True
+
+
+def test_the_table_says_which_parser_wrote_it(tmp_path: Path) -> None:
+    raw = tmp_path / "raw"
+    raw.mkdir()
+    write_file(raw, "a.txt", [make_record()])
+    out = tmp_path / "records.parquet"
+    parse.parse_folder(raw, out)
+    assert pq.read_schema(out).metadata[b"parse"].decode() == parse.code_fingerprint()

@@ -21,24 +21,32 @@ from econ_corpus.name_words import HONORIFICS, SAINTS, SENTENCE_WORDS, SUFFIXES
 
 JOINER_RE = re.compile(r"\s+(?:and|&)\s+", re.IGNORECASE)
 LIST_RE = re.compile(r",|\s+(?:and|&)\s+", re.IGNORECASE)  # separators of a list of names
-NAME_END_RE = re.compile(r",|\s-\s|\d")  # what ends a name that other text follows
+# What ends a name that other text follows: a comma, a dash, or a digit that does not start
+# an ordinal suffix ('Jane Doe 3d').
+NAME_END_RE = re.compile(r",|\s-\s|\d(?!(?:d|nd|rd|th)\b)")
 # A label that the export left on the name: 'Jane DoeGuest essay', 'essay, Jane DoeGuest',
 # 'Jane Doe Guest essay'.
-GLUED_RE = re.compile(r"^essay,\s*(?=.*Guest$)|\s*Gue ?st essay\b|(?<=[a-z])(?:Guest|Reader)\b")
+GLUED_RE = re.compile(
+    r"^essay,\s*(?=.*Guest$)|\s*(?:Gue ?st|Reader) essay\b|(?<=[a-z])(?:Guest|Reader)(?: essay)?\b"
+)
 # What follows the name of someone who did not write: 'is on vacation', 'is off today',
-# 'is on book leave', and the note cut short because the export moved its last word to the
-# front of the byline ('is on', 'is').
+# 'is on book leave', 'is on' (cut short).
 ABSENT_RE = re.compile(
-    r"(?:is|are)(?:\.?$| (?:off\b|away\b|on\.?$"
-    r"|on (?:an? )?(?:\w+ )?(?:v ?acation|leave|tour|assignment|sabbatical|holiday)))",
+    r"(?:is|are) (?:off\b|away\b|on\.?$"
+    r"|on (?:an? )?(?:\w+ )?(?:v ?acation|leave|tour|assignment|sabbatical|holiday))",
     re.IGNORECASE,
 )
+# The end of a note cut short because the export moved its last word to the front of the
+# byline: 'Ann Roe is', 'Ann Roe is on', and the same turned round, 'Roe is, Ann'.
+CUT_NOTE_RE = re.compile(r"\b(?:is|are)(?: on)?\.?$")
 WRITER_NOTE_RE = re.compile(r"\bthe writers? (?:is|are)\b", re.IGNORECASE)  # of a letters page
 CREDIT_RE = re.compile(r"\bcontributed (?:reporting|research)\b", re.IGNORECASE)
 # A period glued to the word after it ('Jane Q.Doe', "Jane Q.O'Doe", 'Jane Doe.These are'),
 # but not the periods between initials ('J.Q.', 'M.D').
 PERIOD_GLUED_RE = re.compile(r"(?<=[^\W\d_]\.)(?=[^\W\d_](?:[^\W\d_]|['\u2019]))")
 BIO_RE = re.compile(r"\b(?:is|was|are|were|has|had)\b")  # the verb of a sentence about someone
+# The same verb with words after it; 'Do is, Jane' is a family name cut by a stray space.
+GOES_ON_RE = re.compile(r"\b(?:is|was|are|were|has|had)\s+\w")
 SENTENCE_END_RE = re.compile(r"\.['\"\u201d\u2019]*$")  # a period, and quotes closing after it
 # 'and Andrew' comes out of the export as 'andrew': 'and' swallowed the start of the name.
 AND_GLUED_RE = re.compile(r"(?<=\s)and(?=[a-z]+\s+[A-Z])")
@@ -86,13 +94,20 @@ def _leading(part: str) -> tuple[list[str], list[str]]:
     for i, word in enumerate(text):
         if not any(c.isalnum() for c in word):
             continue  # a stray period or dash inside the name
+        if authors.abbreviation(word) in SUFFIXES:
+            words.append(word)  # '3d' has no capital and 'Jr.' ends no sentence
+            continue
         if not authors.has_capital(word) and not authors.is_particle(word):
             return words, text[i:]
         if word.endswith(authors.POSSESSIVES):
             return [*words, word[:-2]], []
         abbreviated = authors.abbreviation(word)
         closes = word.endswith(".") and not authors.INITIALS_RE.fullmatch(word)
-        if closes and abbreviated not in HONORIFICS | SAINTS and abbreviated not in SUFFIXES:
+        # A title is no end only before the name ('Sen. Jane Doe'); after it, a word such as
+        # 'BISHOP.' is a family name that ends a sentence.
+        before_name = all(authors.abbreviation(w) in HONORIFICS for w in words)
+        title = abbreviated in HONORIFICS and before_name
+        if closes and not title and abbreviated not in SAINTS and abbreviated not in SUFFIXES:
             return [*words, word[:-1]], []
         words.append(word)
     return words, []
@@ -114,13 +129,13 @@ def _leading_name(part: str) -> Name | None:
     """Read a full name at the start of a part that goes on with other text.
 
     A name written twice in a row is read once. A name followed by a small word that does
-    not start a sentence, and then only by capitalised words, is not read: the small word
-    may be a piece of the name cut off by a stray space ('Jane Do e Roe'), so the part is
-    left for the manual review.
+    not start a sentence, and then by nothing or only by capitalised words, is not read: the
+    small word may be a piece of the name cut off by a stray space ('Jane Do e Roe',
+    'Jane Do rgan'), so the part is left for the manual review.
     """
     words, rest = _leading(part)
     broken = (
-        len(rest) > 1
+        bool(rest)
         and rest[0].isalpha()
         and rest[0] not in SENTENCE_WORDS
         and all(authors.has_capital(word) for word in rest[1:])
@@ -128,7 +143,7 @@ def _leading_name(part: str) -> Name | None:
     if broken:
         return None
     half = len(words) // 2
-    if half and [w.casefold() for w in words[:half]] == [w.casefold() for w in words[half:]]:
+    if half and list(map(authors.lookup, words[:half])) == list(map(authors.lookup, words[half:])):
         words = words[:half]
     return authors.given_first(" ".join(words))
 
@@ -200,6 +215,59 @@ def read_part(part: str) -> tuple[list[Name], str]:
     return names, "recovered" if names else ""
 
 
+def _tokens(name: Name) -> list[str]:
+    return sorted(filter(None, map(authors.fold, f"{name.given} {name.family}".split())))
+
+
+def _repeats(name: Name, earlier: Name, part: str) -> str:
+    """Say what a name recovered from a note is to a name read before it in the byline.
+
+    '' if it is another person; 'drop' if it is the same person and the earlier reading
+    stands; 'replace' if it is the same person, read better here. The note after a byline
+    ('Jane Doe lives in ...') repeats the author, and a difference in spelling would make
+    two authors of one.
+    """
+    new, old = _tokens(name), _tokens(earlier)
+    if new == old:
+        return "replace"  # the earlier part had given and family name the wrong way round
+    if set(new) < set(old):
+        # Either the note is cut at an abbreviation ('Jane McC.' of 'Jane McC. Roe'), and
+        # the family name follows; or the earlier part has a town where the family name
+        # goes ('Springfield, Jane Doe'), and the note has the name alone.
+        text = authors.fold(authors.BY_RE.sub("", part.strip()))
+        cut = text.startswith(authors.fold(name.given + name.family + earlier.family))
+        return "drop" if cut else "replace"
+    close = authors.one_edit(authors.name_key(name), authors.name_key(earlier))
+    return "drop" if set(old) < set(new) or close else ""
+
+
+def _piece_of_note(part: str, *, in_sentence: bool, moved: bool) -> bool:
+    """Tell whether a part is a piece of a note that the export cut off, not an author."""
+    turned_round = in_sentence and "," in part and bool(authors.parse_name(part))
+    cut_short = moved and bool(CUT_NOTE_RE.search(part.partition(",")[0].strip()))
+    return turned_round or cut_short
+
+
+Found = dict[str, tuple[Name, str]]
+
+
+def _with(found: Found, name: Name, how: str, part: str) -> Found:
+    """Return the names read so far with one more, unless it repeats one of them."""
+    key = authors.name_key(name)
+    if key in found:
+        return found  # the same name again: the first reading stands
+    for old_key, (old, _) in found.items():
+        verdict = _repeats(name, old, part) if how == "recovered" else ""
+        if verdict == "replace":  # the new reading takes the place of the earlier one
+            return {
+                (key if k == old_key else k): ((name, how) if k == old_key else v)
+                for k, v in found.items()
+            }
+        if verdict == "drop":
+            return found
+    return found | {key: (name, how)}
+
+
 def read_byline(
     raw: str | None, corrections: dict[str, str] | None = None
 ) -> list[tuple[Name, str]]:
@@ -213,23 +281,29 @@ def read_byline(
     of a letters page ('The writer is ...') is followed by the next letter writers, so it
     does not count.
     """
-    found: dict[str, tuple[Name, str]] = {}
+    found: Found = {}
     in_sentence = False
-    for part in split_authors(raw):
+    parts = split_authors(raw)
+    # 'vacation., Jane Doe; Ann Roe is on': the last word of the byline was moved to its
+    # front, so a later part that ends in 'is' or 'is on' is the note it was cut from.
+    moved = bool(parts) and bool(_after_sentence(parts[0]))
+    for part in parts:
         if corrections and part in corrections:
             reviewed = (authors.reviewed_name(p) for p in corrections[part].split(";"))
             names = [name for name in reviewed if name]
             how = "manual_review"
-        elif in_sentence and "," in part and authors.parse_name(part):
+        elif _piece_of_note(part, in_sentence=in_sentence, moved=moved):
             names, how = [], ""
         else:
             names, how = read_part(part)
+        # What follows the last sentence that ended; the period of an initial ends none.
+        unfinished = re.split(r"(?<=[a-z])\.\s+(?=[A-Z])", part)[-1]
         if SENTENCE_END_RE.search(part):
             in_sentence = False
-        elif BIO_RE.search(part) and not _is_note(part) and not WRITER_NOTE_RE.search(part):
+        elif GOES_ON_RE.search(unfinished) and not (_is_note(part) or WRITER_NOTE_RE.search(part)):
             in_sentence = True
         for name in names:
-            found.setdefault(authors.name_key(name), (name, how))
+            found = _with(found, name, how, part)
     return list(found.values())
 
 

@@ -170,7 +170,6 @@ def _family_first(family: str, given: str, suffix: str) -> Name | None:
         or _has_org_word(given_words)
         or (len(family_words) > 1 and _has_org_word(family_words))
         or not given_words[0][0].isupper()
-        or family_words[-1] in ("is", "are")  # 'Doe is, J': a note cut short, turned round
         or not any(has_capital(t) for t in family_words)
     )
     return None if refused else Name(" ".join(given_words), " ".join(family_words), suffix)
@@ -259,6 +258,17 @@ def fold(text: str) -> str:
     """Return the letters and digits of a text, casefolded and without accents."""
     text = unicodedata.normalize("NFKD", text)
     return "".join(c for c in text.casefold() if c.isalnum())
+
+
+def one_edit(a: str, b: str) -> bool:
+    """Tell whether one letter added, dropped or changed, or two neighbours swapped, gives b."""
+    if len(a) > len(b):
+        a, b = b, a
+    i = next((k for k, (x, y) in enumerate(zip(a, b, strict=False)) if x != y), len(a))
+    if len(a) < len(b):
+        return a[i:] == b[i + 1 :]
+    swapped = a[i : i + 2] == b[i : i + 2][::-1] and a[i + 2 :] == b[i + 2 :]
+    return a[i + 1 :] == b[i + 1 :] or swapped
 
 
 def name_key(name: Name) -> str:

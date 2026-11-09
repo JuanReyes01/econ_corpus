@@ -10,7 +10,8 @@ not live here: reading names (authors), listing the pairs that look alike but ar
 
 The rule: names with the same first name and family name are one author when their middle
 names and suffixes do not contradict each other (one is missing, or one is the initial of
-the other) and they share at least one newspaper. One contradiction among the names with
+the other) and they are linked through shared newspapers (two variants can be joined by a
+third that shares a newspaper with each). One contradiction among the names with
 that first and family name ('Jane Q Doe' next to 'Jane R Doe') stops every merge among them,
 because the plain 'Jane Doe' could then be either.
 """

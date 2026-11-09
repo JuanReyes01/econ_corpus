@@ -31,6 +31,7 @@ SEPARATOR = "_" * 60
 SEPARATOR_RE = re.compile(rf"^{SEPARATOR}$", re.MULTILINE)
 # Underscore rules of any other length appear inside article text; they are counted only
 # to report them, never to split records.
+NEAR_SEPARATOR_RE = re.compile(r"_{59,61}")  # a separator line with a slip in it
 LOOSE_SEPARATOR_RE = re.compile(r"^_{20,}[ \t]*$", re.MULTILINE)
 FOOTER_MARK = "Contáctenos en:"
 
@@ -125,12 +126,30 @@ METADATA_COLS = [*KEPT_LABELS.values(), *EXTRA_LABELS.values()]
 STR_COLS = ["source_file", *METADATA_COLS, *HEADER_LABELS.values(), HEADER_URL]
 STR_COLS += [f"{c}_key" for c in KEY_COLUMNS]
 STR_COLS += ["date_status", "year_status", "id_status", "body_sha256"]
+STAMP = "parse"  # metadata key of the table that says which parser wrote it
+
+
+def code_fingerprint() -> str:
+    """Return a short code that changes whenever this module changes."""
+    return hashlib.sha256(Path(__file__).read_bytes()).hexdigest()[:16]
+
+
+def stamp() -> dict[str, str]:
+    """Return the metadata a table of records carries: the fingerprint of its parser.
+
+    The later steps refuse a table written by another version of this module, so an edit
+    here cannot leave old records in use.
+    """
+    return {STAMP: code_fingerprint()}
+
+
 SCHEMA = pa.schema(
     [(c, pa.string()) for c in STR_COLS]
     + [(c, pa.int64()) for c in ("record_index", "pub_year", "date_year", "doc_id")]
     + [(c, pa.int64()) for c in ("n_meta_fields", "body_words", "body_chars")]
     + [(c, pa.bool_()) for c in ("is_footer", "has_materia", "has_body")]
-    + [("pub_date", pa.date32()), ("text", pa.string())]
+    + [("pub_date", pa.date32()), ("text", pa.string())],
+    metadata=stamp(),
 )
 
 
@@ -287,10 +306,11 @@ def parse_text(text: str, source_file: str) -> list[dict]:
 def check_text(text: str, source_file: str) -> dict:
     """Check that a file has the shape the splitter relies on.
 
-    A healthy file has exactly one footer, nothing before the first separator, and no
-    separator line followed by spaces: it would not split, and two records would become one.
-    Other rules of underscores (`odd_rules`) belong to article bodies; they are reported and
-    are not failures. The records are not compared with a count from another source: ProQuest
+    A healthy file has exactly one footer, nothing before the first separator, and no line
+    that is almost a separator (59 to 61 underscores once spaces are removed, but not the
+    separator itself): it would not split, and two records would become one. Other rules of
+    underscores (`odd_rules`) belong to article bodies; they are reported and are not
+    failures. The records are not compared with a count from another source: ProQuest
     states none in the file.
     """
     lines = text.replace("\r\n", "\n").split("\n")
@@ -299,7 +319,9 @@ def check_text(text: str, source_file: str) -> dict:
     chunks = _chunks(text)
     footers = sum(c.strip().startswith(FOOTER_MARK) for c in chunks[1:])
     records = len(chunks) - 1 - footers
-    spoiled = sum(ln != SEPARATOR and ln.rstrip(" \t") == SEPARATOR for ln in lines)
+    bare = ("".join(ln.split()) for ln in lines)  # without spaces, however they are written
+    near = (bool(NEAR_SEPARATOR_RE.fullmatch(text)) for text in bare)
+    spoiled = sum(ln != SEPARATOR and is_near for ln, is_near in zip(lines, near, strict=True))
     ok = footers == 1 and not chunks[0].strip() and spoiled == 0
     return {
         "source_file": source_file,

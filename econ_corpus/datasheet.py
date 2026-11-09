@@ -23,7 +23,7 @@ import pyarrow as pa
 import pyarrow.compute as pc
 import pyarrow.parquet as pq
 
-from econ_corpus import figures, summaries, tables
+from econ_corpus import bylines, figures, summaries, tables
 from econ_corpus.reasons import LEFT_OUT, load
 from econ_corpus.tables import Articles, Table
 
@@ -54,7 +54,7 @@ def _count_facts(articles: Articles) -> dict[str, str]:
         files_by_id.setdefault(doc_id, set()).add(source)
     several_files = sum(len(files) > 1 for files in files_by_id.values())
     years = [y for y in articles["pub_year"] if y]
-    signed = sum(a is not None for a in articles["author"])
+    signed = sum(map(bylines.is_signed, articles["author"]))  # 'Anonymous' is no author
     days = sorted({d for f in articles["source_file"] if (d := summaries.download_date(f))})
     no_body = [
         f for f, has in zip(articles["source_file"], articles["has_body"], strict=True) if not has

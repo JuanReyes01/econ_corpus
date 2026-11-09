@@ -12,7 +12,7 @@ from collections import defaultdict
 from itertools import combinations
 
 from econ_corpus import identity
-from econ_corpus.authors import Name, fold
+from econ_corpus.authors import Name, fold, one_edit
 from econ_corpus.identity import Seen
 from econ_corpus.name_words import NICKNAMES
 
@@ -44,17 +44,6 @@ def _is_initial(one: Name, other: Name) -> bool:
     return lone and stood_for and bool(words) and len(words[0]) > 1
 
 
-def _one_edit(a: str, b: str) -> bool:
-    """Tell whether one letter added, dropped or changed, or two neighbours swapped, gives b."""
-    if len(a) > len(b):
-        a, b = b, a
-    i = next((k for k, (x, y) in enumerate(zip(a, b, strict=False)) if x != y), len(a))
-    if len(a) < len(b):
-        return a[i:] == b[i + 1 :]
-    swapped = a[i : i + 2] == b[i : i + 2][::-1] and a[i + 2 :] == b[i + 2 :]
-    return a[i + 1 :] == b[i + 1 :] or swapped
-
-
 def _near_pairs(seen: dict[str, Seen]) -> set[tuple[str, str]]:
     """Find keys one letter apart (added, dropped, changed or swapped) that share a newspaper."""
     spellings: defaultdict[str, set[str]] = defaultdict(set)
@@ -68,7 +57,7 @@ def _near_pairs(seen: dict[str, Seen]) -> set[tuple[str, str]]:
             pairs |= {
                 (a, b)
                 for a, b in combinations(sorted(keys), 2)
-                if seen[a].papers & seen[b].papers and _one_edit(a, b)
+                if seen[a].papers & seen[b].papers and one_edit(a, b)
             }
     return pairs
 
@@ -112,9 +101,9 @@ def candidates(seen: dict[str, Seen], resolved: dict[str, str]) -> list[Pair]:
     'no_shared_newspaper': compatible names that never appear in the same newspaper.
     'apart_by_review': compatible names that share a newspaper but were kept apart by a
     review. 'conflicting_names': names in a group with a contradiction. 'one_letter_apart':
-    keys one letter apart that share a newspaper. 'nickname': first names that are short
-    forms of each other, in one newspaper. 'swapped_names': the same two names with given and
-    family name the other way round, in one newspaper.
+    keys one letter apart that share a newspaper. 'nickname': given names that are a short
+    form or the initials of each other, in any newspaper. 'swapped_names': the same two names
+    with given and family name the other way round, in one newspaper.
     """
     found: dict[tuple[str, str], str] = {}
     for keys, consistent in identity.buckets(seen):

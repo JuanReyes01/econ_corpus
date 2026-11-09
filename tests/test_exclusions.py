@@ -7,7 +7,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 
-from econ_corpus import exclusions, reasons, review, summaries
+from econ_corpus import exclusions, parse, reasons, review, summaries
 
 DEFAULTS = {
     "is_footer": False,
@@ -30,6 +30,11 @@ def make_rows(*rows: dict) -> dict[str, list]:
     """Build a dict of columns from row dicts; missing keys take the defaults."""
     full = [{**DEFAULTS, **row} for row in rows]
     return {key: [row[key] for row in full] for key in DEFAULTS}
+
+
+def records_table(rows: dict[str, list]) -> pa.Table:
+    """Build a records table by hand, stamped as the parser stamps the ones it writes."""
+    return pa.table(rows).replace_schema_metadata(parse.stamp())
 
 
 def reasons_of(*rows: dict) -> list[str]:
@@ -320,7 +325,7 @@ def test_write_exclusions_keeps_one_row_per_input_row(tmp_path: Path) -> None:
         {"is_footer": True, "doc_id": None},
     )
     source = tmp_path / "records.parquet"
-    pq.write_table(pa.table(rows), source)
+    pq.write_table(records_table(rows), source)
     out = tmp_path / "interim" / "exclusions.parquet"
     exclusions.write_exclusions(source, out)
     result = pq.read_table(out).to_pydict()
@@ -336,13 +341,13 @@ def test_reasons_are_refused_for_records_that_changed_since_they_were_computed(
     tmp_path: Path,
 ) -> None:
     source = tmp_path / "records.parquet"
-    pq.write_table(pa.table(make_rows({}, {"doc_id": 2, "body_sha256": "bbb"})), source)
+    pq.write_table(records_table(make_rows({}, {"doc_id": 2, "body_sha256": "bbb"})), source)
     out = tmp_path / "exclusions.parquet"
     exclusions.write_exclusions(source, out)
     assert reasons.load(source, out).to_pylist() == ["kept", "kept"]
     # A new parse gives the same files and positions but another byline.
     pq.write_table(
-        pa.table(make_rows({}, {"doc_id": 2, "body_sha256": "bbb", "author": None})), source
+        records_table(make_rows({}, {"doc_id": 2, "body_sha256": "bbb", "author": None})), source
     )
     with pytest.raises(ValueError, match="parse"):
         reasons.load(source, out)
@@ -382,7 +387,7 @@ def test_reasons_are_refused_once_the_rules_change(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     source = tmp_path / "records.parquet"
-    pq.write_table(pa.table(make_rows({})), source)
+    pq.write_table(records_table(make_rows({})), source)
     out = tmp_path / "exclusions.parquet"
     exclusions.write_exclusions(source, out)
     monkeypatch.setattr(reasons, "rules_fingerprint", lambda: "other code")
@@ -392,7 +397,7 @@ def test_reasons_are_refused_once_the_rules_change(
 
 def test_a_reasons_file_without_fingerprints_says_so(tmp_path: Path) -> None:
     source = tmp_path / "records.parquet"
-    pq.write_table(pa.table(make_rows({})), source)
+    pq.write_table(records_table(make_rows({})), source)
     out = tmp_path / "exclusions.parquet"
     keys = {"source_file": ["ProQuestDocuments-2024-11-22_1.txt"], "record_index": [0]}
     table = pq.read_table(source, columns=["source_file", "record_index"])
@@ -407,3 +412,16 @@ def test_the_rules_fingerprint_changes_with_the_code(tmp_path: Path) -> None:
     before = reasons.rules_fingerprint(tmp_path)
     (tmp_path / "a.py").write_text("X = 2\n", encoding="utf-8")
     assert reasons.rules_fingerprint(tmp_path) != before
+
+
+def test_reasons_are_refused_for_records_written_by_another_parser(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    source = tmp_path / "records.parquet"
+    pq.write_table(records_table(make_rows({})), source)
+    out = tmp_path / "exclusions.parquet"
+    exclusions.write_exclusions(source, out)
+    reasons.load(source, out)
+    monkeypatch.setattr(parse, "code_fingerprint", lambda: "another parser")
+    with pytest.raises(ValueError, match="parse"):
+        reasons.load(source, out)

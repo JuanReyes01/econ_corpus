@@ -19,20 +19,27 @@ import pyarrow.compute as pc
 import pyarrow.csv as pacsv
 import pyarrow.parquet as pq
 
-from econ_corpus.reasons import LEFT_OUT, RECORDS_STAMP, fingerprint, load, rules_fingerprint
+from econ_corpus.reasons import (
+    LEFT_OUT,
+    RECORDS_STAMP,
+    file_digest,
+    fingerprint,
+    load,
+    rules_fingerprint,
+)
 
 BATCH_SIZE = 20_000  # rows per batch; the parquet is read in pieces so it never has to fit in RAM
 
 
 def _stamp(parquet: Path, reasons: Path, out: Path) -> dict[str, str]:
-    """Return what the CSV depends on: the records, the rules, the rows left out, its size."""
+    """Return what the CSV depends on (records, rules, rows left out) and what it holds."""
     codes = load(parquet, reasons)
     left_out = pc.is_in(codes, value_set=pa.array(LEFT_OUT))
     return {
         "records": (pq.read_schema(reasons).metadata or {})[RECORDS_STAMP.encode()].decode(),
         "rules": rules_fingerprint(),
         "left_out": fingerprint(pa.table({"left_out": left_out})),
-        "bytes": str(out.stat().st_size) if out.exists() else "",
+        "digest": file_digest(out) if out.exists() else "",
     }
 
 
@@ -46,8 +53,10 @@ def is_current(parquet: Path, reasons: Path, out: Path) -> bool:
 def write_csv(parquet: Path, reasons: Path, out: Path, batch_size: int = BATCH_SIZE) -> int:
     """Stream the rows that belong to the raw table into a CSV; return how many were written.
 
-    The reasons file has one row per row of the parquet, in the same order. A stamp is written
-    next to the CSV, so a later step can tell whether the file still matches its inputs.
+    The reasons file has one row per row of the parquet, in the same order. Two files are
+    written next to the CSV: the reason of each of its rows (`<name>_reasons.csv`, keyed by
+    `source_file` and `record_index`), and a stamp, so a later step can tell whether the CSV
+    still matches its inputs.
     """
     source = pq.ParquetFile(parquet)
     codes = load(parquet, reasons)
@@ -62,6 +71,12 @@ def write_csv(parquet: Path, reasons: Path, out: Path, batch_size: int = BATCH_S
             writer.write_batch(batch.filter(keep))
             written += pc.sum(keep).as_py() or 0
             start += batch.num_rows
+    keys = pq.read_table(parquet, columns=["source_file", "record_index", "doc_id"])
+    in_raw = pc.invert(pc.is_in(codes, value_set=pa.array(LEFT_OUT)))
+    pacsv.write_csv(
+        keys.append_column("reason", codes).filter(in_raw),
+        out.with_name(f"{out.stem}_reasons.csv"),
+    )
     stamp = json.dumps(_stamp(parquet, reasons, out), indent=2) + "\n"
     out.with_suffix(".json").write_text(stamp, encoding="utf-8")
     return written

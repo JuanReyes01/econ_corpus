@@ -317,3 +317,14 @@ def test_the_manifest_refuses_a_table_that_was_cut(tmp_path: Path) -> None:
     articles.write_text(articles.read_text(encoding="utf-8")[:-20], encoding="utf-8")
     with pytest.raises(ValueError, match=r"articles\.csv"):
         manifest.check(clean, reasons, None)
+
+
+def test_the_manifest_refuses_a_table_changed_without_changing_its_size(tmp_path: Path) -> None:
+    records, reasons = write_inputs(tmp_path)
+    clean = tmp_path / "clean"
+    processed.build(records, reasons, clean)
+    authors = clean / "authors.csv"
+    changed = authors.read_text(encoding="utf-8").replace("Jane", "Jone")
+    authors.write_text(changed, encoding="utf-8")
+    with pytest.raises(ValueError, match=r"authors\.csv"):
+        manifest.check(clean, reasons, None)
