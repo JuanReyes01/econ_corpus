@@ -51,7 +51,7 @@
 <text x="145.0" y="633" text-anchor="middle" fill="#333333">417,453</text>
 <line x1="145.0" x2="145.0" y1="648" y2="670" stroke="#333333"/>
 <line x1="145.0" x2="322" y1="659" y2="659" stroke="#333333"/>
-<text class="removed" x="330" y="663"><tspan fill="#f58518" font-weight="bold">− 11,148</tspan>  no_person_author: Byline names no person (an institution, or text with no full name)</text>
+<text class="removed" x="330" y="663"><tspan fill="#f58518" font-weight="bold">− 11,153</tspan>  no_person_author: Byline names no person (an institution, or text with no full name)</text>
 <rect class="remaining" x="30" y="670" width="230" height="40" fill="#4c78a8" stroke="#4c78a8"/>
-<text x="145.0" y="695" text-anchor="middle" fill="#ffffff">Cleaned dataset: 406,305</text>
+<text x="145.0" y="695" text-anchor="middle" fill="#ffffff">Cleaned dataset: 406,300</text>
 </svg>

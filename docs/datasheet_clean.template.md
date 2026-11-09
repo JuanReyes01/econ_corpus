@@ -67,6 +67,9 @@ give the shared raw table; the others leave only the cleaned dataset (Figure 1).
   be an institution word that is also a family name, as in `Press, Jane`). No digits. Titles
   and offices before the name (Dr., Sen., State Rep) and degrees after it (MD, PhD) are
   dropped. One word is never taken as a name.
+- A list of names is read whole, with or without an affiliation after it (`Jane Doe and
+  Richard Roe, Example Staff`), and so are the names around the note of an editorial-board
+  item (`Jane Doe. Richard Roe. Written by members of the editorial board.`).
 - If a part does not read as a name, a full name at its start is recovered
   (`Jane Doe. Springfield`, `Jane Doe is a columnist`), and co-authors that the export
   scrambled are put back (`Doe, Jane Roe and Ann` is Jane Roe and Ann Doe).
@@ -133,7 +136,8 @@ its newspapers, its years and two headlines.
   on byline parts and a sample of 60 merges, and changed one. A fourth audit then read
   samples of the decisions of round 6 (140 on parts, 240 on pairs); two corrections and six
   pair verdicts were changed after it. A fifth audit read the 90 parts and 12 pair verdicts
-  of round 7 and found none wrong.
+  of round 7 and found none wrong, and a sixth audit read 109 decisions of round 8 and found
+  none clearly wrong.
 - **Retired decisions:** a decision that applies to no byline any more, because the rules
   that split bylines changed, is taken out of the review files and kept apart; the counts
   above are of the decisions in force. The set was checked for
@@ -270,13 +274,17 @@ Pairs of authors that look alike and are not merged.
   names are written alike (a senator and a letter writer). In the audit this touched about
   1% of the authors of a random sample and about 3% of those with ten or more articles,
   usually one to three articles each.
-- **Residual errors in reading:** three audits by a language model each judged a fresh
-  random sample of 300 authors against their bylines and found five (1.7%), two (0.7%) and
-  one (0.3%) wrong, each drawn before the corrections that followed it; the last one is two
-  people glued in one name. Among authors with ten or more articles the last two audits
-  found no reading error in 150. The whole table still holds an estimated 90 names that
-  are not a person (institutions and roles after a name in a byline), most with one
-  article.
+- **Residual errors in reading:** four audits by a language model each judged a fresh
+  random sample of 300 authors against their bylines and found five (1.7%), two (0.7%), one
+  (0.3%) and none wrong, each drawn before the corrections that followed it. Among authors
+  with ten or more articles the last three audits found no reading error in 150; among
+  authors read by recovery or by the review, two in 150. The last audit still found by
+  targeted search 57 names that are not a person (institutions and roles after a name in a
+  byline) and about 15 damaged names, most with one article, corrected since; others of
+  the kind remain.
+- **Co-authors in lists:** a list of names that the rules cannot read whole gives its first
+  name only. The last audit estimated 150 to 250 articles with a missing co-author before
+  the rules for lists were widened; lists in other forms remain.
 - **Credits of podcasts and videos:** the people credited under a transcript (producers,
   editors, a photographer) are read as authors when they are written like one.
 - **Readers' letters:** letters to the editor count as opinion, so many authors with one
