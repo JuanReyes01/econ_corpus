@@ -13,8 +13,9 @@ obvious cases are handled: repeated ProQuest ids, publications that were not que
 identical text in the same newspaper, and records in a news section with no sign of being
 opinion. A record that cannot be decided (no section, generic type, no opinion
 title) is `unclear_opinion`: it stays in the raw table and is left out of the cleaned dataset.
-An opinion piece then needs text and a person among its authors. Copies whose text differs
-(edited versions) come later.
+An opinion piece then needs text and a person among its authors, and at least MIN_WORDS words
+under a title that is not the heading of a cartoon. Copies whose text differs (edited
+versions) come later.
 
 Two flags per reason: `in_raw` says whether the row is part of the shared raw table (footers,
 repeated ids and repeated text are not), `dropped` whether it leaves the cleaned dataset.
@@ -34,6 +35,8 @@ from econ_corpus.tables import Articles, Table
 # by different articles. Carried by PLACEHOLDER_ARTICLES or more of them it is a notice ("text
 # not available") or a credit, not their text.
 PLACEHOLDER_WORDS, PLACEHOLDER_ARTICLES = 100, 5
+# Under MIN_WORDS a body is a caption or a teaser: the piece has no text to read.
+MIN_WORDS = 50
 
 
 def _opinion_reason(doc_type: str | None, section: str | None, title: str | None) -> str:
@@ -146,7 +149,8 @@ def assign_reasons(rows: Articles, corrections: dict[str, str] | None = None) ->
     "Signed" means any byline other than Anonymous: the choice must not depend on how names
     are read or on the manual review, because these rows also leave the shared raw table. A
     short body carried by many different articles is a placeholder ("text not available"), not
-    text (see `_placeholders`).
+    text (see `_placeholders`). A piece that passes every rule is still left out of the cleaned
+    dataset as `short_or_cartoon` under MIN_WORDS words or under the heading of a cartoon.
     """
     n = len(rows["source_file"])
     file_key = {f: summaries.file_order(f) for f in set(rows["source_file"])}
@@ -160,7 +164,7 @@ def assign_reasons(rows: Articles, corrections: dict[str, str] | None = None) ->
     placeholders = _placeholders(rows, judged)
     same_text: dict[tuple, list[int]] = {}  # copies of one text, in download order
     by_byline: dict[str | None, str] = {}  # bylines repeat, so each is read once
-    qualifies: set[int] = set()  # signed opinion pieces with text
+    qualifies: set[int] = set()  # signed opinion pieces with text, however short
     for i in judged:
         title, sha = rows["title"][i], rows["body_sha256"][i]
         reasons[i] = _opinion_reason(rows["doc_type"][i], rows["section"][i], title)
@@ -175,6 +179,10 @@ def assign_reasons(rows: Articles, corrections: dict[str, str] | None = None) ->
             reasons[i] = by_byline[byline] if has_text else "no_text"
             if reasons[i] not in ("no_text", "no_author"):
                 qualifies.add(i)
+            # Decided last and outside `qualifies`, so the raw table does not depend on it.
+            short = (rows["body_words"][i] or 0) < MIN_WORDS
+            if reasons[i] == "kept" and (short or summaries.is_cartoon_title(title)):
+                reasons[i] = "short_or_cartoon"
     _mark_repeated_text(same_text.values(), reasons, qualifies, rows["pub_date"])
     return reasons
 

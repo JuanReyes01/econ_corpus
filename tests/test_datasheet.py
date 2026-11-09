@@ -122,6 +122,19 @@ def test_other_titles_are_not_opinion(title: str | None) -> None:
     assert not summaries.is_opinion_title(title)
 
 
+@pytest.mark.parametrize(
+    "title",
+    ["TOON-OP; Laughing matters", "Op-Comic: A sample", "to on-op;", "TOON OP; x", "Op Comic: x"],
+)
+def test_cartoon_labels_at_the_start_of_a_title_are_recognised(title: str) -> None:
+    assert summaries.is_cartoon_title(title)
+
+
+@pytest.mark.parametrize("title", ["Cartoon warfare", "A word on the op-comic", "Op-Art: x", None])
+def test_other_titles_are_not_cartoons(title: str | None) -> None:
+    assert not summaries.is_cartoon_title(title)
+
+
 def test_is_opinion_label() -> None:
     assert summaries.is_opinion_label("Op-Ed")
     assert summaries.is_opinion_label("Edi torial")

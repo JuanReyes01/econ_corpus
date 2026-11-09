@@ -85,8 +85,14 @@ REASONS = [
         "dropped": True,
     },
     {
+        "code": "short_or_cartoon",
+        "description": "Signed opinion piece under 50 words or under a cartoon heading",
+        "in_raw": True,
+        "dropped": True,
+    },
+    {
         "code": "kept",
-        "description": "Opinion piece with text, signed by at least one person",
+        "description": "Opinion piece with at least 50 words of text, signed by a person",
         "in_raw": True,
         "dropped": False,
     },

@@ -68,6 +68,7 @@ def test_only_clear_non_opinion_and_duplicates_are_dropped() -> None:
         "no_text",
         "no_author",
         "no_person_author",
+        "short_or_cartoon",
     }
 
 
@@ -179,7 +180,8 @@ def test_a_news_item_is_not_opinion_whatever_its_author() -> None:
 
 def test_text_and_author_reasons_are_the_last_before_kept() -> None:
     codes = [r["code"] for r in exclusions.REASONS]
-    assert codes[-4:] == ["no_text", "no_author", "no_person_author", "kept"]
+    last = ["no_text", "no_author", "no_person_author", "short_or_cartoon", "kept"]
+    assert codes[-5:] == last
 
 
 def test_a_reviewed_byline_decides_whether_a_person_signed() -> None:
@@ -277,7 +279,7 @@ def test_a_byline_that_names_no_person_still_counts_as_signed_when_choosing_the_
 
 def test_stray_spaces_and_case_in_the_title_do_not_hide_a_repeated_text() -> None:
     # A short body, whose copies are told by title and date.
-    first = {"doc_id": 1, "body_words": 40}
+    first = {"doc_id": 1, "body_words": 60}
     second = {**first, "doc_id": 2, "title": "Sam ple  TITLE", "source_file": LATER}
     assert reasons_of(first, second) == ["kept", "duplicate_text"]
 
@@ -329,15 +331,15 @@ def test_a_short_body_is_a_copy_only_under_the_same_title_and_date(change: dict)
 
 @pytest.mark.parametrize("missing", ["title", "pub_date"])
 def test_a_short_body_without_title_or_date_is_never_a_copy(missing: str) -> None:
-    short = {"body_sha256": "sss", "body_words": 40, missing: None}
+    short = {"body_sha256": "sss", "body_words": 60, missing: None}
     assert reasons_of({**short, "doc_id": 1}, {**short, "doc_id": 2}) == ["kept", "kept"]
 
 
 def test_a_body_with_no_word_count_is_judged_as_a_short_one() -> None:
     first = {"doc_id": 1, "body_words": None}
     second = {**first, "doc_id": 2, "source_file": LATER}
-    assert reasons_of(first, second) == ["kept", "duplicate_text"]
-    assert reasons_of(first, {**second, "title": "Another title"}) == ["kept", "kept"]
+    assert reasons_of(first, second)[1] == "duplicate_text"
+    assert reasons_of(first, {**second, "title": "Another title"})[1] != "duplicate_text"
 
 
 def test_of_several_copies_the_signed_one_published_first_stays() -> None:
@@ -353,6 +355,60 @@ def test_records_without_body_are_never_text_duplicates() -> None:
     first = {"doc_id": 1, "body_sha256": None}
     second = {"doc_id": 2, "body_sha256": None}
     assert reasons_of(first, second) == ["kept", "kept"]
+
+
+# --- short texts and cartoons -------------------------------------------------------
+
+
+def test_a_signed_opinion_piece_under_the_least_words_is_left_out() -> None:
+    assert reasons_of({"body_words": exclusions.MIN_WORDS - 1}) == ["short_or_cartoon"]
+    assert reasons_of({"body_words": exclusions.MIN_WORDS}) == ["kept"]
+    assert reasons_of({"body_words": None}) == ["short_or_cartoon"]
+
+
+def test_the_reasons_table_states_the_least_words() -> None:
+    by_code = {r["code"]: r["description"] for r in exclusions.REASONS}
+    assert f"under {exclusions.MIN_WORDS} words" in by_code["short_or_cartoon"]
+    assert f"at least {exclusions.MIN_WORDS} words" in by_code["kept"]
+
+
+@pytest.mark.parametrize(
+    "title",
+    ["TOON-OP; Sample title", "Toon-Op; Sample title", "Op-Comic: Sample title", "OP- COMIC"],
+)
+def test_a_title_labelled_as_a_cartoon_is_left_out_whatever_its_length(title: str) -> None:
+    assert reasons_of({"title": title}) == ["short_or_cartoon"]
+
+
+@pytest.mark.parametrize("title", ["Cartoon warfare", "Op-Art: Sample title", "The comic toon-op"])
+def test_a_text_about_cartoons_is_kept(title: str) -> None:
+    assert reasons_of({"title": title}) == ["kept"]
+
+
+def test_a_short_piece_that_fails_an_earlier_rule_keeps_that_reason() -> None:
+    short = {"body_words": 10}
+    assert reasons_of({**short, "author": None}) == ["no_author"]
+    assert reasons_of({**short, "author": "The Editorial Board"}) == ["no_person_author"]
+    assert reasons_of({**short, "doc_type": "NEWSPAPER", "section": "Sports"}) == ["not_opinion"]
+    assert reasons_of({**short, "body_chars": 0}) == ["no_text"]
+
+
+def test_a_short_piece_stays_in_the_raw_table() -> None:
+    by_code = {r["code"]: r for r in exclusions.REASONS}
+    assert by_code["short_or_cartoon"]["in_raw"]
+    assert [r["code"] for r in exclusions.REASONS][-2:] == ["short_or_cartoon", "kept"]
+
+
+def test_which_copy_of_a_text_stays_does_not_depend_on_the_cartoon_label() -> None:
+    # The raw table must be the same with or without this rule.
+    labelled = {"doc_id": 1, "title": "TOON-OP; Sample title"}
+    plain = {"doc_id": 2, "source_file": LATER}
+    assert reasons_of(labelled, plain) == ["short_or_cartoon", "duplicate_text"]
+    short = {"body_words": 10}
+    assert reasons_of({**short, "doc_id": 1}, {**short, **plain}) == [
+        "short_or_cartoon",
+        "duplicate_text",
+    ]
 
 
 # --- counts and files --------------------------------------------------------------
@@ -411,7 +467,7 @@ def test_reasons_are_refused_for_records_that_changed_since_they_were_computed(
 
 def test_a_short_body_under_many_titles_is_a_placeholder_however_few_rows() -> None:
     rows = [
-        {"doc_id": i, "title": f"Title {i}", "body_sha256": "ppp", "body_words": 12}
+        {"doc_id": i, "title": f"Title {i}", "body_sha256": "ppp", "body_words": 60}
         for i in range(1, exclusions.PLACEHOLDER_ARTICLES + 1)
     ]
     assert reasons_of(*rows) == ["no_text"] * exclusions.PLACEHOLDER_ARTICLES
@@ -428,7 +484,7 @@ def test_a_long_body_under_many_titles_is_one_text() -> None:
 
 
 def test_copies_of_one_article_do_not_make_its_body_a_placeholder() -> None:
-    rows = [{"doc_id": i, "body_sha256": "sss", "body_words": 40} for i in range(1, 30)]
+    rows = [{"doc_id": i, "body_sha256": "sss", "body_words": 60} for i in range(1, 30)]
     assert reasons_of(*rows) == ["kept", *["duplicate_text"] * 28]
 
 
