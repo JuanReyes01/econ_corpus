@@ -88,7 +88,7 @@ kept raw so that other researchers can derive their own samples from it.
 | Hash, word count and character count of the text | columns added | Integrity checks |
 | File footers removed | 2,801 rows | Not records |
 | Repeated ProQuest ids removed; the copy with the longest body is kept, the earliest download on ties | 145,118 rows | Overlapping downloads (section 5.2) |
-| Repeated text removed: same body, title, date and queried newspaper under another id; the earliest download is kept | 2,908 rows | The same article downloaded under two ids (section 5.2) |
+| Repeated text removed: same body, title, date and queried newspaper under another id; the copy kept is the earliest that is a signed opinion piece, or the earliest of all | 2,908 rows | The same article downloaded under two ids (section 5.2) |
 | Nothing else removed or edited | news items, publications outside the query | Left for the cleaned dataset (section 3.2) |
 
 ## 3. Data records
@@ -316,8 +316,9 @@ so the copy kept is the one with the longest body, and the earliest download if 
 others are removed from the shared table.
 
 A second kind of repeat has another id but the same body, title, date and queried newspaper
-(editions of one newspaper count as one): 2,908 records. The earliest download
-is kept and the others are removed. Publications outside the query are judged only as not queried,
+(editions of one newspaper count as one): 2,908 records. The copy kept
+is the earliest one that qualifies as a signed opinion piece, or the earliest of all if none
+does; the others are removed. Publications outside the query are judged only as not queried,
 so repeats among them stay.
 
 ### 5.3 News and opinion
