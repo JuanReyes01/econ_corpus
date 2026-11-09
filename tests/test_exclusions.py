@@ -276,21 +276,77 @@ def test_a_byline_that_names_no_person_still_counts_as_signed_when_choosing_the_
 
 
 def test_stray_spaces_and_case_in_the_title_do_not_hide_a_repeated_text() -> None:
-    first = {"doc_id": 1}
-    second = {"doc_id": 2, "title": "Sam ple  TITLE", "source_file": LATER}
+    # A short body, whose copies are told by title and date.
+    first = {"doc_id": 1, "body_words": 40}
+    second = {**first, "doc_id": 2, "title": "Sam ple  TITLE", "source_file": LATER}
     assert reasons_of(first, second) == ["kept", "duplicate_text"]
 
 
-def test_same_text_with_another_title_is_not_an_obvious_duplicate() -> None:
+def test_same_text_with_another_title_is_a_copy() -> None:
     first = {"doc_id": 1}
-    second = {"doc_id": 2, "title": "Another title"}
+    second = {"doc_id": 2, "title": "Another title", "source_file": LATER}
+    assert reasons_of(first, second) == ["kept", "duplicate_text"]
+
+
+def test_same_text_on_another_date_is_a_copy_and_the_first_published_stays() -> None:
+    posted_again = {"doc_id": 1, "pub_date": date(2021, 5, 6)}
+    original = {"doc_id": 2, "source_file": LATER}
+    assert reasons_of(posted_again, original) == ["duplicate_text", "kept"]
+
+
+def test_same_text_in_another_newspaper_is_not_a_copy() -> None:
+    first = {"doc_id": 1}
+    second = {"doc_id": 2, "title": "Another title", "publication_key": "wallstreetjournal"}
+    assert summaries.newspaper_family("wallstreetjournal") == "Wall Street Journal"
     assert reasons_of(first, second) == ["kept", "kept"]
 
 
-def test_same_text_on_another_date_is_not_an_obvious_duplicate() -> None:
-    first = {"doc_id": 1}
-    second = {"doc_id": 2, "pub_date": date(2021, 5, 6)}
-    assert reasons_of(first, second) == ["kept", "kept"]
+def test_a_signed_copy_stays_even_if_an_unsigned_one_was_published_first() -> None:
+    unsigned = {"doc_id": 1, "author": None, "title": "Another title"}
+    signed = {"doc_id": 2, "pub_date": date(2021, 5, 6)}
+    assert reasons_of(unsigned, signed) == ["duplicate_text", "kept"]
+
+
+def test_a_dated_copy_stays_rather_than_an_undated_one() -> None:
+    undated = {"doc_id": 1, "pub_date": None}
+    dated = {"doc_id": 2, "source_file": LATER}
+    assert reasons_of(undated, dated) == ["duplicate_text", "kept"]
+    assert reasons_of(undated, {**undated, "doc_id": 2, "source_file": LATER}) == [
+        "kept",
+        "duplicate_text",
+    ]
+
+
+@pytest.mark.parametrize("change", [{"title": "Another title"}, {"pub_date": date(2021, 5, 6)}])
+def test_a_short_body_is_a_copy_only_under_the_same_title_and_date(change: dict) -> None:
+    short = {"body_sha256": "sss", "body_words": exclusions.PLACEHOLDER_WORDS - 1}
+    first, second = {**short, "doc_id": 1}, {**short, "doc_id": 2, "source_file": LATER}
+    assert reasons_of(first, second) == ["kept", "duplicate_text"]
+    assert reasons_of(first, {**second, **change}) == ["kept", "kept"]
+    long = {"body_words": exclusions.PLACEHOLDER_WORDS}
+    assert reasons_of({**first, **long}, {**second, **long, **change})[1] == "duplicate_text"
+
+
+@pytest.mark.parametrize("missing", ["title", "pub_date"])
+def test_a_short_body_without_title_or_date_is_never_a_copy(missing: str) -> None:
+    short = {"body_sha256": "sss", "body_words": 40, missing: None}
+    assert reasons_of({**short, "doc_id": 1}, {**short, "doc_id": 2}) == ["kept", "kept"]
+
+
+def test_a_body_with_no_word_count_is_judged_as_a_short_one() -> None:
+    first = {"doc_id": 1, "body_words": None}
+    second = {**first, "doc_id": 2, "source_file": LATER}
+    assert reasons_of(first, second) == ["kept", "duplicate_text"]
+    assert reasons_of(first, {**second, "title": "Another title"}) == ["kept", "kept"]
+
+
+def test_of_several_copies_the_signed_one_published_first_stays() -> None:
+    unsigned = {"doc_id": 1, "author": None, "pub_date": date(2019, 1, 1)}
+    undated = {"doc_id": 2, "pub_date": None, "title": "Another title"}
+    posted_again = {"doc_id": 3, "pub_date": date(2021, 5, 6)}
+    original = {"doc_id": 4, "source_file": LATER}
+    reasons = reasons_of(unsigned, undated, posted_again, original)
+    assert reasons == ["duplicate_text", "duplicate_text", "duplicate_text", "kept"]
 
 
 def test_records_without_body_are_never_text_duplicates() -> None:
@@ -362,12 +418,13 @@ def test_a_short_body_under_many_titles_is_a_placeholder_however_few_rows() -> N
     assert reasons_of(*rows[:-1]) == ["kept"] * (exclusions.PLACEHOLDER_ARTICLES - 1)
 
 
-def test_a_long_body_under_many_titles_is_text() -> None:
+def test_a_long_body_under_many_titles_is_one_text() -> None:
     rows = [
         {"doc_id": i, "title": f"Part {i}", "body_sha256": "lll", "body_words": 6000}
         for i in range(1, 30)
     ]
-    assert reasons_of(*rows) == ["kept"] * 29
+    # It is text, so no row is `no_text`; and one text, so one row stays.
+    assert reasons_of(*rows) == ["kept", *["duplicate_text"] * 28]
 
 
 def test_copies_of_one_article_do_not_make_its_body_a_placeholder() -> None:

@@ -44,7 +44,7 @@ REASONS = [
     },
     {
         "code": "duplicate_text",
-        "description": "Same body, title, date and newspaper as another record, which stays",
+        "description": "Same text in the same newspaper as another record, which stays",
         "in_raw": False,
         "dropped": True,
     },

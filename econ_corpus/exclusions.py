@@ -10,16 +10,18 @@ of the data (datasheet).
 
 Rules are applied in the order of REASONS; the first one that matches decides. Only
 obvious cases are handled: repeated ProQuest ids, publications that were not queried,
-identical text with the same title, date and newspaper, and records in a news section with no
-sign of being opinion. A record that cannot be decided (no section, generic type, no opinion
+identical text in the same newspaper, and records in a news section with no sign of being
+opinion. A record that cannot be decided (no section, generic type, no opinion
 title) is `unclear_opinion`: it stays in the raw table and is left out of the cleaned dataset.
-An opinion piece then needs text and a person among its authors. Subtler duplicates come later.
+An opinion piece then needs text and a person among its authors. Copies whose text differs
+(edited versions) come later.
 
 Two flags per reason: `in_raw` says whether the row is part of the shared raw table (footers,
 repeated ids and repeated text are not), `dropped` whether it leaves the cleaned dataset.
 """
 
 from collections.abc import Iterable
+from datetime import date
 from pathlib import Path
 
 import pyarrow.parquet as pq
@@ -28,8 +30,9 @@ from econ_corpus import bylines, datasheet, export, parse, review, summaries
 from econ_corpus.reasons import INPUTS, REASONS, check_parser, write_reasons
 from econ_corpus.tables import Articles, Table
 
-# A body shorter than PLACEHOLDER_WORDS carried by PLACEHOLDER_ARTICLES or more different
-# articles is a notice ("text not available") or a credit, not the text of those articles.
+# A body shorter than PLACEHOLDER_WORDS can be a notice, a caption or an introduction shared
+# by different articles. Carried by PLACEHOLDER_ARTICLES or more of them it is a notice ("text
+# not available") or a credit, not their text.
 PLACEHOLDER_WORDS, PLACEHOLDER_ARTICLES = 100, 5
 
 
@@ -76,12 +79,30 @@ def _kept_copies(rows: Articles, order: list[int]) -> dict[int, int]:
     return kept
 
 
+def _text_key(rows: Articles, i: int, family: str | None) -> tuple | None:
+    """Return what the copies of the text of row `i` share, or None if it cannot repeat.
+
+    A body of PLACEHOLDER_WORDS or more is one text wherever it appears in a newspaper: under
+    another title (print and online editions) or on another date (a text posted again). A
+    shorter body can belong to different articles, so its copies also share title and date.
+    """
+    sha, title, day = rows["body_sha256"][i], rows["title"][i], rows["pub_date"][i]
+    if sha and (rows["body_words"][i] or 0) >= PLACEHOLDER_WORDS:
+        return (sha, family)
+    # Titles are compared without ProQuest's stray spaces, like every other metadata.
+    return (sha, family, parse.compact(title), day) if sha and title and day else None
+
+
 def _mark_repeated_text(
-    groups: Iterable[list[int]], reasons: list[str], qualifies: set[int]
+    groups: Iterable[list[int]], reasons: list[str], qualifies: set[int], days: list[date | None]
 ) -> None:
-    """Leave one copy of each repeated text and mark the others `duplicate_text`, in place."""
+    """Leave one copy of each repeated text and mark the others `duplicate_text`, in place.
+
+    The copy that stays is a signed opinion piece with text if there is one, then the first
+    published (an undated copy comes last), then the earliest download.
+    """
     for copies in groups:
-        stays = next((i for i in copies if i in qualifies), copies[0])
+        stays = min(copies, key=lambda i: (i not in qualifies, days[i] or date.max))
         for i in copies:
             if i != stays:
                 reasons[i] = "duplicate_text"
@@ -119,13 +140,13 @@ def assign_reasons(rows: Articles, corrections: dict[str, str] | None = None) ->
     """Return one reason code per row, with repeats judged in download order.
 
     Of the copies of a ProQuest id, only the one chosen by `_kept_copies` is judged on its
-    merits; the others are `duplicate_id`. Of the copies of a text under several ids, the one
-    that stays is the earliest signed opinion piece with text, or the earliest of all if there
-    is none; the others are `duplicate_text`. So each article is counted once and a signed copy
-    is not lost to an unsigned one. "Signed" means any byline other than Anonymous: the choice
-    must not depend on how names are read or on the manual review, because these rows also
-    leave the shared raw table. A short body carried by many different articles is a placeholder
-    ("text not available"), not text (see `_placeholders`).
+    merits; the others are `duplicate_id`. Of the copies of a text under several ids (see
+    `_text_key`), one stays (see `_mark_repeated_text`); the others are `duplicate_text`. So
+    a text is counted once per newspaper and a signed copy is not lost to an unsigned one.
+    "Signed" means any byline other than Anonymous: the choice must not depend on how names
+    are read or on the manual review, because these rows also leave the shared raw table. A
+    short body carried by many different articles is a placeholder ("text not available"), not
+    text (see `_placeholders`).
     """
     n = len(rows["source_file"])
     file_key = {f: summaries.file_order(f) for f in set(rows["source_file"])}
@@ -143,9 +164,7 @@ def assign_reasons(rows: Articles, corrections: dict[str, str] | None = None) ->
     for i in judged:
         title, sha = rows["title"][i], rows["body_sha256"][i]
         reasons[i] = _opinion_reason(rows["doc_type"][i], rows["section"][i], title)
-        if sha and title and rows["pub_date"][i]:
-            # Titles are compared without ProQuest's stray spaces, like every other metadata.
-            text_key = (sha, parse.compact(title), rows["pub_date"][i], families[i])
+        if text_key := _text_key(rows, i, families[i]):
             same_text.setdefault(text_key, []).append(i)
         if reasons[i] == "kept":
             # An opinion piece stays only with text and with a person among its authors.
@@ -156,7 +175,7 @@ def assign_reasons(rows: Articles, corrections: dict[str, str] | None = None) ->
             reasons[i] = by_byline[byline] if has_text else "no_text"
             if reasons[i] not in ("no_text", "no_author"):
                 qualifies.add(i)
-    _mark_repeated_text(same_text.values(), reasons, qualifies)
+    _mark_repeated_text(same_text.values(), reasons, qualifies, rows["pub_date"])
     return reasons
 
 
