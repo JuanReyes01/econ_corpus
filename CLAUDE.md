@@ -4,7 +4,7 @@ Build and audit a corpus of U.S. newspaper opinion articles (ProQuest) to study 
 
 ## Code rules (the owner wants to understand every change)
 
-1. One module per pipeline stage in `econ_corpus/` (for example `parse`, `exclusions`, `processed`). Aim for under 200 lines each. Pure functions, with tests.
+1. One module per pipeline step, grouped by pipeline: `econ_corpus/raw` (exports to raw table) and `econ_corpus/clean` (records to cleaned dataset), with what they share in `econ_corpus/names` and `econ_corpus/shared`; each folder has a README that lists its files. Aim for under 200 lines each. Pure functions, with tests.
 2. Notebooks only call package functions and show results. No logic in notebooks.
 3. Exclusion reasons live in one place, as data (a reasons table), not scattered across code. Each article gets exactly one reason, so counts add up.
 4. Every filter or rule is recorded in `docs/decisions.md` with its reason.
@@ -29,4 +29,4 @@ Build and audit a corpus of U.S. newspaper opinion articles (ProQuest) to study 
 
 ## Inclusion criteria of the cleaned dataset (settled, see docs/decisions.md)
 
-Opinion pieces (by document type, section or title), from the 10 queried newspapers, with text, signed by at least one person. The pipeline order and commands are in README.md.
+Opinion pieces (by document type, section or title), from the 10 queried newspapers, with at least 50 words of English text, signed by at least one person; no cartoons, and production credits are not authors. The pipeline order and commands are in README.md.

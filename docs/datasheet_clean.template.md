@@ -344,9 +344,10 @@ Pairs of authors that look alike and are not merged.
 
 ## 7. Code availability
 
-The pipeline is in the private repository `econ_corpus` [1]: `exclusions` and `reasons`
-(selection), `authors` and `bylines` (reading names), `identity` (one author), `review` and
-`review_cases` (manual review), `processed` (tables) and `datasheet_clean` (this document).
+The pipeline is in the private repository `econ_corpus` [1]: `raw/exclusions` and
+`raw/reasons` (selection), `names/authors` and `names/bylines` (reading names),
+`names/identity` (one author), `names/review` and `clean/review_cases` (manual review),
+`clean/processed` (tables) and `clean/datasheet_clean` (this document).
 Every rule and its evidence are in `docs/decisions.md`. `README.md` lists the commands, from
 `make parse` on, that regenerate the dataset and this document.
 

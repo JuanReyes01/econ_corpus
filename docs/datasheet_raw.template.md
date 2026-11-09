@@ -280,9 +280,10 @@ the raw table.
 
 ## 7. Code availability
 
-The pipeline is in the private repository `econ_corpus` [2]: `parse` (exports to table),
-`export` (table to CSV), `reasons` and `exclusions`, `tables`, `figures` and `datasheet` (this
-document). Every rule and its evidence are in `docs/decisions.md`. `README.md` lists the
+The pipeline is in the private repository `econ_corpus` [2], in the folder `econ_corpus/raw`:
+`parse` (exports to table), `reasons` and `exclusions`, `export` (table to CSV) and
+`datasheet` (this document), with `names` to read the bylines and `shared` for the tables
+and figures. Every rule and its evidence are in `docs/decisions.md`. `README.md` lists the
 commands, from `make parse` on, that regenerate the table and this document. The repository holds code and documentation only;
 the data are not in it.
 
