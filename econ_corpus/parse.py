@@ -13,7 +13,6 @@ Nothing is dropped silently. A value that cannot be parsed stays in the table wi
 status column ('missing', 'unparseable', ...) so later stages can count it.
 """
 
-from collections.abc import Iterator
 from datetime import date
 import hashlib
 from pathlib import Path
@@ -308,11 +307,6 @@ def check_text(text: str, source_file: str) -> dict:
 def sanity_check(path: Path) -> dict:
     """Run `check_text` on a file on disk."""
     return check_text(read_text(path), Path(path).name)
-
-
-def iter_file(path: Path) -> Iterator[dict]:
-    """Yield the parsed rows of one file on disk."""
-    yield from parse_text(read_text(path), Path(path).name)
 
 
 def write_parquet(paths: list[Path], out: Path) -> list[dict]:

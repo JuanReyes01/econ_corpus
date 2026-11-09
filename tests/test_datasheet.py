@@ -173,17 +173,21 @@ def test_newspaper_table_splits_editions_blogs_and_authors() -> None:
     assert rows["Wall Street Journal"][1] == "1"
 
 
-def test_decade_table_counts_records_and_unique_ids() -> None:
+def test_decade_table_counts_records_and_signed_share_per_decade() -> None:
     articles = make_articles(
         {"pub_year": 1995, "doc_id": 1},
-        {"pub_year": 1995, "doc_id": 1},
-        {"pub_year": 2004, "doc_id": 2},
-        {"pub_year": None, "doc_id": 3},
+        {"pub_year": 1995, "doc_id": 2, "author": None},
+        {"pub_year": 2004, "doc_id": 3},
+        {"pub_year": None, "doc_id": 4},
     )
-    rows = {r[0]: r for r in tables.decade_table(articles)[1:]}
-    assert rows["1990s"][1:3] == ["2", "1"]
-    assert rows["2000s"][1:3] == ["1", "1"]
-    assert rows["Unknown year"][1] == "1"
+    rows = tables.decade_table(articles)
+    # Ids are unique in the shared table, so the decade table has no id column.
+    assert rows[0] == ["Decade", "Records", "With author"]
+    assert rows[1:] == [
+        ["1990s", "2", "50.0%"],
+        ["2000s", "1", "100.0%"],
+        ["Unknown year", "1", "100.0%"],
+    ]
 
 
 def test_doc_type_table_counts_each_label_of_a_multi_label_value() -> None:
@@ -221,6 +225,23 @@ def test_facts_report_duplicate_rows_and_unique_ids() -> None:
     assert facts["n_articles"] == "3"
     assert facts["n_unique_ids"] == "2"
     assert facts["n_duplicate_rows"] == "1"
+
+
+def test_year_comparison_table_sets_parsed_records_next_to_shared_records() -> None:
+    parsed = make_articles({"pub_year": 2001}, {"pub_year": 2001}, {"pub_year": 2002})
+    shared = make_articles({"pub_year": 2001}, {"pub_year": 2002})
+    assert tables.year_comparison_table(parsed, shared) == [
+        ["Year", "As parsed", "Shared table"],
+        ["2001", "2", "1"],
+        ["2002", "1", "1"],
+    ]
+
+
+def test_year_comparison_table_gives_zero_for_a_year_with_no_shared_record() -> None:
+    parsed = make_articles({"pub_year": 2001}, {"pub_year": 2003})
+    shared = make_articles({"pub_year": 2001})
+    rows = tables.year_comparison_table(parsed, shared)
+    assert rows[2] == ["2003", "1", "0"]
 
 
 def test_year_table_has_one_row_per_year() -> None:
@@ -296,7 +317,7 @@ def test_build_describes_the_shared_table_and_counts_what_was_removed(tmp_path: 
         "Articles: {{n_articles}}\nParsed: {{n_parsed}}\nRemoved: {{n_repeats_removed}}\n"
         "Footers: {{n_footer_rows}}\nEmpty copies: {{n_ids_with_empty_copy}}\n"
         "Repeats: {{n_duplicate_rows}}\nSame text: {{n_text_repeats_removed}}\n"
-        "Files: {{n_files}}\nFirst: {{download_first}}\n"
+        "Ids parsed: {{n_ids_parsed}}\nFiles: {{n_files}}\nFirst: {{download_first}}\n"
         "Last: {{download_last}}\n\n{{newspapers}}\n",
         encoding="utf-8",
     )
@@ -313,12 +334,13 @@ def test_build_describes_the_shared_table_and_counts_what_was_removed(tmp_path: 
     text = values.read_text(encoding="utf-8")
     head = (
         "Articles: 2\nParsed: 4\nRemoved: 1\nFooters: 1\nEmpty copies: 1\nRepeats: 1\n"
-        "Same text: 1\nFiles: 2\n"
+        "Same text: 1\nIds parsed: 3\nFiles: 2\n"
     )
     assert text.startswith(head)
     assert "First: 2024-11-22\nLast: 2024-11-23\n" in text
     assert "| New York Times | 2 |" in text
     assert (tmp_path / "figures" / "records_by_year.svg").read_text().startswith("<svg")
+    assert (tmp_path / "figures" / "repeats_by_year.svg").read_text().startswith("<svg")
     # Years and downloads describe the table as parsed, so the repeated rows still show.
     by_year = (tmp_path / "tables" / "raw_by_year.csv").read_text().splitlines()
     assert by_year[1].startswith("2001,4,3,")

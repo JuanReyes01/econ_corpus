@@ -1,6 +1,7 @@
 """Descriptive tables of the parsed records, each a list of string rows, header first.
 
-Input: the articles as a dict of columns (the parquet read with `to_pydict`, footers out).
+Input: articles as a dict of columns (rows of the parquet read with `to_pydict`): either the
+shared table (no footers, no repeats) or the table as parsed (no footers).
 Output: tables for the datasheet and for the CSV files that sit next to it.
 
 Lives here: counts by newspaper, period, document type, section, language, missing
@@ -76,9 +77,21 @@ def _period_table(articles: Articles, label: Callable[[int | None], str], first:
     return [[first, "Records", "Unique ids", "With author"], *body]
 
 
+def year_comparison_table(parsed: Articles, shared: Articles) -> Table:
+    """Count records per publication year as parsed and in the shared table."""
+    before = Counter(y for y in parsed["pub_year"] if y)
+    after = Counter(y for y in shared["pub_year"] if y)
+    body = [[str(y), summaries.num(before[y]), summaries.num(after[y])] for y in sorted(before)]
+    return [["Year", "As parsed", "Shared table"], *body]
+
+
 def decade_table(articles: Articles) -> Table:
-    """Count records per decade of publication year."""
-    return _period_table(articles, lambda y: f"{y // 10 * 10}s" if y else "Unknown year", "Decade")
+    """Count records per decade of publication year.
+
+    Meant for the shared table, where ids do not repeat, so the id column is left out.
+    """
+    rows = _period_table(articles, lambda y: f"{y // 10 * 10}s" if y else "Unknown year", "Decade")
+    return [[decade, records, signed] for decade, records, _, signed in rows]
 
 
 def year_table(articles: Articles) -> Table:
@@ -140,7 +153,7 @@ def missing_table(articles: Articles) -> Table:
 
 
 def other_publications_table(articles: Articles) -> Table:
-    """Most common publications outside the 11 queried newspapers, by their commonest label."""
+    """Most common publications outside the queried newspapers, by their commonest label."""
     labels: defaultdict[str, Counter] = defaultdict(Counter)
     for key, name in zip(articles["publication_key"], articles["publication"], strict=True):
         if summaries.newspaper_family(key) == "Other":

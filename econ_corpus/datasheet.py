@@ -184,6 +184,7 @@ def repeat_facts(parsed: Articles, removed: Counter) -> dict[str, str]:
     mixed = sum(len(h) > 1 and any(h) and not all(h) for h in copies.values())
     return {
         "n_parsed": summaries.num(len(parsed["title"])),
+        "n_ids_parsed": summaries.num(len(copies)),
         "n_repeats_removed": summaries.num(removed["duplicate_id"]),
         "n_text_repeats_removed": summaries.num(removed["duplicate_text"]),
         "n_ids_with_empty_copy": summaries.num(mixed),
@@ -236,8 +237,18 @@ def build(  # noqa: PLR0913 (one argument per input or output file)
     write_csv(tables.year_table(parsed), tables_dir / "raw_by_year.csv")
     write_csv(tables.download_table(parsed), tables_dir / "raw_by_download_date.csv")
     figures_dir.mkdir(parents=True, exist_ok=True)
-    chart = figures.year_chart_svg(tables.year_table(parsed))
-    (figures_dir / "records_by_year.svg").write_text(chart, encoding="utf-8")
+    shared_chart = figures.year_chart_svg(
+        tables.year_table(articles),
+        labels=("Records",),
+        heading="Records per publication year in the shared table",
+    )
+    (figures_dir / "records_by_year.svg").write_text(shared_chart, encoding="utf-8")
+    repeats_chart = figures.year_chart_svg(
+        tables.year_comparison_table(parsed, articles),
+        labels=("As parsed", "Shared table"),
+        heading="Records per publication year, as parsed and in the shared table",
+    )
+    (figures_dir / "repeats_by_year.svg").write_text(repeats_chart, encoding="utf-8")
 
 
 def main() -> None:
