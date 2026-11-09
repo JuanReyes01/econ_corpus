@@ -3,13 +3,13 @@ data and writes docs/datasheet_raw.md. Edit the prose here, never the generated 
 
 # A raw table of U.S. newspaper opinion articles from ProQuest US Newsstream, {{year_min}}–{{year_max}}
 
-Data descriptor, version 1.0 (2026-11-02). Companion to the cleaned dataset derived from this table.
+Data descriptor, version 1.1 (2026-11-08). Companion to the cleaned dataset derived from this table.
 
 ## Abstract
 
 The table holds {{n_articles}} records exported from ProQuest US Newsstream for ten U.S.
-newspapers with the highest circulation, published {{year_min}}–{{year_max}}, one record per
-ProQuest id. Each record keeps every metadata field of the export, the article text, parsed
+newspapers with the highest circulation, published {{year_min}}–{{year_max}}, with no ProQuest id
+repeated. Each record keeps every metadata field of the export, the article text, parsed
 dates, years and identifiers with explicit quality flags, its file of origin, and a hash and
 word count of the text. Apart from repeated records and file footers, nothing was removed or
 corrected, so the table documents the source as delivered, including news items and
@@ -25,7 +25,7 @@ kept raw so that other researchers can derive their own samples from it.
 
 | | |
 |---|---|
-| Records | {{n_articles}}, one per ProQuest id |
+| Records | {{n_articles}}, no ProQuest id repeated |
 | Removed from the parsed table | {{n_repeats_removed}} repeated ProQuest ids, {{n_text_repeats_removed}} repeats of the same text under another id and {{n_footer_rows}} file footers (section 2.4) |
 | Export files | {{n_files}} |
 | Publication years | {{year_min}}–{{year_max}} |
@@ -135,7 +135,7 @@ read the CSV with a data-analysis library instead.
 - `reports/tables/raw_by_year.csv` and `reports/tables/raw_by_download_date.csv`: records and
   distinct ids per year, and counts and publication-year range per download date, all as
   parsed, before repeated ids were removed.
-- `reports/figures/records_by_year.svg`: Figure 1.
+- `reports/figures/records_by_year.svg` and `reports/figures/repeats_by_year.svg`: Figures 1 and 2.
 
 ## 4. Contents
 
@@ -155,10 +155,9 @@ read the CSV with a data-analysis library instead.
 
 ### 4.4 Years
 
-![Records and distinct ids per publication year](../reports/figures/records_by_year.svg)
+![Records per publication year in the shared table](../reports/figures/records_by_year.svg)
 
-*Figure 1.* Records and distinct ProQuest ids per publication year, as parsed, before repeated
-ids were removed.
+*Figure 1.* Records per publication year in the shared table.
 
 {{decades}}
 
@@ -212,12 +211,17 @@ The blog label:
 ### 5.2 Repeats
 
 Of {{n_parsed}} parsed records, {{n_duplicate_rows}} ({{dup_pct}}) repeat a ProQuest id;
-{{n_unique_ids}} ids are distinct. {{n_ids_in_several_files}} ids appear in more than one file and
+{{n_ids_parsed}} ids are distinct. {{n_ids_in_several_files}} ids appear in more than one file and
 {{n_repeats_inside_a_file}} repeat inside a file, which points to overlapping downloads.
-{{dup_peak_year}} stands out in Figure 1: {{dup_peak_rows}} records but only
+{{dup_peak_year}} stands out in Figure 2: {{dup_peak_rows}} records but only
 {{dup_peak_unique}} distinct ids, because its articles were downloaded repeatedly
 ({{dup_peak_multi_file_pct}} of its ids appear in 3 or more files). The peak is duplication,
 not more articles.
+
+![Records per publication year, as parsed and in the shared table](../reports/figures/repeats_by_year.svg)
+
+*Figure 2.* Records per publication year as parsed and in the shared table. The gap is the repeats
+removed.
 
 Apart from stray spaces, the copies of an id agree on date, newspaper, author, section and
 document type. In {{n_ids_with_empty_copy}} ids one copy has no body next to a copy with text,

@@ -40,7 +40,7 @@ format:
 
 
 
-## Build the datasheet of the raw table (needs data/interim/records.parquet)
+## Build the datasheet of the raw table (needs data/interim/records.parquet and exclusions.parquet)
 .PHONY: datasheet
 datasheet:
 	uv run python -m econ_corpus.datasheet
@@ -52,7 +52,7 @@ exclusions:
 	uv run python -m econ_corpus.exclusions
 
 
-## Write the raw table as a shareable CSV (needs data/interim/records.parquet)
+## Write the raw table as a shareable CSV (needs data/interim/records.parquet and exclusions.parquet)
 .PHONY: export
 export:
 	uv run python -m econ_corpus.export

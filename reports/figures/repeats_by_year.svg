@@ -1,0 +1,118 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 380" font-family="sans-serif" font-size="12" fill="#333333">
+<title>Records per publication year, as parsed and in the shared table</title>
+<rect width="900" height="380" fill="#ffffff"/>
+<text x="70" y="22" font-size="14">Records per publication year, as parsed and in the shared table</text>
+<line x1="70" x2="880" y1="335.0" y2="335.0" stroke="#dddddd"/>
+<text x="64" y="339.0" text-anchor="end">0</text>
+<line x1="70" x2="880" y1="263.8" y2="263.8" stroke="#dddddd"/>
+<text x="64" y="267.8" text-anchor="end">50,000</text>
+<line x1="70" x2="880" y1="192.5" y2="192.5" stroke="#dddddd"/>
+<text x="64" y="196.5" text-anchor="end">100,000</text>
+<line x1="70" x2="880" y1="121.2" y2="121.2" stroke="#dddddd"/>
+<text x="64" y="125.2" text-anchor="end">150,000</text>
+<line x1="70" x2="880" y1="50.0" y2="50.0" stroke="#dddddd"/>
+<text x="64" y="54.0" text-anchor="end">200,000</text>
+<rect class="bar as-parsed" x="71.8" y="328.4" width="7.2" height="6.6" fill="#4c78a8"/>
+<rect class="bar shared-table" x="79.0" y="329.6" width="7.2" height="5.4" fill="#f58518"/>
+<text x="79.0" y="351" text-anchor="middle">1980</text>
+<rect class="bar as-parsed" x="89.8" y="325.2" width="7.2" height="9.8" fill="#4c78a8"/>
+<rect class="bar shared-table" x="97.0" y="325.4" width="7.2" height="9.6" fill="#f58518"/>
+<rect class="bar as-parsed" x="107.8" y="325.5" width="7.2" height="9.5" fill="#4c78a8"/>
+<rect class="bar shared-table" x="115.0" y="326.2" width="7.2" height="8.8" fill="#f58518"/>
+<rect class="bar as-parsed" x="125.8" y="325.3" width="7.2" height="9.7" fill="#4c78a8"/>
+<rect class="bar shared-table" x="133.0" y="326.0" width="7.2" height="9.0" fill="#f58518"/>
+<rect class="bar as-parsed" x="143.8" y="325.3" width="7.2" height="9.7" fill="#4c78a8"/>
+<rect class="bar shared-table" x="151.0" y="325.3" width="7.2" height="9.7" fill="#f58518"/>
+<rect class="bar as-parsed" x="161.8" y="316.5" width="7.2" height="18.5" fill="#4c78a8"/>
+<rect class="bar shared-table" x="169.0" y="317.8" width="7.2" height="17.2" fill="#f58518"/>
+<text x="169.0" y="351" text-anchor="middle">1985</text>
+<rect class="bar as-parsed" x="179.8" y="313.4" width="7.2" height="21.6" fill="#4c78a8"/>
+<rect class="bar shared-table" x="187.0" y="314.7" width="7.2" height="20.3" fill="#f58518"/>
+<rect class="bar as-parsed" x="197.8" y="302.8" width="7.2" height="32.2" fill="#4c78a8"/>
+<rect class="bar shared-table" x="205.0" y="306.1" width="7.2" height="28.9" fill="#f58518"/>
+<rect class="bar as-parsed" x="215.8" y="302.9" width="7.2" height="32.1" fill="#4c78a8"/>
+<rect class="bar shared-table" x="223.0" y="304.3" width="7.2" height="30.7" fill="#f58518"/>
+<rect class="bar as-parsed" x="233.8" y="302.5" width="7.2" height="32.5" fill="#4c78a8"/>
+<rect class="bar shared-table" x="241.0" y="304.9" width="7.2" height="30.1" fill="#f58518"/>
+<rect class="bar as-parsed" x="251.8" y="303.0" width="7.2" height="32.0" fill="#4c78a8"/>
+<rect class="bar shared-table" x="259.0" y="304.3" width="7.2" height="30.7" fill="#f58518"/>
+<text x="259.0" y="351" text-anchor="middle">1990</text>
+<rect class="bar as-parsed" x="269.8" y="303.1" width="7.2" height="31.9" fill="#4c78a8"/>
+<rect class="bar shared-table" x="277.0" y="307.6" width="7.2" height="27.4" fill="#f58518"/>
+<rect class="bar as-parsed" x="287.8" y="304.8" width="7.2" height="30.2" fill="#4c78a8"/>
+<rect class="bar shared-table" x="295.0" y="305.7" width="7.2" height="29.3" fill="#f58518"/>
+<rect class="bar as-parsed" x="305.8" y="309.2" width="7.2" height="25.8" fill="#4c78a8"/>
+<rect class="bar shared-table" x="313.0" y="310.3" width="7.2" height="24.7" fill="#f58518"/>
+<rect class="bar as-parsed" x="323.8" y="305.6" width="7.2" height="29.4" fill="#4c78a8"/>
+<rect class="bar shared-table" x="331.0" y="307.0" width="7.2" height="28.0" fill="#f58518"/>
+<rect class="bar as-parsed" x="341.8" y="315.2" width="7.2" height="19.8" fill="#4c78a8"/>
+<rect class="bar shared-table" x="349.0" y="316.5" width="7.2" height="18.5" fill="#f58518"/>
+<text x="349.0" y="351" text-anchor="middle">1995</text>
+<rect class="bar as-parsed" x="359.8" y="305.4" width="7.2" height="29.6" fill="#4c78a8"/>
+<rect class="bar shared-table" x="367.0" y="307.1" width="7.2" height="27.9" fill="#f58518"/>
+<rect class="bar as-parsed" x="377.8" y="302.2" width="7.2" height="32.8" fill="#4c78a8"/>
+<rect class="bar shared-table" x="385.0" y="303.8" width="7.2" height="31.2" fill="#f58518"/>
+<rect class="bar as-parsed" x="395.8" y="295.0" width="7.2" height="40.0" fill="#4c78a8"/>
+<rect class="bar shared-table" x="403.0" y="297.1" width="7.2" height="37.9" fill="#f58518"/>
+<rect class="bar as-parsed" x="413.8" y="296.4" width="7.2" height="38.6" fill="#4c78a8"/>
+<rect class="bar shared-table" x="421.0" y="298.5" width="7.2" height="36.5" fill="#f58518"/>
+<rect class="bar as-parsed" x="431.8" y="293.8" width="7.2" height="41.2" fill="#4c78a8"/>
+<rect class="bar shared-table" x="439.0" y="296.0" width="7.2" height="39.0" fill="#f58518"/>
+<text x="439.0" y="351" text-anchor="middle">2000</text>
+<rect class="bar as-parsed" x="449.8" y="287.8" width="7.2" height="47.2" fill="#4c78a8"/>
+<rect class="bar shared-table" x="457.0" y="289.7" width="7.2" height="45.3" fill="#f58518"/>
+<rect class="bar as-parsed" x="467.8" y="284.8" width="7.2" height="50.2" fill="#4c78a8"/>
+<rect class="bar shared-table" x="475.0" y="286.6" width="7.2" height="48.4" fill="#f58518"/>
+<rect class="bar as-parsed" x="485.8" y="285.7" width="7.2" height="49.3" fill="#4c78a8"/>
+<rect class="bar shared-table" x="493.0" y="287.3" width="7.2" height="47.7" fill="#f58518"/>
+<rect class="bar as-parsed" x="503.8" y="276.6" width="7.2" height="58.4" fill="#4c78a8"/>
+<rect class="bar shared-table" x="511.0" y="279.3" width="7.2" height="55.7" fill="#f58518"/>
+<rect class="bar as-parsed" x="521.8" y="276.2" width="7.2" height="58.8" fill="#4c78a8"/>
+<rect class="bar shared-table" x="529.0" y="278.5" width="7.2" height="56.5" fill="#f58518"/>
+<text x="529.0" y="351" text-anchor="middle">2005</text>
+<rect class="bar as-parsed" x="539.8" y="263.3" width="7.2" height="71.7" fill="#4c78a8"/>
+<rect class="bar shared-table" x="547.0" y="269.7" width="7.2" height="65.3" fill="#f58518"/>
+<rect class="bar as-parsed" x="557.8" y="280.9" width="7.2" height="54.1" fill="#4c78a8"/>
+<rect class="bar shared-table" x="565.0" y="283.7" width="7.2" height="51.3" fill="#f58518"/>
+<rect class="bar as-parsed" x="575.8" y="285.4" width="7.2" height="49.6" fill="#4c78a8"/>
+<rect class="bar shared-table" x="583.0" y="288.7" width="7.2" height="46.3" fill="#f58518"/>
+<rect class="bar as-parsed" x="593.8" y="289.8" width="7.2" height="45.2" fill="#4c78a8"/>
+<rect class="bar shared-table" x="601.0" y="293.1" width="7.2" height="41.9" fill="#f58518"/>
+<rect class="bar as-parsed" x="611.8" y="284.4" width="7.2" height="50.6" fill="#4c78a8"/>
+<rect class="bar shared-table" x="619.0" y="286.9" width="7.2" height="48.1" fill="#f58518"/>
+<text x="619.0" y="351" text-anchor="middle">2010</text>
+<rect class="bar as-parsed" x="629.8" y="284.7" width="7.2" height="50.3" fill="#4c78a8"/>
+<rect class="bar shared-table" x="637.0" y="287.1" width="7.2" height="47.9" fill="#f58518"/>
+<rect class="bar as-parsed" x="647.8" y="277.7" width="7.2" height="57.3" fill="#4c78a8"/>
+<rect class="bar shared-table" x="655.0" y="280.7" width="7.2" height="54.3" fill="#f58518"/>
+<rect class="bar as-parsed" x="665.8" y="279.4" width="7.2" height="55.6" fill="#4c78a8"/>
+<rect class="bar shared-table" x="673.0" y="281.4" width="7.2" height="53.6" fill="#f58518"/>
+<rect class="bar as-parsed" x="683.8" y="175.3" width="7.2" height="159.7" fill="#4c78a8"/>
+<rect class="bar shared-table" x="691.0" y="279.3" width="7.2" height="55.7" fill="#f58518"/>
+<rect class="bar as-parsed" x="701.8" y="293.0" width="7.2" height="42.0" fill="#4c78a8"/>
+<rect class="bar shared-table" x="709.0" y="295.3" width="7.2" height="39.7" fill="#f58518"/>
+<text x="709.0" y="351" text-anchor="middle">2015</text>
+<rect class="bar as-parsed" x="719.8" y="284.8" width="7.2" height="50.2" fill="#4c78a8"/>
+<rect class="bar shared-table" x="727.0" y="296.1" width="7.2" height="38.9" fill="#f58518"/>
+<rect class="bar as-parsed" x="737.8" y="267.6" width="7.2" height="67.4" fill="#4c78a8"/>
+<rect class="bar shared-table" x="745.0" y="272.3" width="7.2" height="62.7" fill="#f58518"/>
+<rect class="bar as-parsed" x="755.8" y="264.3" width="7.2" height="70.7" fill="#4c78a8"/>
+<rect class="bar shared-table" x="763.0" y="268.8" width="7.2" height="66.2" fill="#f58518"/>
+<rect class="bar as-parsed" x="773.8" y="261.0" width="7.2" height="74.0" fill="#4c78a8"/>
+<rect class="bar shared-table" x="781.0" y="264.6" width="7.2" height="70.4" fill="#f58518"/>
+<rect class="bar as-parsed" x="791.8" y="271.8" width="7.2" height="63.2" fill="#4c78a8"/>
+<rect class="bar shared-table" x="799.0" y="273.7" width="7.2" height="61.3" fill="#f58518"/>
+<text x="799.0" y="351" text-anchor="middle">2020</text>
+<rect class="bar as-parsed" x="809.8" y="274.3" width="7.2" height="60.7" fill="#4c78a8"/>
+<rect class="bar shared-table" x="817.0" y="277.2" width="7.2" height="57.8" fill="#f58518"/>
+<rect class="bar as-parsed" x="827.8" y="278.9" width="7.2" height="56.1" fill="#4c78a8"/>
+<rect class="bar shared-table" x="835.0" y="281.4" width="7.2" height="53.6" fill="#f58518"/>
+<rect class="bar as-parsed" x="845.8" y="289.0" width="7.2" height="46.0" fill="#4c78a8"/>
+<rect class="bar shared-table" x="853.0" y="291.6" width="7.2" height="43.4" fill="#f58518"/>
+<rect class="bar as-parsed" x="863.8" y="298.9" width="7.2" height="36.1" fill="#4c78a8"/>
+<rect class="bar shared-table" x="871.0" y="300.8" width="7.2" height="34.2" fill="#f58518"/>
+<rect x="650" y="10" width="12" height="12" fill="#4c78a8"/>
+<text x="666" y="21">As parsed</text>
+<rect x="765" y="10" width="12" height="12" fill="#f58518"/>
+<text x="781" y="21">Shared table</text>
+</svg>

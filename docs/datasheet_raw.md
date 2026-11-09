@@ -3,13 +3,13 @@ data and writes docs/datasheet_raw.md. Edit the prose here, never the generated 
 
 # A raw table of U.S. newspaper opinion articles from ProQuest US Newsstream, 1980–2024
 
-Data descriptor, version 1.0 (2026-11-02). Companion to the cleaned dataset derived from this table.
+Data descriptor, version 1.1 (2026-11-08). Companion to the cleaned dataset derived from this table.
 
 ## Abstract
 
 The table holds 1,226,939 records exported from ProQuest US Newsstream for ten U.S.
-newspapers with the highest circulation, published 1980–2024, one record per
-ProQuest id. Each record keeps every metadata field of the export, the article text, parsed
+newspapers with the highest circulation, published 1980–2024, with no ProQuest id
+repeated. Each record keeps every metadata field of the export, the article text, parsed
 dates, years and identifiers with explicit quality flags, its file of origin, and a hash and
 word count of the text. Apart from repeated records and file footers, nothing was removed or
 corrected, so the table documents the source as delivered, including news items and
@@ -25,7 +25,7 @@ kept raw so that other researchers can derive their own samples from it.
 
 | | |
 |---|---|
-| Records | 1,226,939, one per ProQuest id |
+| Records | 1,226,939, no ProQuest id repeated |
 | Removed from the parsed table | 145,118 repeated ProQuest ids, 2,908 repeats of the same text under another id and 2,801 file footers (section 2.4) |
 | Export files | 2,801 |
 | Publication years | 1980–2024 |
@@ -135,7 +135,7 @@ read the CSV with a data-analysis library instead.
 - `reports/tables/raw_by_year.csv` and `reports/tables/raw_by_download_date.csv`: records and
   distinct ids per year, and counts and publication-year range per download date, all as
   parsed, before repeated ids were removed.
-- `reports/figures/records_by_year.svg`: Figure 1.
+- `reports/figures/records_by_year.svg` and `reports/figures/repeats_by_year.svg`: Figures 1 and 2.
 
 ## 4. Contents
 
@@ -185,19 +185,18 @@ read the CSV with a data-analysis library instead.
 
 ### 4.4 Years
 
-![Records and distinct ids per publication year](../reports/figures/records_by_year.svg)
+![Records per publication year in the shared table](../reports/figures/records_by_year.svg)
 
-*Figure 1.* Records and distinct ProQuest ids per publication year, as parsed, before repeated
-ids were removed.
+*Figure 1.* Records per publication year in the shared table.
 
-| Decade | Records | Unique ids | With author |
-|---|---|---|---|
-| 1980s | 119,060 | 119,060 | 46.9% |
-| 1990s | 204,941 | 204,941 | 40.9% |
-| 2000s | 349,167 | 349,167 | 36.4% |
-| 2010s | 377,239 | 377,239 | 54.4% |
-| 2020s | 175,626 | 175,626 | 71.2% |
-| Unknown year | 906 | 24 | 1.9% |
+| Decade | Records | With author |
+|---|---|---|
+| 1980s | 119,060 | 46.9% |
+| 1990s | 204,941 | 40.9% |
+| 2000s | 349,167 | 36.4% |
+| 2010s | 377,239 | 54.4% |
+| 2020s | 175,626 | 71.2% |
+| Unknown year | 906 | 1.9% |
 
 ### 4.5 Document types and authorship
 
@@ -299,12 +298,17 @@ The blog label:
 ### 5.2 Repeats
 
 Of 1,374,965 parsed records, 145,118 (10.6%) repeat a ProQuest id;
-1,226,057 ids are distinct. 100,661 ids appear in more than one file and
+1,228,965 ids are distinct. 100,661 ids appear in more than one file and
 0 repeat inside a file, which points to overlapping downloads.
-2014 stands out in Figure 1: 112,098 records but only
+2014 stands out in Figure 2: 112,098 records but only
 39,087 distinct ids, because its articles were downloaded repeatedly
 (69.1% of its ids appear in 3 or more files). The peak is duplication,
 not more articles.
+
+![Records per publication year, as parsed and in the shared table](../reports/figures/repeats_by_year.svg)
+
+*Figure 2.* Records per publication year as parsed and in the shared table. The gap is the repeats
+removed.
 
 Apart from stray spaces, the copies of an id agree on date, newspaper, author, section and
 document type. In 878 ids one copy has no body next to a copy with text,
