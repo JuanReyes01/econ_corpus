@@ -11,7 +11,7 @@ Data descriptor, version 1.0 (2026-11-09). Derived from the raw table described 
 
 The dataset holds 399,248 opinion articles signed by at least one person, published
 1980–2024 in ten U.S. newspapers with the highest circulation, and the
-86,657 authors who signed them. Articles and authors are separate tables joined by a
+86,648 authors who signed them. Articles and authors are separate tables joined by a
 link table, since an article can have several authors and an author many articles. The
 dataset is derived from 1,377,766 rows parsed from ProQuest US Newsstream exports by a
 sequence of exclusions, each row leaving for exactly one reason. Authors were read from the
@@ -28,12 +28,12 @@ queried newspapers, with an English text of at least 50 words, signed by a perso
 | | |
 |---|---|
 | Articles | 399,248 |
-| Authors | 86,657 |
-| Article–author links | 447,631 |
+| Authors | 86,648 |
+| Article–author links | 447,271 |
 | Newspapers | 10 |
 | Publication years | 1980–2024 |
-| Articles with one author | 93.1% |
-| Authors with one article | 51,646 (59.6%) |
+| Articles with one author | 93.2% |
+| Authors with one article | 51,650 (59.6%) |
 
 ## 2. Methods
 
@@ -118,8 +118,8 @@ give the shared raw table; the others leave only the cleaned dataset (Figure 1).
   author is a piece of that sentence. A name followed by a small word that may be a piece
   of it cut off by a stray space (`Jane Do e Roe`, `Jane Do rgan`) is not read: it goes
   to the manual review.
-- Of 447,631 links, 426,091 (95.2%) were read as
-  written, 16,404 were recovered and 5,136 come from the manual
+- Of 447,271 links, 425,732 (95.2%) were read as
+  written, 16,404 were recovered and 5,135 come from the manual
   review (section 2.4). Each link records how it was read.
 
 ### 2.3 Deciding that two names are one author
@@ -135,7 +135,7 @@ give the shared raw table; the others leave only the cleaned dataset (Figure 1).
   initial of the other, compared name by name) and they are linked through shared newspapers
   (two variants can be joined by a third that shares a newspaper with each). One
   contradiction among such names stops every merge among them.
-- **Result:** 90,705 name variants for 86,657 authors; 3,155 variants
+- **Result:** 90,696 name variants for 86,648 authors; 3,155 variants
   were merged by the rule and 893 by the manual review.
 - **Not merged:** 7,222 pairs of look-alike authors are listed, not merged
   (section 3.5).
@@ -149,7 +149,7 @@ its newspapers, its years and two headlines.
 
 | Reviewed | Cases | Outcome |
 |---|---|---|
-| Byline parts (ambiguous, holding a place or publication word, long, read by moving pieces around, possibly damaged, or read as nobody) | 7,214 | 3,349 corrected, 3,010 not a person, 766 kept as read, 89 unsure |
+| Byline parts (ambiguous, holding a place or publication word, long, read by moving pieces around, possibly damaged, or read as nobody) | 7,234 | 3,349 corrected, 3,010 not a person, 766 kept as read, 89 unsure, 20 production credits |
 | Pairs of look-alike authors with two or more articles each, or with one author of twenty or more; and pairs of name variants of one author that appear five or more years apart | 3,112 | 1,416 same person, 985 different, 711 unsure |
 
 - **Models:** most cases were decided by Claude Sonnet run as subagents; the rest, and the
@@ -172,6 +172,11 @@ its newspapers, its years and two headlines.
   the bylines as printed of each variant: 524 are one person, 53 are two (48 authors were
   split) and 156 were left unsure and stay merged. The second model read the 56 answers
   that split an author and changed three to unsure.
+- **Production credits:** the audio pieces of the opinion pages of the New York Times
+  (2020 to 2024) list their producers, editors and sound engineers after the host or the
+  essayist. Twenty such people were marked in round 11: each is an author when first in
+  a byline, since some also sign pieces of their own, and is left out after another name
+  (359 links).
 - **Retired decisions:** a decision that applies to no byline any more, because the rules
   that split bylines changed, is taken out of the review files and kept apart; the counts
   above are of the decisions in force. The set was checked for
@@ -276,19 +281,19 @@ Pairs of authors that look alike and are not merged.
 
 | Authors | Articles | Share |
 |---|---|---|
-| 1 | 371,836 | 93.1% |
-| 2 | 19,524 | 4.9% |
-| 3 | 2,967 | 0.7% |
-| 4 | 1,729 | 0.4% |
-| 5 or more | 3,192 | 0.8% |
+| 1 | 372,002 | 93.2% |
+| 2 | 19,407 | 4.9% |
+| 3 | 2,946 | 0.7% |
+| 4 | 1,728 | 0.4% |
+| 5 or more | 3,165 | 0.8% |
 
 ### 4.4 Articles per author
 
 | Articles | Authors | Share |
 |---|---|---|
-| 1 | 51,646 | 59.6% |
-| 2 to 9 | 30,328 | 35.0% |
-| 10 to 99 | 4,279 | 4.9% |
+| 1 | 51,650 | 59.6% |
+| 2 to 9 | 30,327 | 35.0% |
+| 10 to 99 | 4,267 | 4.9% |
 | 100 or more | 404 | 0.5% |
 
 ### 4.5 Most frequent authors
@@ -315,9 +320,9 @@ Pairs of authors that look alike and are not merged.
 
 | Read | Count | Share |
 |---|---|---|
-| as_written | 426,091 | 95.2% |
+| as_written | 425,732 | 95.2% |
 | recovered | 16,404 | 3.7% |
-| manual_review | 5,136 | 1.1% |
+| manual_review | 5,135 | 1.1% |
 
 ## 5. Technical validation
 
@@ -390,8 +395,9 @@ Pairs of authors that look alike and are not merged.
 - **Co-authors in lists:** a list of names that the rules cannot read whole gives its first
   name only. The last audit estimated 150 to 250 articles with a missing co-author before
   the rules for lists were widened; lists in other forms remain.
-- **Credits of podcasts and videos:** the people credited under a transcript (producers,
-  editors, a photographer) are read as authors when they are written like one.
+- **Credits of videos:** the makers of the opinion videos of the New York Times (from 2018
+  on) are listed after the person who speaks and are read as authors; the producers of
+  its audio pieces are not (section 2.4). Credits in other newspapers were not looked for.
 - **Readers' letters:** letters to the editor count as opinion, so many authors with one
   article are readers.
 - **One word is never a name:** pen names of one word and bylines cut to one word are lost.

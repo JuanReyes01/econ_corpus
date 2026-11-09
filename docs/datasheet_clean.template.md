@@ -135,7 +135,7 @@ its newspapers, its years and two headlines.
 
 | Reviewed | Cases | Outcome |
 |---|---|---|
-| Byline parts (ambiguous, holding a place or publication word, long, read by moving pieces around, possibly damaged, or read as nobody) | {{n_review_parts}} | {{n_parts_corrected}} corrected, {{n_parts_nobody}} not a person, {{n_parts_keep}} kept as read, {{n_parts_unsure}} unsure |
+| Byline parts (ambiguous, holding a place or publication word, long, read by moving pieces around, possibly damaged, or read as nobody) | {{n_review_parts}} | {{n_parts_corrected}} corrected, {{n_parts_nobody}} not a person, {{n_parts_keep}} kept as read, {{n_parts_unsure}} unsure, {{n_parts_credit}} production credits |
 | Pairs of look-alike authors with two or more articles each, or with one author of twenty or more; and pairs of name variants of one author that appear five or more years apart | {{n_review_pairs}} | {{n_pairs_same}} same person, {{n_pairs_different}} different, {{n_pairs_unsure}} unsure |
 
 - **Models:** most cases were decided by Claude Sonnet run as subagents; the rest, and the
@@ -158,6 +158,11 @@ its newspapers, its years and two headlines.
   the bylines as printed of each variant: 524 are one person, 53 are two (48 authors were
   split) and 156 were left unsure and stay merged. The second model read the 56 answers
   that split an author and changed three to unsure.
+- **Production credits:** the audio pieces of the opinion pages of the New York Times
+  (2020 to 2024) list their producers, editors and sound engineers after the host or the
+  essayist. Twenty such people were marked in round 11: each is an author when first in
+  a byline, since some also sign pieces of their own, and is left out after another name
+  (359 links).
 - **Retired decisions:** a decision that applies to no byline any more, because the rules
   that split bylines changed, is taken out of the review files and kept apart; the counts
   above are of the decisions in force. The set was checked for
@@ -308,8 +313,9 @@ Pairs of authors that look alike and are not merged.
 - **Co-authors in lists:** a list of names that the rules cannot read whole gives its first
   name only. The last audit estimated 150 to 250 articles with a missing co-author before
   the rules for lists were widened; lists in other forms remain.
-- **Credits of podcasts and videos:** the people credited under a transcript (producers,
-  editors, a photographer) are read as authors when they are written like one.
+- **Credits of videos:** the makers of the opinion videos of the New York Times (from 2018
+  on) are listed after the person who speaks and are read as authors; the producers of
+  its audio pieces are not (section 2.4). Credits in other newspapers were not looked for.
 - **Readers' letters:** letters to the editor count as opinion, so many authors with one
   article are readers.
 - **One word is never a name:** pen names of one word and bylines cut to one word are lost.
