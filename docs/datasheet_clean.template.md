@@ -99,7 +99,9 @@ give the shared raw table; the others leave only the cleaned dataset (Figure 1).
   (`Springfield, Jane Doe`) or the two names the wrong way round: then the name of the
   note is the one kept. Two names with different suffixes (`Sr`, `Jr`) are two people.
 - A note that someone did not write (`Jane Doe is on vacation.`, `Jane Doe contributed
-  reporting`) names nobody. `and` separates authors only after a name, not inside a sentence
+  reporting`) names nobody, and so does the line that says who compiled a piece (`Compiled
+  by Jane Doe`): a page of quotes, jokes or letters put together by someone has no author.
+  `and` separates authors only after a name, not inside a sentence
   about the first author, and a `Family, Given` piece after an unfinished sentence about an
   author is a piece of that sentence. A name followed by a small word that may be a piece
   of it cut off by a stray space (`Jane Do e Roe`, `Jane Do rgan`) is not read: it goes
@@ -287,7 +289,9 @@ Pairs of authors that look alike and are not merged.
 - **Unsigned opinion is absent:** {{n_no_author}} opinion pieces have no author, mostly
   editorials. They are in the raw table.
 - **Bylines that name nobody:** {{n_no_person_author}} articles, signed by an editorial
-  board, a publication or a role.
+  board, a publication or a role, or only by whoever compiled them. A compiled page is left
+  out when its byline says so; about twenty pages of jokes and quotes signed with the plain
+  name of their compiler stay.
 - **Authors may still be split:** of the {{n_candidates}} look-alike pairs,
   {{n_candidates_not_reviewed}} were not reviewed: one of the two authors has a single
   article and the other fewer than twenty. {{n_candidates_unsure}} were reviewed and left unsure.
