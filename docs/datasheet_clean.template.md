@@ -53,8 +53,8 @@ give the shared raw table; the others leave only the cleaned dataset (Figure 1).
   as news (`not_opinion`) or, when they have no section, as undecided (`unclear_opinion`).
 - **Newspapers:** the ten queried newspapers, print and online editions.
 - **Text and author:** an article needs body text and a byline that names at least one person.
-  A body carried by twenty or more different articles is a placeholder ("text not available"),
-  not text (`no_text`). ProQuest's "Anonymous" and missing bylines are unsigned (`no_author`);
+  A body under 100 words carried by five or more different articles (a title on a date) is a
+  notice or a credit ("text not available", a cartoon caption), not text (`no_text`). ProQuest's "Anonymous" and missing bylines are unsigned (`no_author`);
   a byline that names only an institution is `no_person_author`.
 
 ### 2.2 Reading the bylines
@@ -66,8 +66,15 @@ give the shared raw table; the others leave only the cleaned dataset (Figure 1).
   (Dr., Sen., State Rep) and degrees after it (MD, PhD) are dropped. One word is never taken as
   a name.
 - If a part does not read as a name, a full name at its start is recovered
-  (`Jane Doe. Springfield`, `Jane Doe is a columnist`), and co-authors that the export
-  scrambled are put back (`Doe, Jane Roe and Ann` is Jane Roe and Ann Doe).
+  (`Jane Doe. Springfield`, `Jane Doe is a columnist`), a name after the end of a note about
+  it too (`Committee., Jane Doe`), and co-authors that the export scrambled are put back
+  (`Doe, Jane Roe and Ann` is Jane Roe and Ann Doe).
+- Debris of the export is removed first: a label or `By` glued to the name
+  (`Jane DoeGuest essay`, `ByJane Doe`), a period glued to the next word (`Jane Q.Doe`) and
+  `and` that swallowed the start of a name (`andrew Roe` is `and Andrew Roe`).
+- A note that someone did not write (`Jane Doe is on vacation.`) names nobody. A name
+  followed by a small word that may be a piece of it cut off by a stray space
+  (`Jane Do e Roe`) is not read: it goes to the manual review.
 - Of {{n_links}} links, {{n_links_as_written}} ({{links_as_written_pct}}) were read as
   written, {{n_links_recovered}} were recovered and {{n_links_manual}} come from the manual
   review (section 2.4). Each link records how it was read.
@@ -95,16 +102,19 @@ its newspapers, its years and two headlines.
 
 | Reviewed | Cases | Outcome |
 |---|---|---|
-| Byline parts (ambiguous, holding a place or publication word, or read as nobody) | {{n_review_parts}} | {{n_parts_corrected}} corrected, {{n_parts_nobody}} not a person, {{n_parts_keep}} kept as read, {{n_parts_unsure}} unsure |
+| Byline parts (ambiguous, holding a place or publication word, long, read by moving pieces around, possibly damaged, or read as nobody) | {{n_review_parts}} | {{n_parts_corrected}} corrected, {{n_parts_nobody}} not a person, {{n_parts_keep}} kept as read, {{n_parts_unsure}} unsure |
 | Pairs of look-alike authors with two or more articles each | {{n_review_pairs}} | {{n_pairs_same}} same person, {{n_pairs_different}} different, {{n_pairs_unsure}} unsure |
 
 - **Models:** most cases were decided by Claude Sonnet run as subagents; the rest, and the
   checks, by Claude Fable 5.1. The reviewer of every decision is recorded in the review files.
-- **Checks:** random samples of the decisions of the first and third rounds (about 175) were
-  read again by a second model, which rewrote two suffixes and changed no decision; an
-  independent audit of the output then found credits of interviewers and illustrators taken as
-  authors, which were corrected. The set was checked for contradictions. The rounds are
-  described in the README of the review files.
+- **Checks:** random samples of the decisions of rounds 1, 3 and 4 (about 235) were read
+  again by a second model, which rewrote two suffixes and changed no decision; an independent
+  audit of the output then found credits of interviewers, illustrators and photographers
+  taken as authors, and 31 corrections were changed. In round 5 the second model read every
+  answer other than "not a person" (294) and changed four. The set was checked for
+  contradictions. The rounds are described in the README of the review files.
+- **Evidence for damaged names:** a name with a lone small letter (`Doe, Jan e`) was
+  corrected from the spelling of the same name in other bylines, when there was one.
 - **How decisions are applied:** they are data read by the pipeline, never edits to the
   rules. A corrected byline and a merge by review are marked `manual_review`. A pair judged
   different is never merged by the rule. A pair judged unsure is left to the rule: it stays
@@ -201,11 +211,13 @@ Pairs of authors that look alike and are not merged.
 - **Keys:** every article has its own ProQuest id; every link points to an article and an
   author that exist; every article has at least one author. The build stops otherwise.
 - **Reasons:** they are matched to the records by file and position in the file, and the
-  counts per reason add up to the rows parsed.
+  counts per reason add up to the rows parsed. The reasons carry a fingerprint of the columns
+  they were decided from, so reasons computed before a new parse are refused.
 - **Review:** a review file with a repeated case, an unknown verdict or an unreadable
   correction stops the build, and so does a pair judged different that ends up merged. The
-  reasons carry a fingerprint of the corrections they were computed with, and the tables and
-  this document refuse reasons computed with other corrections.
+  reasons carry a fingerprint of the corrections they were computed with, and the tables carry
+  the fingerprints of the reasons and of both review files (`manifest.json`); this document
+  and the lists of cases refuse tables built from other inputs.
 - **Look-alike authors left apart** (kind / review):
 
 {{candidate_kinds}}
@@ -224,7 +236,14 @@ Pairs of authors that look alike and are not merged.
 - **Readers' letters:** letters to the editor count as opinion, so many authors with one
   article are readers.
 - **One word is never a name:** pen names of one word and bylines cut to one word are lost.
-- **Subtler duplicates** (reprints, edited versions under another title) are not detected.
+- **Subtler duplicates** (reprints, edited versions under another title, the print and
+  online editions of one article under different titles or dates) are not detected.
+- **Language:** a small share of the articles (about 0.4%, estimated once from the text) is
+  in Spanish, mostly from online editions, although ProQuest labels them English.
+- **Cartoons and very short items** signed by a person are kept when their body is not a
+  notice shared by several articles.
+- **Opinion is taken from ProQuest's labels:** a few arts reviews and news analyses filed
+  under an opinion label are in, and opinion columns filed under a news section are out.
 
 ## 7. Code availability
 

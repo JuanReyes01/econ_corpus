@@ -4,7 +4,7 @@ Build and audit a corpus of U.S. newspaper opinion articles (ProQuest) to study 
 
 ## Code rules (the owner wants to understand every change)
 
-1. One module per pipeline stage in `econ_corpus/` (for example `parse`, `audit`, `exclusions`). Aim for under 200 lines each. Pure functions, with tests.
+1. One module per pipeline stage in `econ_corpus/` (for example `parse`, `exclusions`, `processed`). Aim for under 200 lines each. Pure functions, with tests.
 2. Notebooks only call package functions and show results. No logic in notebooks.
 3. Exclusion reasons live in one place, as data (a reasons table), not scattered across code. Each article gets exactly one reason, so counts add up.
 4. Every filter or rule is recorded in `docs/decisions.md` with its reason.

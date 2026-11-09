@@ -71,11 +71,13 @@ kept raw so that other researchers can derive their own samples from it.
 
 ### 2.3 Quality control
 
-- Per file, the records found are compared with the separator lines counted independently: all
-  {{n_files}} files contain one footer and as many records as separators.
-- The detection of the `Materia` line was cross-checked against a plain text search on one in
-  ten files, with no disagreement (details in `docs/decisions.md`). The cross-check found and
-  fixed a parsing gap that had hidden `Materia` in 3.9% of records.
+- Per file, the records found are compared with the separator lines counted independently, and
+  the table is written only if every file has one footer and as many records as separators.
+  All {{n_files}} files passed.
+- The detection of the `Materia` line was cross-checked once, outside the pipeline, against a
+  plain text search on one in ten files, with no disagreement (details in
+  `docs/decisions.md`). The cross-check found and fixed a parsing gap that had hidden
+  `Materia` in 3.9% of records.
 - Tests use synthetic records only, and every rule is logged with its evidence in
   `docs/decisions.md`.
 

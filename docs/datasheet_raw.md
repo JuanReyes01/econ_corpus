@@ -71,11 +71,13 @@ kept raw so that other researchers can derive their own samples from it.
 
 ### 2.3 Quality control
 
-- Per file, the records found are compared with the separator lines counted independently: all
-  2,801 files contain one footer and as many records as separators.
-- The detection of the `Materia` line was cross-checked against a plain text search on one in
-  ten files, with no disagreement (details in `docs/decisions.md`). The cross-check found and
-  fixed a parsing gap that had hidden `Materia` in 3.9% of records.
+- Per file, the records found are compared with the separator lines counted independently, and
+  the table is written only if every file has one footer and as many records as separators.
+  All 2,801 files passed.
+- The detection of the `Materia` line was cross-checked once, outside the pipeline, against a
+  plain text search on one in ten files, with no disagreement (details in
+  `docs/decisions.md`). The cross-check found and fixed a parsing gap that had hidden
+  `Materia` in 3.9% of records.
 - Tests use synthetic records only, and every rule is logged with its evidence in
   `docs/decisions.md`.
 
@@ -177,12 +179,12 @@ read the CSV with a data-analysis library instead.
 
 | Document type | Blog-labelled records | Share of blog-labelled |
 |---|---|---|
-| News | 187,420 | 49.8% |
-| Opinions | 142,548 | 37.9% |
-| Commentary | 52,706 | 14.0% |
-| Editorial | 49,769 | 13.2% |
-| Letter To The Editor | 242 | 0.1% |
-| New s | 116 | 0.0% |
+| News | 187,645 | 49.8% |
+| Opinions | 143,115 | 38.0% |
+| Commentary | 52,955 | 14.1% |
+| Editorial | 50,133 | 13.3% |
+| Letter To The Editor | 244 | 0.1% |
+| Obituary | 73 | 0.0% |
 
 ### 4.4 Years
 
@@ -206,18 +208,18 @@ op-eds mostly signed.
 
 | Document type | Records | With author |
 |---|---|---|
-| News | 334,226 | 43.6% |
-| Editorial | 275,482 | 24.0% |
-| NEWSPAPER | 266,015 | 44.6% |
-| Opinions | 236,229 | 58.2% |
-| Commentary | 212,130 | 88.5% |
-| Op-Ed | 8,835 | 94.6% |
-| OP-ED | 6,044 | 94.6% |
-| EDITORIAL | 5,603 | 1.4% |
-| Opinion | 5,119 | 87.3% |
-| Letter To The Editor | 2,677 | 0.1% |
-| editorial | 2,484 | 1.8% |
-| Opinion Piece | 2,287 | 98.3% |
+| News | 335,173 | 43.6% |
+| Editorial | 285,685 | 23.2% |
+| NEWSPAPER | 267,133 | 44.4% |
+| Opinions | 237,026 | 58.2% |
+| Commentary | 212,803 | 88.5% |
+| Op-Ed | 18,370 | 93.0% |
+| Opinion | 5,402 | 87.5% |
+| Opinion Piece | 3,495 | 98.1% |
+| Letter To The Editor | 2,687 | 0.1% |
+| EPG | 1,568 | 24.6% |
+| Column | 1,558 | 88.3% |
+| OP | 659 | 98.0% |
 
 ### 4.6 Sections
 
@@ -225,18 +227,18 @@ Top labels, grouped ignoring case. Each newspaper names its sections differently
 
 | Section | Records | Share |
 |---|---|---|
-| opinion | 383,596 | 31.3% |
-| editorial | 112,459 | 9.2% |
-| a | 108,337 | 8.8% |
-| editorial-opinion | 76,542 | 6.2% |
-| opinions | 52,325 | 4.3% |
-| op/ed | 36,991 | 3.0% |
-| news | 32,570 | 2.7% |
-| editorial page | 22,914 | 1.9% |
-| editorial - opinion | 21,099 | 1.7% |
-| op-ed | 17,909 | 1.5% |
-| california metro; part b; editorial pages desk | 16,498 | 1.3% |
-| main news; part a; editorial desk | 12,490 | 1.0% |
+| opinion | 384,412 | 31.3% |
+| EDITORIAL | 112,591 | 9.2% |
+| A | 108,337 | 8.8% |
+| EDITORIAL-OPINION | 98,272 | 8.0% |
+| Opinions | 52,476 | 4.3% |
+| OP/ED | 36,993 | 3.0% |
+| NEWS | 32,594 | 2.7% |
+| EDITORIAL PAGE | 22,915 | 1.9% |
+| Op-Ed | 20,369 | 1.7% |
+| California Metro; Part B; Editorial Pages Desk | 16,533 | 1.3% |
+| Main News; Part A; Editorial Desk | 12,599 | 1.0% |
+| SPORTS | 11,769 | 1.0% |
 
 ### 4.7 Language
 
@@ -325,7 +327,7 @@ so repeats among them stay.
 ### 5.3 News and opinion
 
 Document type is not a reliable marker of opinion. 36.3% of
-records have a non-opinion label but sit in an opinion section, and 150,950
+records have a non-opinion label but sit in an opinion section, and 150,914
 (12.3%) have neither an opinion label nor an opinion section. All are kept in
 the raw table.
 

@@ -31,27 +31,27 @@
 <text x="145.0" y="385" text-anchor="middle" fill="#333333">1,213,558</text>
 <line x1="145.0" x2="145.0" y1="400" y2="422" stroke="#333333"/>
 <line x1="145.0" x2="322" y1="411" y2="411" stroke="#333333"/>
-<text class="removed" x="330" y="415"><tspan fill="#f58518" font-weight="bold">− 125,276</tspan>  not_opinion: A news section, and neither an opinion document type nor an opinion title</text>
+<text class="removed" x="330" y="415"><tspan fill="#f58518" font-weight="bold">− 125,240</tspan>  not_opinion: A news section, and neither an opinion document type nor an opinion title</text>
 <rect class="remaining" x="30" y="422" width="230" height="40" fill="#ffffff" stroke="#4c78a8"/>
-<text x="145.0" y="447" text-anchor="middle" fill="#333333">1,088,282</text>
+<text x="145.0" y="447" text-anchor="middle" fill="#333333">1,088,318</text>
 <line x1="145.0" x2="145.0" y1="462" y2="484" stroke="#333333"/>
 <line x1="145.0" x2="322" y1="473" y2="473" stroke="#333333"/>
 <text class="removed" x="330" y="477"><tspan fill="#f58518" font-weight="bold">− 11,149</tspan>  unclear_opinion: Generic document type, no section and no opinion title: may be opinion</text>
 <rect class="remaining" x="30" y="484" width="230" height="40" fill="#ffffff" stroke="#4c78a8"/>
-<text x="145.0" y="509" text-anchor="middle" fill="#333333">1,077,133</text>
+<text x="145.0" y="509" text-anchor="middle" fill="#333333">1,077,169</text>
 <line x1="145.0" x2="145.0" y1="524" y2="546" stroke="#333333"/>
 <line x1="145.0" x2="322" y1="535" y2="535" stroke="#333333"/>
-<text class="removed" x="330" y="539"><tspan fill="#f58518" font-weight="bold">− 4,185</tspan>  no_text: Opinion piece with no body text, or a placeholder shared by many records</text>
+<text class="removed" x="330" y="539"><tspan fill="#f58518" font-weight="bold">− 4,420</tspan>  no_text: Opinion piece with no text, or only a notice shared by several articles</text>
 <rect class="remaining" x="30" y="546" width="230" height="40" fill="#ffffff" stroke="#4c78a8"/>
-<text x="145.0" y="571" text-anchor="middle" fill="#333333">1,072,948</text>
+<text x="145.0" y="571" text-anchor="middle" fill="#333333">1,072,749</text>
 <line x1="145.0" x2="145.0" y1="586" y2="608" stroke="#333333"/>
 <line x1="145.0" x2="322" y1="597" y2="597" stroke="#333333"/>
-<text class="removed" x="330" y="601"><tspan fill="#f58518" font-weight="bold">− 659,374</tspan>  no_author: Opinion piece that is unsigned or marked Anonymous</text>
+<text class="removed" x="330" y="601"><tspan fill="#f58518" font-weight="bold">− 659,275</tspan>  no_author: Opinion piece that is unsigned or marked Anonymous</text>
 <rect class="remaining" x="30" y="608" width="230" height="40" fill="#ffffff" stroke="#4c78a8"/>
-<text x="145.0" y="633" text-anchor="middle" fill="#333333">413,574</text>
+<text x="145.0" y="633" text-anchor="middle" fill="#333333">413,474</text>
 <line x1="145.0" x2="145.0" y1="648" y2="670" stroke="#333333"/>
 <line x1="145.0" x2="322" y1="659" y2="659" stroke="#333333"/>
-<text class="removed" x="330" y="663"><tspan fill="#f58518" font-weight="bold">− 11,076</tspan>  no_person_author: Byline names no person (an institution, or text with no full name)</text>
+<text class="removed" x="330" y="663"><tspan fill="#f58518" font-weight="bold">− 11,113</tspan>  no_person_author: Byline names no person (an institution, or text with no full name)</text>
 <rect class="remaining" x="30" y="670" width="230" height="40" fill="#4c78a8" stroke="#4c78a8"/>
-<text x="145.0" y="695" text-anchor="middle" fill="#ffffff">Cleaned dataset: 402,498</text>
+<text x="145.0" y="695" text-anchor="middle" fill="#ffffff">Cleaned dataset: 402,361</text>
 </svg>
