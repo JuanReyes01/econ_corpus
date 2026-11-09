@@ -354,8 +354,9 @@ Pairs of authors that look alike and are not merged.
   a long page of credits and links stays; and a letter of fewer than 30 words is left out.
 - **Opinion is taken from ProQuest's labels:** a few arts reviews and news analyses filed
   under an opinion label are in, and opinion columns filed under a news section are out,
-  unless the first line of their text is the rubric of the opinion page of USA Today; no
-  other rubric was looked for. Records with no section and a generic
+  unless the first line of their text is the rubric of the opinion page of USA Today. The
+  one other rubric found, that of its sports debate page of 1991 to 1993 (`OPINIONS ACROSS
+  THE USA IN SPORTS`, 64 signed pieces), is left out. Records with no section and a generic
   document type are left out as undecided
   (`unclear_opinion`); an audit of 100 of them found four signed op-eds, mostly of the Wall
   Street Journal before 1998.
