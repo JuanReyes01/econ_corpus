@@ -63,10 +63,12 @@ give the shared raw table; the others leave only the cleaned dataset (Figure 1).
   A body under 100 words carried by five or more different articles (a title on a date) is a
   notice or a credit ("text not available", a cartoon caption), not text (`no_text`). ProQuest's "Anonymous" and missing bylines are unsigned (`no_author`);
   a byline that names only an institution is `no_person_author`, and so is a page compiled
-  from the words of others, told by its byline (`Compiled by ...`) or by its heading
+  from the words of others, told by its byline (`Compiled by ...`), by its heading
   (`Punchlines`, `Best of Late Night`, `In Other Words: A sampling of opinions`, `Editorials
-  elsewhere`). The round-up of late-night jokes of USA Today often has no heading: there, a
-  piece under 300 words whose title names a late-night comedian or show is that page.
+  elsewhere`, `What others are saying`, `In quotes`) or by the frame of a weekly poll on the
+  tweets of others in its text. The round-up of late-night jokes of USA Today often has no
+  heading: there, a piece under 300 words whose title names a late-night comedian or show
+  is that page.
 - **A text to read:** a signed opinion piece needs at least 30 words written by its author
   (`short_or_cartoon` otherwise). The text stored for a drawing, a photograph or a gallery
   is not empty: the export adds the credit and the description of the image, and the
@@ -301,7 +303,8 @@ Pairs of authors that look alike and are not merged.
   editorials. They are in the raw table.
 - **No person as author:** {{n_no_person_author}} articles, signed by an editorial board, a
   publication or a role, or compiled from the words of others. A compiled page is left out
-  when its byline or its heading says so; pages under headings not listed may stay. The
+  when its byline, its heading or the frame of a poll in its text says so; pages under
+  headings not listed may stay. The
   rule for the pages of USA Today with no heading goes by the names in the title, so a short
   piece of that newspaper about a person of the same family name would be left out too; no
   such piece was found among the 173 it leaves out.

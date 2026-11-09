@@ -9,9 +9,9 @@ Data descriptor, version 1.0 (2026-11-09). Derived from the raw table described 
 
 ## Abstract
 
-The dataset holds 399,252 opinion articles signed by at least one person, published
+The dataset holds 399,183 opinion articles signed by at least one person, published
 1980–2024 in ten U.S. newspapers with the highest circulation, and the
-86,758 authors who signed them. Articles and authors are separate tables joined by a
+86,752 authors who signed them. Articles and authors are separate tables joined by a
 link table, since an article can have several authors and an author many articles. The
 dataset is derived from 1,377,766 rows parsed from ProQuest US Newsstream exports by a
 sequence of exclusions, each row leaving for exactly one reason. Authors were read from the
@@ -28,13 +28,13 @@ by a person.
 
 | | |
 |---|---|
-| Articles | 399,252 |
-| Authors | 86,758 |
-| Article–author links | 447,267 |
+| Articles | 399,183 |
+| Authors | 86,752 |
+| Article–author links | 447,197 |
 | Newspapers | 10 |
 | Publication years | 1980–2024 |
 | Articles with one author | 93.2% |
-| Authors with one article | 51,742 (59.6%) |
+| Authors with one article | 51,741 (59.6%) |
 
 ## 2. Methods
 
@@ -59,9 +59,9 @@ give the shared raw table; the others leave only the cleaned dataset (Figure 1).
 | unclear_opinion | Generic document type, no section and no opinion title: may be opinion | 11,079 | 1,050,700 |
 | no_text | Opinion piece with no text, or only a notice shared by several articles | 4,426 | 1,046,274 |
 | no_author | Opinion piece that is unsigned or marked Anonymous | 632,425 | 413,849 |
-| no_person_author | No person as author: an institution, no full name, or a compiled page | 11,596 | 402,253 |
-| short_or_cartoon | Signed opinion piece with under 30 words written by its author | 1,484 | 400,769 |
-| not_english | Signed opinion piece whose text is not in English (mostly Spanish) | 1,517 | 399,252 |
+| no_person_author | No person as author: an institution, no full name, or a compiled page | 11,678 | 402,171 |
+| short_or_cartoon | Signed opinion piece with under 30 words written by its author | 1,471 | 400,700 |
+| not_english | Signed opinion piece whose text is not in English (mostly Spanish) | 1,517 | 399,183 |
 
 - **Opinion:** a record is opinion if its document type, its section or its title marks it
   as commentary, editorial, op-ed or letters, or if its text starts with the rubric that
@@ -77,10 +77,12 @@ give the shared raw table; the others leave only the cleaned dataset (Figure 1).
   A body under 100 words carried by five or more different articles (a title on a date) is a
   notice or a credit ("text not available", a cartoon caption), not text (`no_text`). ProQuest's "Anonymous" and missing bylines are unsigned (`no_author`);
   a byline that names only an institution is `no_person_author`, and so is a page compiled
-  from the words of others, told by its byline (`Compiled by ...`) or by its heading
+  from the words of others, told by its byline (`Compiled by ...`), by its heading
   (`Punchlines`, `Best of Late Night`, `In Other Words: A sampling of opinions`, `Editorials
-  elsewhere`). The round-up of late-night jokes of USA Today often has no heading: there, a
-  piece under 300 words whose title names a late-night comedian or show is that page.
+  elsewhere`, `What others are saying`, `In quotes`) or by the frame of a weekly poll on the
+  tweets of others in its text. The round-up of late-night jokes of USA Today often has no
+  heading: there, a piece under 300 words whose title names a late-night comedian or show
+  is that page.
 - **A text to read:** a signed opinion piece needs at least 30 words written by its author
   (`short_or_cartoon` otherwise). The text stored for a drawing, a photograph or a gallery
   is not empty: the export adds the credit and the description of the image, and the
@@ -131,8 +133,8 @@ give the shared raw table; the others leave only the cleaned dataset (Figure 1).
   author is a piece of that sentence. A name followed by a small word that may be a piece
   of it cut off by a stray space (`Jane Do e Roe`, `Jane Do rgan`) is not read: it goes
   to the manual review.
-- Of 447,267 links, 425,549 (95.1%) were read as
-  written, 16,761 were recovered and 4,957 come from the manual
+- Of 447,197 links, 425,496 (95.1%) were read as
+  written, 16,752 were recovered and 4,949 come from the manual
   review (section 2.4). Each link records how it was read.
 
 ### 2.3 Deciding that two names are one author
@@ -148,7 +150,7 @@ give the shared raw table; the others leave only the cleaned dataset (Figure 1).
   initial of the other, compared name by name) and they are linked through shared newspapers
   (two variants can be joined by a third that shares a newspaper with each). One
   contradiction among such names stops every merge among them.
-- **Result:** 90,816 name variants for 86,758 authors; 3,162 variants
+- **Result:** 90,809 name variants for 86,752 authors; 3,161 variants
   were merged by the rule and 896 by the manual review.
 - **Not merged:** 7,235 pairs of look-alike authors are listed, not merged
   (section 3.5).
@@ -272,30 +274,30 @@ Pairs of authors that look alike and are not merged.
 | Los Angeles Times | 58,308 | 32,976 | 9,871 | 15,461 | 14.6% |
 | Boston Globe | 41,180 | 23,312 | 5,726 | 12,142 | 10.3% |
 | Wall Street Journal | 37,399 | 1,942 | 35,457 | 0 | 9.4% |
-| Newsday | 20,487 | 20,487 | 0 | 0 | 5.1% |
-| Chicago Tribune | 19,639 | 4,292 | 11,883 | 3,464 | 4.9% |
+| Newsday | 20,484 | 20,484 | 0 | 0 | 5.1% |
+| Chicago Tribune | 19,573 | 4,252 | 11,857 | 3,464 | 4.9% |
 | USA Today | 18,596 | 2,889 | 15,410 | 297 | 4.7% |
 | Tampa Bay Times | 1,525 | 98 | 1,427 | 0 | 0.4% |
 | Star Tribune | 476 | 476 | 0 | 0 | 0.1% |
-| Total | 399,252 | 203,056 | 153,934 | 42,262 | 100.0% |
+| Total | 399,183 | 203,013 | 153,908 | 42,262 | 100.0% |
 
 ### 4.2 Decades
 
 | Decade | Articles | Share |
 |---|---|---|
 | 1980s | 30,887 | 7.7% |
-| 1990s | 49,280 | 12.3% |
-| 2000s | 74,532 | 18.7% |
-| 2010s | 130,791 | 32.8% |
-| 2020s | 113,747 | 28.5% |
+| 1990s | 49,277 | 12.3% |
+| 2000s | 74,502 | 18.7% |
+| 2010s | 130,756 | 32.8% |
+| 2020s | 113,746 | 28.5% |
 | Unknown year | 15 | 0.0% |
 
 ### 4.3 Authors per article
 
 | Authors | Articles | Share |
 |---|---|---|
-| 1 | 372,012 | 93.2% |
-| 2 | 19,402 | 4.9% |
+| 1 | 371,944 | 93.2% |
+| 2 | 19,401 | 4.9% |
 | 3 | 2,946 | 0.7% |
 | 4 | 1,727 | 0.4% |
 | 5 or more | 3,165 | 0.8% |
@@ -304,8 +306,8 @@ Pairs of authors that look alike and are not merged.
 
 | Articles | Authors | Share |
 |---|---|---|
-| 1 | 51,742 | 59.6% |
-| 2 to 9 | 30,346 | 35.0% |
+| 1 | 51,741 | 59.6% |
+| 2 to 9 | 30,341 | 35.0% |
 | 10 to 99 | 4,267 | 4.9% |
 | 100 or more | 403 | 0.5% |
 
@@ -317,14 +319,14 @@ Pairs of authors that look alike and are not merged.
 | George F Will | 3,874 |
 | Paul Krugman | 3,514 |
 | EJ Dionne Jr | 3,060 |
-| David Ignatius | 2,690 |
+| David Ignatius | 2,689 |
 | Ellen Goodman | 2,561 |
 | Nicholas Kristof | 2,369 |
 | Thomas L Friedman | 2,366 |
 | Jeff Jacoby | 2,351 |
 | Maureen Dowd | 2,301 |
 | James Freeman | 2,292 |
-| Richard Cohen | 2,272 |
+| Richard Cohen | 2,271 |
 | David S Broder | 2,225 |
 | Joan Vennochi | 2,144 |
 | Paul Waldman | 2,135 |
@@ -333,9 +335,9 @@ Pairs of authors that look alike and are not merged.
 
 | Read | Count | Share |
 |---|---|---|
-| as_written | 425,549 | 95.1% |
-| recovered | 16,761 | 3.7% |
-| manual_review | 4,957 | 1.1% |
+| as_written | 425,496 | 95.1% |
+| recovered | 16,752 | 3.7% |
+| manual_review | 4,949 | 1.1% |
 
 ## 5. Technical validation
 
@@ -381,9 +383,10 @@ Pairs of authors that look alike and are not merged.
 
 - **Unsigned opinion is absent:** 632,425 opinion pieces have no author, mostly
   editorials. They are in the raw table.
-- **No person as author:** 11,596 articles, signed by an editorial board, a
+- **No person as author:** 11,678 articles, signed by an editorial board, a
   publication or a role, or compiled from the words of others. A compiled page is left out
-  when its byline or its heading says so; pages under headings not listed may stay. The
+  when its byline, its heading or the frame of a poll in its text says so; pages under
+  headings not listed may stay. The
   rule for the pages of USA Today with no heading goes by the names in the title, so a short
   piece of that newspaper about a person of the same family name would be left out too; no
   such piece was found among the 173 it leaves out.
