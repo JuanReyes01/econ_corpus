@@ -23,19 +23,13 @@ import pyarrow.compute as pc
 import pyarrow.csv as pacsv
 import pyarrow.parquet as pq
 
-from econ_corpus import (
-    authors,
-    datasheet,
-    identity,
-    lookalikes,
-    manifest,
-    reasons,
-    review,
-    summaries,
-)
-from econ_corpus.authors import Name
-from econ_corpus.bylines import read_byline
-from econ_corpus.tables import Table
+from econ_corpus.clean import manifest
+from econ_corpus.names import authors, identity, lookalikes, review
+from econ_corpus.names.authors import Name
+from econ_corpus.names.bylines import read_byline
+from econ_corpus.raw import reasons
+from econ_corpus.shared import summaries
+from econ_corpus.shared.tables import Table, write_csv
 
 BATCH_SIZE = 20_000  # rows per batch when streaming the articles
 Corrections = dict[str, str]
@@ -191,7 +185,7 @@ def build(
     out_dir.mkdir(parents=True, exist_ok=True)
     manifest.clear(out_dir)  # until the last table is written, the folder is not a dataset
     for name, table in tables.items():
-        datasheet.write_csv(table, out_dir / f"{name}.csv")
+        write_csv(table, out_dir / f"{name}.csv")
     _write_articles(records, kept, out_dir / "articles.csv", batch_size)
     manifest.write(out_dir, records, reasons_file, review_dir)
     counts = {name: len(table) - 1 for name, table in tables.items() if name != "author_names"}

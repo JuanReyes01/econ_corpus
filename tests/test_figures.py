@@ -1,6 +1,6 @@
-"""Tests for econ_corpus.figures."""
+"""Tests for econ_corpus.shared.figures."""
 
-from econ_corpus import figures
+from econ_corpus.shared import figures
 
 PAIR = ("Records", "Distinct ids")
 TITLE = "Records per year"

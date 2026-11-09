@@ -19,8 +19,11 @@ import sys
 import pyarrow as pa
 import pyarrow.csv as pacsv
 
-from econ_corpus import clean_tables, datasheet, figures, manifest, review, summaries, tables
-from econ_corpus.reasons import LEFT_OUT, REASONS, load
+from econ_corpus.clean import clean_tables, manifest
+from econ_corpus.names import review
+from econ_corpus.raw import datasheet
+from econ_corpus.raw.reasons import LEFT_OUT, REASONS, load
+from econ_corpus.shared import figures, summaries, tables
 
 Rows = list[dict[str, str]]
 AUTHORS_PER_ARTICLE = [("1", 1, 1), ("2", 2, 2), ("3", 3, 3), ("4", 4, 4), ("5 or more", 5, None)]
@@ -177,7 +180,7 @@ def build(  # noqa: PLR0913 (one argument per input or output file)
     out_md.write_text(
         datasheet.fill(template.read_text(encoding="utf-8"), values), encoding="utf-8"
     )
-    datasheet.write_csv(shown["flow"], tables_dir / "clean_flow.csv")
+    tables.write_csv(shown["flow"], tables_dir / "clean_flow.csv")
     figures_dir.mkdir(parents=True, exist_ok=True)
     steps = clean_tables.flow(inputs.reasons)
     chart = figures.flow_svg(steps, start=len(inputs.reasons), heading=HEADING)

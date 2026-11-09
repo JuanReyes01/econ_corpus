@@ -19,8 +19,8 @@ from pathlib import Path
 
 import pyarrow.parquet as pq
 
-from econ_corpus import authors
-from econ_corpus.bylines import CREDIT
+from econ_corpus.names import authors
+from econ_corpus.names.bylines import CREDIT
 
 PARTS_FILE, PAIRS_FILE = "byline_parts.csv", "author_pairs.csv"
 STAMP = "byline_parts"  # metadata key of the reasons file that holds the fingerprint

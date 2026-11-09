@@ -1,8 +1,8 @@
-"""Tests for econ_corpus.pdf (the HTML page only; the browser is not run)."""
+"""Tests for econ_corpus.shared.pdf (the HTML page only; the browser is not run)."""
 
 from pathlib import Path
 
-from econ_corpus import pdf
+from econ_corpus.shared import pdf
 
 DOCS = Path("/srv/docs")
 

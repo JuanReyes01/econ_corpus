@@ -12,9 +12,9 @@ from collections import Counter
 from collections.abc import Iterable
 from typing import NamedTuple
 
-from econ_corpus import summaries
-from econ_corpus.reasons import REASONS
-from econ_corpus.tables import Table
+from econ_corpus.raw.reasons import REASONS
+from econ_corpus.shared import summaries
+from econ_corpus.shared.tables import Table
 
 EDITIONS = ["print", "online", "pre-1997"]
 Bin = tuple[str, int, int | None]  # label, lowest value, highest value (None for no limit)

@@ -1,6 +1,6 @@
-"""Tests for econ_corpus.clean_tables on tiny synthetic inputs."""
+"""Tests for econ_corpus.clean.clean_tables on tiny synthetic inputs."""
 
-from econ_corpus import clean_tables
+from econ_corpus.clean import clean_tables
 
 REASONS = ["kept", "kept", "file_footer", "no_author", "duplicate_id", "not_opinion", "kept"]
 

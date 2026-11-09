@@ -1,4 +1,4 @@
-"""Tests for econ_corpus.processed on tiny synthetic tables (made-up names, no article text)."""
+"""Tests for econ_corpus.clean.processed on tiny synthetic tables (made-up names, no text)."""
 
 import csv
 from pathlib import Path
@@ -7,8 +7,10 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 
-from econ_corpus import manifest, parse, processed, review
-from econ_corpus.reasons import write_reasons
+from econ_corpus.clean import manifest, processed
+from econ_corpus.names import review
+from econ_corpus.raw import parse
+from econ_corpus.raw.reasons import write_reasons
 
 A, B = "Example Daily", "Sample Times"
 NYT = "newyorktimes,lateedition(eastcoast);newyork,n.y."

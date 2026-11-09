@@ -20,7 +20,7 @@ import pyarrow as pa
 import pyarrow.csv as pacsv
 import pyarrow.parquet as pq
 
-from econ_corpus import parse
+from econ_corpus.raw import parse
 
 # The reasons table: code and meaning, in the order the rules are applied.
 REASONS = [
@@ -119,12 +119,14 @@ RULES_STAMP = "rules"  # and the one that holds the fingerprint of the code
 def rules_fingerprint(package: Path | None = None) -> str:
     """Return a short code that changes whenever a module of the package changes.
 
-    A reason follows from the records and from the rules. Any edit counts, since telling a
-    rule from a comment is not worth the risk of keeping reasons that no longer hold.
+    A reason follows from the records and from the rules. Any edit counts, in any sub-package,
+    since telling a rule from a comment is not worth the risk of keeping reasons that no
+    longer hold. A module is named by its path inside the package.
     """
+    root = package or Path(__file__).parents[1]
     digest = hashlib.sha256()
-    for module in sorted((package or Path(__file__).parent).glob("*.py")):
-        digest.update(module.name.encode() + module.read_bytes())
+    for module in sorted(root.rglob("*.py")):
+        digest.update(module.relative_to(root).as_posix().encode() + module.read_bytes())
     return digest.hexdigest()[:16]
 
 

@@ -53,51 +53,51 @@ DELIVERY ?= /home/juanc/data/econ_corpus/delivery
 ## 1. Parse the ProQuest exports in RAW_DIR into data/interim/records.parquet (about 5 minutes)
 .PHONY: parse
 parse:
-	uv run python -m econ_corpus.parse $(RAW_DIR)
+	uv run python -m econ_corpus.raw.parse $(RAW_DIR)
 
 
 ## 2. Give every parsed row one reason (needs step 1; applies data/review)
 .PHONY: exclusions
 exclusions:
-	uv run python -m econ_corpus.exclusions
+	uv run python -m econ_corpus.raw.exclusions
 
 
 ## 3a. Write the raw table as a shareable CSV (needs step 2)
 .PHONY: export
 export:
-	uv run python -m econ_corpus.export
+	uv run python -m econ_corpus.raw.export
 
 
 ## 3b. Build the datasheet of the raw table (needs step 2)
 .PHONY: datasheet
 datasheet:
-	uv run python -m econ_corpus.datasheet
+	uv run python -m econ_corpus.raw.datasheet
 
 
 ## 4. Write the cleaned tables: articles, authors and their links (needs step 2)
 .PHONY: processed
 processed:
-	uv run python -m econ_corpus.processed
+	uv run python -m econ_corpus.clean.processed
 
 
 ## 5. List the author cases that need a manual review (needs step 4)
 .PHONY: review-cases
 review-cases:
-	uv run python -m econ_corpus.review_cases
+	uv run python -m econ_corpus.clean.review_cases
 
 
 ## 6. Build the datasheet of the cleaned dataset (needs step 4)
 .PHONY: datasheet-clean
 datasheet-clean:
-	uv run python -m econ_corpus.datasheet_clean
+	uv run python -m econ_corpus.clean.datasheet_clean
 
 
-## Steps 2 to 3b in order: everything of the raw table
+## Pipeline 1 from the records already parsed: steps 2 to 3b (same as `python -m econ_corpus.raw`)
 .PHONY: raw
 raw: exclusions export datasheet
 
 
-## Steps 2 and 4 to 6 in order: everything of the cleaned dataset
+## Step 2 and then pipeline 2: steps 4 to 6 (same as `python -m econ_corpus.clean` after step 2)
 .PHONY: cleaned
 cleaned: exclusions processed review-cases datasheet-clean
 
@@ -105,7 +105,7 @@ cleaned: exclusions processed review-cases datasheet-clean
 ## Render the two datasheets as PDF (needs google-chrome)
 .PHONY: pdf
 pdf:
-	uv run python -m econ_corpus.pdf docs/datasheet_raw.md docs/datasheet_clean.md
+	uv run python -m econ_corpus.shared.pdf docs/datasheet_raw.md docs/datasheet_clean.md
 
 
 ## 7. Check that every output on disk belongs to the current records, reasons and review

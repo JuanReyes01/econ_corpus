@@ -9,7 +9,7 @@ which tables to plot or where files go (datasheet).
 
 import math
 
-from econ_corpus.tables import Table
+from econ_corpus.shared.tables import Table
 
 WIDTH, HEIGHT = 900, 380
 LEFT, RIGHT, TOP, BOTTOM = 70, 20, 50, 45

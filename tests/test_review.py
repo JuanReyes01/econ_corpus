@@ -1,10 +1,10 @@
-"""Tests for econ_corpus.review, using made-up names only."""
+"""Tests for econ_corpus.names.review, using made-up names only."""
 
 from pathlib import Path
 
 import pytest
 
-from econ_corpus import bylines, review
+from econ_corpus.names import bylines, review
 
 
 def write(path: Path, text: str) -> Path:

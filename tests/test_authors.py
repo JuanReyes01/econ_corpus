@@ -1,9 +1,9 @@
-"""Tests for econ_corpus.authors, using made-up names only."""
+"""Tests for econ_corpus.names.authors, using made-up names only."""
 
 import pytest
 
-from econ_corpus import authors, bylines
-from econ_corpus.authors import Name
+from econ_corpus.names import authors, bylines, parts
+from econ_corpus.names.authors import Name
 
 # --- splitting a byline into parts -------------------------------------------------
 
@@ -230,17 +230,17 @@ def test_is_signed_tells_unsigned_from_any_other_byline(
 )
 def test_a_full_name_followed_by_other_text_is_recovered(part: str) -> None:
     assert authors.parse_name(part) is None
-    assert [authors.name_key(n) for n in bylines.recover_names(part)] == ["janedoe"]
+    assert [authors.name_key(n) for n in parts.recover_names(part)] == ["janedoe"]
 
 
 def test_recovered_name_keeps_middle_initial_and_suffix() -> None:
-    assert bylines.recover_names("Jane Q. Doe, MD") == [Name("Jane Q.", "Doe", "")]
-    recovered = bylines.recover_names("John W Doe Jr, President, Example Board")
+    assert parts.recover_names("Jane Q. Doe, MD") == [Name("Jane Q.", "Doe", "")]
+    recovered = parts.recover_names("John W Doe Jr, President, Example Board")
     assert recovered == [Name("John W", "Doe", "Jr")]
 
 
 def test_a_list_of_names_gives_every_person() -> None:
-    names = bylines.recover_names("JANE DOE, RICHARD ROE and ANN POE")
+    names = parts.recover_names("JANE DOE, RICHARD ROE and ANN POE")
     assert [authors.name_key(n) for n in names] == ["janedoe", "richardroe", "annpoe"]
 
 
@@ -263,18 +263,18 @@ def test_a_list_of_names_gives_every_person() -> None:
     ],
 )
 def test_text_that_does_not_start_with_a_full_name_gives_nobody(part: str) -> None:
-    assert bylines.recover_names(part) == []
+    assert parts.recover_names(part) == []
 
 
 def test_a_role_after_the_comma_is_not_a_given_name() -> None:
     assert authors.parse_name("Jane Q. Doe, Director") is None
-    assert bylines.recover_names("Jane Q. Doe, Director") == [Name("Jane Q.", "Doe", "")]
+    assert parts.recover_names("Jane Q. Doe, Director") == [Name("Jane Q.", "Doe", "")]
 
 
 def test_read_part_says_how_the_names_were_read() -> None:
-    assert bylines.read_part("Doe, Jane") == ([Name("Jane", "Doe", "")], "as_written")
-    assert bylines.read_part("Jane Doe. Springfield") == ([Name("Jane", "Doe", "")], "recovered")
-    assert bylines.read_part("The Editorial Board") == ([], "")
+    assert parts.read_part("Doe, Jane") == ([Name("Jane", "Doe", "")], "as_written")
+    assert parts.read_part("Jane Doe. Springfield") == ([Name("Jane", "Doe", "")], "recovered")
+    assert parts.read_part("The Editorial Board") == ([], "")
 
 
 def test_people_include_recovered_names() -> None:
@@ -360,7 +360,7 @@ def test_a_suffix_after_a_full_name_is_still_a_suffix() -> None:
 )
 def test_institutions_are_not_persons(part: str) -> None:
     assert authors.parse_name(part) is None
-    assert bylines.recover_names(part) == []
+    assert parts.recover_names(part) == []
 
 
 def test_one_word_family_names_that_are_also_institution_words_stay() -> None:
@@ -468,7 +468,7 @@ def test_a_family_name_with_no_capital_at_all_is_still_refused() -> None:
 
 
 def test_a_recovered_name_goes_on_through_a_small_first_letter_with_a_capital_inside() -> None:
-    recovered = bylines.recover_names("Dr. Jane al-Doe is a member of the Example parliament.")
+    recovered = parts.recover_names("Dr. Jane al-Doe is a member of the Example parliament.")
     assert recovered == [Name("Jane", "al-Doe", "")]
 
 
@@ -514,11 +514,11 @@ def test_these_parts_do_not_read_as_one_person(part: str) -> None:
 
 def test_co_authors_scrambled_by_the_export_are_put_back() -> None:
     # 'Jane Roe and Ann Doe' is exported as 'Doe, Jane Roe and Ann'.
-    assert bylines.recover_names("Doe, Jane Roe and Ann") == [
+    assert parts.recover_names("Doe, Jane Roe and Ann") == [
         Name("Jane", "Roe", ""),
         Name("Ann", "Doe", ""),
     ]
-    three = bylines.recover_names("Doe, Jane Roe, Al Poe and Ann Q.")
+    three = parts.recover_names("Doe, Jane Roe, Al Poe and Ann Q.")
     assert [authors.name_key(n) for n in three] == ["janeroe", "alpoe", "annqdoe"]
 
 
@@ -528,7 +528,7 @@ def test_a_given_name_cut_off_and_holding_a_list_is_unscrambled_too() -> None:
 
 
 def test_a_stray_period_inside_a_name_does_not_cut_it() -> None:
-    assert bylines.recover_names("Jane Z . Doe") == [Name("Jane Z", "Doe", "")]
+    assert parts.recover_names("Jane Z . Doe") == [Name("Jane Z", "Doe", "")]
 
 
 def test_capitals_fix_knows_mc_and_mac() -> None:
@@ -557,7 +557,7 @@ def test_a_suffix_after_the_given_name_is_a_suffix(part: str, suffix: str) -> No
 
 def test_initials_alone_are_never_a_family_name() -> None:
     assert authors.parse_name("E., Adlai") is None
-    assert bylines.read_part("R., Jane Q. Doe and Ann") == ([], "")
+    assert parts.read_part("R., Jane Q. Doe and Ann") == ([], "")
 
 
 @pytest.mark.parametrize("part", ["Jane St. Doe", "St. Doe, Jane", "Jane St Doe"])
@@ -567,7 +567,7 @@ def test_a_saint_in_the_family_name_is_read(part: str) -> None:
 
 
 def test_a_saint_does_not_end_a_recovered_name() -> None:
-    assert bylines.recover_names("Jane St. Doe, Springfield") == [Name("Jane", "St. Doe", "")]
+    assert parts.recover_names("Jane St. Doe, Springfield") == [Name("Jane", "St. Doe", "")]
 
 
 @pytest.mark.parametrize("raw", ["ByJane Doe", "Doe, ByJane"])
@@ -579,7 +579,7 @@ def test_by_glued_to_the_name_is_removed(raw: str) -> None:
     "part", ["Jane DoeGuest essay", "essay, Jane DoeGuest", "DoeGuest essay, Jane"]
 )
 def test_a_label_glued_to_the_name_is_removed(part: str) -> None:
-    assert bylines.read_part(part) == ([JANE], "as_written")
+    assert parts.read_part(part) == ([JANE], "as_written")
 
 
 @pytest.mark.parametrize(
@@ -609,14 +609,14 @@ def test_a_note_about_someone_who_did_not_write_names_nobody(part: str) -> None:
     ],
 )
 def test_a_sentence_about_the_author_still_names_her(part: str) -> None:
-    assert bylines.read_part(part) == ([JANE], "recovered")
+    assert parts.read_part(part) == ([JANE], "recovered")
 
 
 @pytest.mark.parametrize(
     "part", ["Jane Do e Roe", "Jane Roe ll Doe", "Jane Doe covers Springfield"]
 )
 def test_a_name_that_a_small_word_may_have_broken_is_not_read(part: str) -> None:
-    assert bylines.read_part(part) == ([], "")
+    assert parts.read_part(part) == ([], "")
 
 
 def test_and_does_not_split_a_sentence_about_one_author() -> None:
@@ -630,16 +630,16 @@ def test_and_still_splits_names_when_text_follows_the_last() -> None:
 
 
 def test_scrambled_co_authors_need_and_before_the_last_given_name() -> None:
-    assert bylines.unscrambled("Doe, Jane Roe and Ann") == [
+    assert parts.unscrambled("Doe, Jane Roe and Ann") == [
         Name("Jane", "Roe", ""),
         Name("Ann", "Doe", ""),
     ]
-    assert bylines.unscrambled("Doe, Jane Roe, Ann") == []
+    assert parts.unscrambled("Doe, Jane Roe, Ann") == []
 
 
 def test_scrambled_co_authors_need_a_family_name_alone_before_the_comma() -> None:
-    assert bylines.unscrambled("Jane Doe, Richard Roe and Springfield") == []
-    assert bylines.unscrambled("van Doe, Jane Roe and Ann")[1] == Name("Ann", "van Doe", "")
+    assert parts.unscrambled("Jane Doe, Richard Roe and Springfield") == []
+    assert parts.unscrambled("van Doe, Jane Roe and Ann")[1] == Name("Ann", "van Doe", "")
 
 
 @pytest.mark.parametrize(
@@ -690,8 +690,8 @@ def test_display_tells_initials_from_names_in_capitals(name: Name, shown: str) -
 
 
 def test_text_after_the_end_of_a_sentence_does_not_stop_a_recovered_name() -> None:
-    assert bylines.recover_names("Jane Doe. // Richard Roe") == [JANE]
-    assert bylines.recover_names("Jane Doe's novel Springfield") == [JANE]
+    assert parts.recover_names("Jane Doe. // Richard Roe") == [JANE]
+    assert parts.recover_names("Jane Doe's novel Springfield") == [JANE]
 
 
 def test_and_glued_to_a_name_that_starts_with_and_is_put_back() -> None:
@@ -719,7 +719,7 @@ def test_a_small_st_is_not_a_saint() -> None:
 
 @pytest.mark.parametrize("part", ["Jane Doe Guest essay", "Jane Doe Gue st essay"])
 def test_a_label_after_the_name_is_removed(part: str) -> None:
-    assert bylines.read_part(part) == ([JANE], "as_written")
+    assert parts.read_part(part) == ([JANE], "as_written")
 
 
 def test_a_degree_not_in_capitals_is_never_a_given_name() -> None:
@@ -731,11 +731,11 @@ def test_a_degree_not_in_capitals_is_never_a_given_name() -> None:
     "part", ["Committee., Jane Doe", "Class.'', Jane Doe", '1981.", Jane Doe']
 )
 def test_a_name_after_the_end_of_a_sentence_about_it_is_recovered(part: str) -> None:
-    assert bylines.read_part(part) == ([JANE], "recovered")
+    assert parts.read_part(part) == ([JANE], "recovered")
 
 
 def test_two_names_after_the_end_of_a_sentence_are_both_recovered() -> None:
-    assert bylines.recover_names("Committee., Jane Doe and Richard Roe") == [
+    assert parts.recover_names("Committee., Jane Doe and Richard Roe") == [
         JANE,
         Name("Richard", "Roe", ""),
     ]
@@ -744,7 +744,7 @@ def test_two_names_after_the_end_of_a_sentence_are_both_recovered() -> None:
 @pytest.mark.parametrize("part", ["vacation., Jane Doe", "traveling., JANE DOE", "ill., Jane Doe"])
 def test_a_moved_absence_word_stands_before_the_author_not_the_absent(part: str) -> None:
     # 'Jane Doe; Ann Roe is on vacation.' is exported as 'vacation., Jane Doe; Ann Roe is on'.
-    assert authors.name_key(bylines.read_part(part)[0][0]) == "janedoe"
+    assert authors.name_key(parts.read_part(part)[0][0]) == "janedoe"
 
 
 def test_the_cut_note_after_a_moved_absence_word_names_nobody() -> None:
@@ -787,7 +787,7 @@ def test_capitals_after_a_capitalised_prefix_are_fixed() -> None:
 
 @pytest.mark.parametrize("part", ["Jane Q.Doe", "JANE Q.DOE", "Doe, J.Q.Jane"])
 def test_an_initial_glued_to_the_next_word_is_set_apart(part: str) -> None:
-    names, how = bylines.read_part(part)
+    names, how = parts.read_part(part)
     assert how == "as_written"
     assert authors.name_key(names[0]) in {"janeqdoe", "jqjanedoe"}
     assert all(word.endswith(".") or "." not in word for word in authors.display(names[0]).split())
@@ -803,11 +803,11 @@ def test_an_initial_glued_to_the_next_word_is_set_apart(part: str) -> None:
     ],
 )
 def test_a_period_glued_to_the_next_word_is_set_apart(part: str, expected: Name) -> None:
-    assert bylines.read_part(part)[0] == [expected]
+    assert parts.read_part(part)[0] == [expected]
 
 
 def test_a_degree_written_without_its_last_period_is_still_a_degree() -> None:
-    assert bylines.read_part("Jane Q. Doe, M.D") == ([Name("Jane Q.", "Doe", "")], "as_written")
+    assert parts.read_part("Jane Q. Doe, M.D") == ([Name("Jane Q.", "Doe", "")], "as_written")
 
 
 def test_an_author_who_contributed_her_own_piece_is_still_the_author() -> None:
@@ -854,7 +854,7 @@ def test_ordinal_suffixes_are_read(part: str, suffix: str) -> None:
 
 
 def test_reader_glued_to_the_name_is_removed() -> None:
-    assert bylines.read_part("Jane Q DoeReader") == ([Name("Jane Q", "Doe", "")], "as_written")
+    assert parts.read_part("Jane Q DoeReader") == ([Name("Jane Q", "Doe", "")], "as_written")
 
 
 def test_display_fixes_a_mc_name_in_capitals_and_keeps_numerals() -> None:
@@ -931,7 +931,7 @@ def test_a_note_about_another_person_still_adds_her() -> None:
     "part", ["Jane Do rgan", "Jane Doe teaches", "Former Example Security chief"]
 )
 def test_one_small_word_after_a_name_is_left_for_review(part: str) -> None:
-    assert bylines.read_part(part) == ([], "")
+    assert parts.read_part(part) == ([], "")
 
 
 def test_an_ordinal_suffix_stays_with_a_recovered_name() -> None:
@@ -1002,7 +1002,7 @@ def test_regressions_found_while_comparing_readings_again() -> None:
     # Initials inside an unfinished sentence do not end it.
     raw = "Jane Q.Doe; Doe was a speechwriter for Presidents John F. Poe; Roe, Richard"
     assert bylines.people(raw) == [Name("Jane Q.", "Doe", "")]
-    glued = bylines.read_part("Jane Q DoeReader essay")
+    glued = parts.read_part("Jane Q DoeReader essay")
     assert glued == ([Name("Jane Q", "Doe", "")], "as_written")
 
 
@@ -1011,7 +1011,7 @@ def test_a_family_name_cut_before_is_starts_no_sentence() -> None:
 
 
 def test_a_note_cut_after_lives_still_names_its_author() -> None:
-    assert bylines.read_part("Jane Doe lives") == ([JANE], "recovered")
+    assert parts.read_part("Jane Doe lives") == ([JANE], "recovered")
 
 
 @pytest.mark.parametrize(
@@ -1051,7 +1051,7 @@ def test_a_part_that_starts_with_a_comma_names_nobody() -> None:
 
 def test_an_abbreviated_mc_name_does_not_end_the_name() -> None:
     expected = [Name("Jane McC.", "Roe", "Jr")]
-    assert bylines.read_part("Jane McC. Roe Jr. is a senator from Springfield.")[0] == expected
+    assert parts.read_part("Jane McC. Roe Jr. is a senator from Springfield.")[0] == expected
     assert authors.parse_name("Roe, Jane McC., Jr") == Name("Jane McC.", "Roe", "Jr")
 
 
@@ -1069,14 +1069,14 @@ def test_an_abbreviated_mc_name_does_not_end_the_name() -> None:
     ],
 )
 def test_a_list_of_names_before_or_after_a_note_gives_every_name(part: str) -> None:
-    assert bylines.read_part(part) == ([JANE, Name("Richard", "Roe", "")], "recovered")
+    assert parts.read_part(part) == ([JANE, Name("Richard", "Roe", "")], "recovered")
 
 
 def test_a_town_after_one_name_is_not_a_second_person() -> None:
     assert bylines.people("Jane Doe. Valley Stream. Editor's Note: The writer is a teacher.") == [
         JANE
     ]
-    assert bylines.recover_names("Jane Doe, Springfield Heights, Ill.") == [JANE]
+    assert parts.recover_names("Jane Doe, Springfield Heights, Ill.") == [JANE]
 
 
 def test_a_suffix_that_only_the_note_gives_is_kept() -> None:
@@ -1086,7 +1086,7 @@ def test_a_suffix_that_only_the_note_gives_is_kept() -> None:
 
 
 def test_a_suffix_glued_to_the_family_name_is_set_apart() -> None:
-    assert bylines.read_part("Jane DoeJr") == ([Name("Jane", "Doe", "Jr")], "as_written")
+    assert parts.read_part("Jane DoeJr") == ([Name("Jane", "Doe", "Jr")], "as_written")
 
 
 def test_a_family_name_with_a_small_first_letter_hides_nobody_after_it() -> None:
@@ -1095,14 +1095,14 @@ def test_a_family_name_with_a_small_first_letter_hides_nobody_after_it() -> None
 
 
 def test_a_suffix_written_twice_is_read_once() -> None:
-    assert bylines.read_part("Jane DoeJr. Jr. is chairman of the Example.")[0] == [
+    assert parts.read_part("Jane DoeJr. Jr. is chairman of the Example.")[0] == [
         Name("Jane", "Doe", "Jr")
     ]
     assert bylines.people("DoeJr, Jane; Jr.; a guest columnist") == [Name("Jane", "Doe", "Jr")]
 
 
 def test_a_list_before_and_an_institution_keeps_its_names() -> None:
-    assert bylines.read_part("JANE DOE, RICHARD ROE AND EXAMPLE ASSOCIATES")[0] == [
+    assert parts.read_part("JANE DOE, RICHARD ROE AND EXAMPLE ASSOCIATES")[0] == [
         Name("JANE", "DOE", ""),
         Name("RICHARD", "ROE", ""),
     ]
@@ -1158,11 +1158,11 @@ BOARD_NOTE = "These are personal views of members of the editorial board."
 )
 def test_a_list_with_commas_gives_every_name(part: str) -> None:
     expected = [JANE, Name("Richard", "Roe", ""), Name("Ann", "Poe", "")]
-    assert bylines.read_part(part) == (expected, "recovered")
+    assert parts.read_part(part) == (expected, "recovered")
 
 
 def test_scrambled_co_authors_with_a_comma_before_and_are_put_back() -> None:
-    assert bylines.read_part("Doe, Richard Roe, and Jane")[0] == [Name("Richard", "Roe", ""), JANE]
+    assert parts.read_part("Doe, Richard Roe, and Jane")[0] == [Name("Richard", "Roe", ""), JANE]
 
 
 @pytest.mark.parametrize("again", ["Richard Roe", "Richard Row"])
@@ -1172,7 +1172,7 @@ def test_a_list_written_twice_in_a_part_with_a_comma_is_read_once(again: str) ->
 
 
 def test_a_name_that_ends_like_the_first_of_its_list_is_not_cut() -> None:
-    assert bylines.read_part("Ann Lee and Mary Jo Ann Lee, Staff Writers")[0] == [
+    assert parts.read_part("Ann Lee and Mary Jo Ann Lee, Staff Writers")[0] == [
         Name("Ann", "Lee", ""),
         Name("Mary Jo Ann", "Lee", ""),
     ]
@@ -1202,11 +1202,11 @@ def test_each_new_institution_word_names_nobody(word: str) -> None:
 
 def test_board_members_with_a_saint_name_or_in_capitals_are_read() -> None:
     note = "Written by members of the editorial board."
-    assert bylines.read_part(f"Jane St. John. Richard Roe. {note}")[0] == [
+    assert parts.read_part(f"Jane St. John. Richard Roe. {note}")[0] == [
         Name("Jane", "St. John", ""),
         Name("Richard", "Roe", ""),
     ]
-    assert bylines.read_part(f"JANE DOE. RICHARD ROE. {note}")[0] == [
+    assert parts.read_part(f"JANE DOE. RICHARD ROE. {note}")[0] == [
         Name("JANE", "DOE", ""),
         Name("RICHARD", "ROE", ""),
     ]
@@ -1221,16 +1221,16 @@ def test_board_members_with_a_saint_name_or_in_capitals_are_read() -> None:
     ],
 )
 def test_a_town_after_a_board_member_is_not_a_second_member(part: str) -> None:
-    assert bylines.read_part(part)[0] == [JANE]
+    assert parts.read_part(part)[0] == [JANE]
 
 
 def test_board_members_after_an_ordinal_or_a_saint_in_capitals_are_read() -> None:
     note = "Written by members of the editorial board."
-    assert bylines.read_part(f"Jane Doe 3d. Richard Roe. {note}")[0] == [
+    assert parts.read_part(f"Jane Doe 3d. Richard Roe. {note}")[0] == [
         Name("Jane", "Doe", "III"),
         Name("Richard", "Roe", ""),
     ]
-    assert bylines.read_part(f"Jane ST. JOHN. Richard Roe. {note}")[0] == [
+    assert parts.read_part(f"Jane ST. JOHN. Richard Roe. {note}")[0] == [
         Name("Jane", "ST. JOHN", ""),
         Name("Richard", "Roe", ""),
     ]
@@ -1253,9 +1253,9 @@ def test_a_list_written_twice_with_another_form_of_a_name_is_read_once(
 
 def test_a_suffix_inside_a_list_of_board_members_ends_no_sentence() -> None:
     part = f"Jane Doe, Richard Roe Jr., Ann Poe. {BOARD_NOTE}"
-    assert [n.family for n in bylines.read_part(part)[0]] == ["Doe", "Roe", "Poe"]
+    assert [n.family for n in parts.read_part(part)[0]] == ["Doe", "Roe", "Poe"]
     apart = f"Jane Doe Jr. Richard Roe. {BOARD_NOTE}"
-    assert [n.family for n in bylines.read_part(apart)[0]] == ["Doe", "Roe"]
+    assert [n.family for n in parts.read_part(apart)[0]] == ["Doe", "Roe"]
 
 
 # --- production credits ------------------------------------------------------------

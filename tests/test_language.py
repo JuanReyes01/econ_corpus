@@ -1,4 +1,4 @@
-"""Tests for econ_corpus.language on made-up sentences."""
+"""Tests for econ_corpus.raw.language on made-up sentences."""
 
 from pathlib import Path
 
@@ -6,7 +6,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 
-from econ_corpus import language
+from econ_corpus.raw import language
 
 ENGLISH = (
     "The price of bread went up again this year, and it is not the first time that the people "

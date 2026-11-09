@@ -1,4 +1,4 @@
-"""Tests for econ_corpus.summaries and econ_corpus.datasheet on tiny synthetic tables."""
+"""Tests for shared.summaries and raw.datasheet of econ_corpus on tiny synthetic tables."""
 
 from pathlib import Path
 
@@ -6,8 +6,9 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 
-from econ_corpus import datasheet, parse, summaries, tables
-from econ_corpus.reasons import write_reasons
+from econ_corpus.raw import datasheet, parse
+from econ_corpus.raw.reasons import write_reasons
+from econ_corpus.shared import summaries, tables
 
 NYT_ONLINE = "newyorktimes(online);newyork"
 NYT_PRINT = "newyorktimes,lateedition(eastcoast);newyork,n.y."

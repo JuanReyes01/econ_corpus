@@ -15,7 +15,8 @@ from pathlib import Path
 
 import pyarrow.parquet as pq
 
-from econ_corpus import reasons, review
+from econ_corpus.names import review
+from econ_corpus.raw import reasons
 
 FILE = "manifest.json"
 TABLES = ("articles", "authors", "author_names", "article_authors", "author_candidates")

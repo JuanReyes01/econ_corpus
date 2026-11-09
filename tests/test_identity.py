@@ -1,7 +1,7 @@
-"""Tests for econ_corpus.identity, using made-up names only."""
+"""Tests for econ_corpus.names.identity, using made-up names only."""
 
-from econ_corpus import authors, identity, lookalikes
-from econ_corpus.identity import Seen
+from econ_corpus.names import authors, identity, lookalikes
+from econ_corpus.names.identity import Seen
 
 A, B = "Example Daily", "Sample Times"
 

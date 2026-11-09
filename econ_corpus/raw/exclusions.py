@@ -27,9 +27,11 @@ from pathlib import Path
 
 import pyarrow.parquet as pq
 
-from econ_corpus import bylines, datasheet, export, language, parse, review, summaries
-from econ_corpus.reasons import INPUTS, REASONS, check_parser, write_reasons
-from econ_corpus.tables import Articles, Table
+from econ_corpus.names import bylines, review
+from econ_corpus.raw import export, language, parse
+from econ_corpus.raw.reasons import INPUTS, REASONS, check_parser, write_reasons
+from econ_corpus.shared import summaries, tables
+from econ_corpus.shared.tables import Articles, Table
 
 # A body shorter than PLACEHOLDER_WORDS can be a notice, a caption or an introduction shared
 # by different articles. Carried by PLACEHOLDER_ARTICLES or more of them it is a notice ("text
@@ -239,7 +241,7 @@ def main() -> None:
     records, out = Path("data/interim/records.parquet"), Path("data/interim/exclusions.parquet")
     corrections = review.load_parts(review.folder(Path("data/review")) / review.PARTS_FILE)
     reasons = write_exclusions(records, out, corrections)
-    datasheet.write_csv(reason_counts(reasons), Path("reports/tables/exclusion_counts.csv"))
+    tables.write_csv(reason_counts(reasons), Path("reports/tables/exclusion_counts.csv"))
     export.write_reasons(records, out, Path("data/processed/econ_corpus_raw_reasons.csv"))
 
 

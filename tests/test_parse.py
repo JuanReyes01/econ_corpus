@@ -1,4 +1,4 @@
-"""Tests for econ_corpus.parse, using small synthetic records (no real article text)."""
+"""Tests for econ_corpus.raw.parse, using small synthetic records (no real article text)."""
 
 from datetime import date
 import hashlib
@@ -7,7 +7,7 @@ from pathlib import Path
 import pyarrow.parquet as pq
 import pytest
 
-from econ_corpus import parse
+from econ_corpus.raw import parse
 
 SEP = "_" * 60
 FOOTER = (

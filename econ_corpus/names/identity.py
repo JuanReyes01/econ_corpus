@@ -20,7 +20,7 @@ from collections import defaultdict
 from itertools import combinations
 from typing import NamedTuple
 
-from econ_corpus.authors import Name, fold
+from econ_corpus.names.authors import Name, fold
 
 
 class Seen(NamedTuple):

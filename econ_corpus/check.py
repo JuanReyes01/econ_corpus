@@ -20,16 +20,10 @@ import shutil
 import sys
 import tempfile
 
-from econ_corpus import (
-    datasheet,
-    datasheet_clean,
-    exclusions,
-    export,
-    manifest,
-    reasons,
-    review,
-    review_cases,
-)
+from econ_corpus.clean import datasheet_clean, manifest, review_cases
+from econ_corpus.names import review
+from econ_corpus.raw import datasheet, exclusions, export, reasons
+from econ_corpus.shared import tables
 
 
 @dataclass
@@ -82,7 +76,7 @@ def stale(paths: Paths) -> list[str]:
         review_cases.build(paths.records, paths.reasons, paths.clean, work / "review")
         # The two files that step 2 writes for the delivery of the raw table.
         counts = exclusions.reason_counts(codes.to_pylist())
-        datasheet.write_csv(counts, work / "tables" / "exclusion_counts.csv")
+        tables.write_csv(counts, work / "tables" / "exclusion_counts.csv")
         export.write_reasons(paths.records, paths.reasons, work / paths.raw_reasons.name)
         built = [(raw, paths.raw_md), (clean, paths.clean_md)]
         built.append((work / paths.raw_reasons.name, paths.raw_reasons))

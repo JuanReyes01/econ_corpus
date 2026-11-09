@@ -14,7 +14,7 @@ import re
 from typing import NamedTuple
 import unicodedata
 
-from econ_corpus.name_words import (
+from econ_corpus.names.name_words import (
     ARTICLES,
     DEGREES,
     GIVEN_WHEN_CAPITAL,

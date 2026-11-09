@@ -1,4 +1,4 @@
-"""Tests for econ_corpus.datasheet_clean on tiny synthetic tables (made-up names)."""
+"""Tests for econ_corpus.clean.datasheet_clean on tiny synthetic tables (made-up names)."""
 
 from pathlib import Path
 
@@ -6,8 +6,9 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 
-from econ_corpus import datasheet_clean, parse, processed
-from econ_corpus.reasons import write_reasons
+from econ_corpus.clean import datasheet_clean, processed
+from econ_corpus.raw import parse
+from econ_corpus.raw.reasons import write_reasons
 
 NYT = "newyorktimes,lateedition(eastcoast);newyork,n.y."
 

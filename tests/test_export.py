@@ -1,4 +1,4 @@
-"""Tests for econ_corpus.export on tiny synthetic tables (no real article text)."""
+"""Tests for econ_corpus.raw.export on tiny synthetic tables (no real article text)."""
 
 import csv
 from datetime import date
@@ -8,8 +8,8 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 
-from econ_corpus import export, parse
-from econ_corpus.reasons import write_reasons
+from econ_corpus.raw import export, parse
+from econ_corpus.raw.reasons import write_reasons
 
 TEXT = 'Line one, with a comma.\n\nA "quoted" line and\ttab.'
 LEFT_OUT = ("file_footer", "duplicate_id", "duplicate_text")

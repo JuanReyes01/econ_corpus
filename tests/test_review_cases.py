@@ -1,4 +1,4 @@
-"""Tests for econ_corpus.review_cases, using made-up names only."""
+"""Tests for econ_corpus.clean.review_cases, using made-up names only."""
 
 import csv
 from pathlib import Path
@@ -7,8 +7,10 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 
-from econ_corpus import parse, processed, review, review_cases
-from econ_corpus.reasons import write_reasons
+from econ_corpus.clean import processed, review_cases
+from econ_corpus.names import review
+from econ_corpus.raw import parse
+from econ_corpus.raw.reasons import write_reasons
 
 HEADER = ["author_id_a", "name_a", "articles_a", "author_id_b", "name_b", "articles_b", "kind"]
 

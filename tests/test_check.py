@@ -53,7 +53,7 @@ def stand_ins(monkeypatch: pytest.MonkeyPatch) -> dict[str, object]:
     state |= {"counts": COUNTS, "reasons": REASONS}
     monkeypatch.setattr(check.reasons, "load", lambda *_: pa.chunked_array([["kept"]]))
     monkeypatch.setattr(check.exclusions, "reason_counts", lambda _: state["counts"])
-    monkeypatch.setattr(check.datasheet, "write_csv", lambda text, out: write(out, str(text)))
+    monkeypatch.setattr(check.tables, "write_csv", lambda text, out: write(out, str(text)))
 
     def raw_reasons(_records: Path, _reasons: Path, out: Path) -> None:
         out.write_text(str(state["reasons"]), encoding="utf-8")

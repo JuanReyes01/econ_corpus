@@ -19,7 +19,7 @@ import pyarrow.compute as pc
 import pyarrow.csv as pacsv
 import pyarrow.parquet as pq
 
-from econ_corpus.reasons import (
+from econ_corpus.raw.reasons import (
     LEFT_OUT,
     RECORDS_STAMP,
     file_digest,

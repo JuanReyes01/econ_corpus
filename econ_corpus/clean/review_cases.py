@@ -29,10 +29,13 @@ import pyarrow.compute as pc
 import pyarrow.csv as pacsv
 import pyarrow.parquet as pq
 
-from econ_corpus import authors, datasheet, manifest, reasons, review
-from econ_corpus.bylines import is_signed, read_byline, read_part, split_authors, unscrambled
-from econ_corpus.name_words import SUFFIXES, WATCH_WORDS
-from econ_corpus.tables import Table
+from econ_corpus.clean import manifest
+from econ_corpus.names import authors, review
+from econ_corpus.names.bylines import is_signed, read_byline, split_authors
+from econ_corpus.names.name_words import SUFFIXES, WATCH_WORDS
+from econ_corpus.names.parts import read_part, unscrambled
+from econ_corpus.raw import reasons
+from econ_corpus.shared.tables import Table, write_csv
 
 GLUED_BY_RE = re.compile(r"(?i:by)[^\W\d_]{4,}")  # a first name such as 'BYJANE'
 MIN_ARTICLES = 2  # a pair is reviewed when both authors have at least this many articles
@@ -308,7 +311,7 @@ def build(records: Path, reasons_file: Path, clean: Path, review_dir: Path) -> d
         "unused_pairs": [["key_a", "key_b"], *map(list, unused_pairs(judged, keys))],
     }
     for name, table in tables.items():
-        datasheet.write_csv(table, review_dir / "cases" / f"{name}.csv")
+        write_csv(table, review_dir / "cases" / f"{name}.csv")
     return {name: len(table) - 1 for name, table in tables.items()}
 
 

@@ -1,4 +1,4 @@
-"""Tests for econ_corpus.exclusions on tiny synthetic tables."""
+"""Tests for econ_corpus.raw.exclusions on tiny synthetic tables."""
 
 from datetime import date
 from pathlib import Path
@@ -7,7 +7,9 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 
-from econ_corpus import exclusions, language, parse, reasons, review, summaries
+from econ_corpus.names import review
+from econ_corpus.raw import exclusions, language, parse, reasons
+from econ_corpus.shared import summaries
 
 DEFAULTS = {
     "is_footer": False,
@@ -593,3 +595,22 @@ def test_reasons_are_refused_for_records_written_by_another_parser(
     monkeypatch.setattr(parse, "code_fingerprint", lambda: "another parser")
     with pytest.raises(ValueError, match="parse"):
         reasons.load(source, out)
+
+
+def test_the_rules_fingerprint_covers_the_modules_of_every_sub_package(tmp_path: Path) -> None:
+    (tmp_path / "raw").mkdir()
+    (tmp_path / "raw" / "rules.py").write_text("LIMIT = 1\n", encoding="utf-8")
+    before = reasons.rules_fingerprint(tmp_path)
+    (tmp_path / "raw" / "rules.py").write_text("LIMIT = 2\n", encoding="utf-8")
+    edited = reasons.rules_fingerprint(tmp_path)
+    assert edited != before
+    # The same module under another package is another set of rules.
+    (tmp_path / "clean").mkdir()
+    (tmp_path / "raw" / "rules.py").rename(tmp_path / "clean" / "rules.py")
+    assert reasons.rules_fingerprint(tmp_path) != edited
+
+
+def test_the_rules_fingerprint_of_the_package_covers_both_pipelines() -> None:
+    package = Path(reasons.__file__).parents[1]
+    assert {p.parent.name for p in package.rglob("*.py")} >= {"raw", "clean", "names", "shared"}
+    assert reasons.rules_fingerprint() == reasons.rules_fingerprint(package)

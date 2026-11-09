@@ -15,7 +15,6 @@ decision about which records to keep (exclusions).
 """
 
 from collections import Counter, defaultdict
-import csv
 from pathlib import Path
 import re
 
@@ -23,9 +22,10 @@ import pyarrow as pa
 import pyarrow.compute as pc
 import pyarrow.parquet as pq
 
-from econ_corpus import bylines, figures, summaries, tables
-from econ_corpus.reasons import LEFT_OUT, load
-from econ_corpus.tables import Articles, Table
+from econ_corpus.names import bylines
+from econ_corpus.raw.reasons import LEFT_OUT, load
+from econ_corpus.shared import figures, summaries, tables
+from econ_corpus.shared.tables import Articles
 
 COLUMNS = [
     "publication_key", "publication", "source_type_key", "author", "pub_year", "doc_id",
@@ -190,13 +190,6 @@ def repeat_facts(parsed: Articles, removed: Counter) -> dict[str, str]:
     }
 
 
-def write_csv(rows: Table, path: Path) -> None:
-    """Write a table to a CSV file, creating the folder if needed."""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", newline="", encoding="utf-8") as handle:
-        csv.writer(handle).writerows(rows)
-
-
 def build(  # noqa: PLR0913 (one argument per input or output file)
     parquet: Path,
     reasons: Path,
@@ -233,8 +226,8 @@ def build(  # noqa: PLR0913 (one argument per input or output file)
         | {name: tables.md_table(rows) for name, rows in described.items()}
     )
     out_md.write_text(fill(template.read_text(encoding="utf-8"), values), encoding="utf-8")
-    write_csv(tables.year_table(parsed), tables_dir / "raw_by_year.csv")
-    write_csv(tables.download_table(parsed), tables_dir / "raw_by_download_date.csv")
+    tables.write_csv(tables.year_table(parsed), tables_dir / "raw_by_year.csv")
+    tables.write_csv(tables.download_table(parsed), tables_dir / "raw_by_download_date.csv")
     figures_dir.mkdir(parents=True, exist_ok=True)
     shared_chart = figures.year_chart_svg(
         tables.year_table(articles),

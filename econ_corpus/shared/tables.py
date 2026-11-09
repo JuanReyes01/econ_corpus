@@ -11,8 +11,11 @@ decision about which records to keep (exclusions).
 
 from collections import Counter, defaultdict
 from collections.abc import Callable
+import csv
+from pathlib import Path
 
-from econ_corpus import bylines, summaries
+from econ_corpus.names import bylines
+from econ_corpus.shared import summaries
 
 Articles = dict[str, list]
 Table = list[list[str]]
@@ -276,3 +279,10 @@ def blog_profile_table(articles: Articles) -> Table:
                 labels.add(label)
     body = [[name, summaries.num(n), summaries.pct(n, total)] for _, name, n in labels.top(6)]
     return [["Document type", "Blog-labelled records", "Share of blog-labelled"], *body]
+
+
+def write_csv(rows: Table, path: Path) -> None:
+    """Write a table to a CSV file, creating the folder if needed."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", newline="", encoding="utf-8") as handle:
+        csv.writer(handle).writerows(rows)
