@@ -244,10 +244,10 @@ the raw table.
 
 - **Exclusion reasons:** the companion table gives every parsed row one reason: file footer,
   repeated id, publication not queried, repeated text (same body, title, date and newspaper),
-  missing metadata, not opinion, unclear opinion, or kept. Only file footer, repeated id and
-  repeated text leave the shared table; the others are flags for the cleaned dataset. Records flagged `unclear_opinion` (no section, generic type, no opinion title)
-  are not dropped and are left to the user to judge. Counts:
-  `reports/tables/exclusion_counts.csv`.
+  missing metadata, not opinion, unclear opinion, no text, no author, no person among the
+  authors, or kept. Only file footer, repeated id and repeated text leave the shared table;
+  the others say which records the cleaned dataset leaves out and do not change this table.
+  Counts: `reports/tables/exclusion_counts.csv`.
 - **Subtler duplicates** (reprints, edited versions under another title) are not detected.
 - **Authors:** {{n_with_author}} records ({{with_author_pct}}) name an author. Unsigned pieces,
   mostly editorials, cannot be linked to a person.
