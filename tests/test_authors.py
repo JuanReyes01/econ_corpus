@@ -908,8 +908,8 @@ def test_regressions_found_while_comparing_readings() -> None:
         ("Springfield, Jane Doe; Jane Doe, an author, lives in", [JANE]),
         # Given and family name the wrong way round; the note has them in order.
         ("Jane, Doe; Jane Doe lives in Springfield.", [JANE]),
-        # The note is cut at an abbreviation: its name is a piece of the one before.
-        ("Roe, Jane McC; Jane McC. Roe Jr. is a senator.", [Name("Jane McC", "Roe", "")]),
+        # The note gives the same name with its suffix.
+        ("Roe, Jane McC; Jane McC. Roe Jr. is a senator.", [Name("Jane McC.", "Roe", "Jr")]),
         # A slip of one letter in the note.
         ("DOE, JANE H; Jane H. Dow lives in Springfield.", [Name("JANE H", "DOE", "")]),
         # The note adds a middle initial.
@@ -1053,3 +1053,88 @@ def test_an_abbreviated_mc_name_does_not_end_the_name() -> None:
     expected = [Name("Jane McC.", "Roe", "Jr")]
     assert bylines.read_part("Jane McC. Roe Jr. is a senator from Springfield.")[0] == expected
     assert authors.parse_name("Roe, Jane McC., Jr") == Name("Jane McC.", "Roe", "Jr")
+
+
+# --- findings of the sixth independent audit ------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "part",
+    [
+        "Jane Doe and Richard Roe, Example Staff",
+        "Jane Doe and Richard Roe, Springfield Example Staff writers",
+        "Jane Doe. Richard Roe. Written by members of the editorial board.",
+        "Written by members of the editorial board.. Jane Doe. Richard Roe",
+        "Jane Doe. Richard Roe. These are personal views of members of the editorial board.",
+    ],
+)
+def test_a_list_of_names_before_or_after_a_note_gives_every_name(part: str) -> None:
+    assert bylines.read_part(part) == ([JANE, Name("Richard", "Roe", "")], "recovered")
+
+
+def test_a_town_after_one_name_is_not_a_second_person() -> None:
+    assert bylines.people("Jane Doe. Valley Stream. Editor's Note: The writer is a teacher.") == [
+        JANE
+    ]
+    assert bylines.recover_names("Jane Doe, Springfield Heights, Ill.") == [JANE]
+
+
+def test_a_suffix_that_only_the_note_gives_is_kept() -> None:
+    assert bylines.people("Doe, John E; John E. Doe Jr. lives in Springfield.") == [
+        Name("John E.", "Doe", "Jr")
+    ]
+
+
+def test_a_suffix_glued_to_the_family_name_is_set_apart() -> None:
+    assert bylines.read_part("Jane DoeJr") == ([Name("Jane", "Doe", "Jr")], "as_written")
+
+
+def test_a_family_name_with_a_small_first_letter_hides_nobody_after_it() -> None:
+    raw = "deDoe, Jane; Roe, Richard; al-Poe, Ann; Moe, John"
+    assert [n.family for n in bylines.people(raw)] == ["deDoe", "Roe", "al-Poe", "Moe"]
+
+
+def test_a_suffix_written_twice_is_read_once() -> None:
+    assert bylines.read_part("Jane DoeJr. Jr. is chairman of the Example.")[0] == [
+        Name("Jane", "Doe", "Jr")
+    ]
+    assert bylines.people("DoeJr, Jane; Jr.; a guest columnist") == [Name("Jane", "Doe", "Jr")]
+
+
+def test_a_list_before_and_an_institution_keeps_its_names() -> None:
+    assert bylines.read_part("JANE DOE, RICHARD ROE AND EXAMPLE ASSOCIATES")[0] == [
+        Name("JANE", "DOE", ""),
+        Name("RICHARD", "ROE", ""),
+    ]
+
+
+def test_a_list_written_twice_before_its_note_is_read_once() -> None:
+    raw = "Jane Doe and Richard Roe Jane Doe and Richard Roe are partners in the Example firm."
+    assert bylines.people(raw) == [JANE, Name("Richard", "Roe", "")]
+
+
+@pytest.mark.parametrize(
+    "raw",
+    [
+        "Doewoodsen, Jane; Jane Doewodosen lives in Springfield.",
+        "DOEWOOD, JANE; Jane Dowood is a teacher.",
+    ],
+)
+def test_a_family_name_misspelt_by_more_than_a_letter_is_still_the_author(raw: str) -> None:
+    assert len(bylines.people(raw)) == 1
+
+
+@pytest.mark.parametrize(
+    "part",
+    ["Example Associates", "Example Resources Program", "Springfield Promise", "Example Science"],
+)
+def test_more_institution_tails_are_not_persons(part: str) -> None:
+    assert bylines.people(part) == []
+
+
+def test_a_role_in_a_list_after_one_name_is_not_a_person() -> None:
+    assert bylines.people("Jane Q. Doe, Managing Partner, Example & Co.") == [
+        Name("Jane Q.", "Doe", "")
+    ]
+    raw = "Jane Doe, Springfield District Attorney and a Democrat, was a member of the Example"
+    assert bylines.people(raw) == [JANE]

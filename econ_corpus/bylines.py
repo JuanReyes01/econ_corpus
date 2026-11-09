@@ -14,6 +14,7 @@ someone did not write ('Jane Doe is on vacation').
 """
 
 import difflib
+import itertools
 import re
 
 from econ_corpus import authors
@@ -45,11 +46,18 @@ CREDIT_RE = re.compile(r"\bcontributed (?:reporting|research)\b", re.IGNORECASE)
 # A period glued to the word after it ('Jane Q.Doe', "Jane Q.O'Doe", 'Jane Doe.These are'),
 # but not the periods between initials ('J.Q.', 'M.D').
 PERIOD_GLUED_RE = re.compile(r"(?<=[^\W\d_]\.)(?=[^\W\d_](?:[^\W\d_]|['\u2019]))")
+SUFFIX_GLUED_RE = re.compile(r"(?<=[a-z])(Jr|Sr)\b")  # 'Jane DoeJr'
+# The note of an item written by members of an editorial board, who are named around it.
+BOARD_RE = re.compile(
+    r"(?:written by|these are (?:the )?personal views of) members of the editorial board",
+    re.IGNORECASE,
+)
 LEAD_RE = re.compile(
     r"^(?:(?:and|&)\s+)?(?:by\s+)?", re.IGNORECASE
 )  # 'And Jane Doe', 'By Jane Doe'
 MIN_FAMILY = 4  # letters a family name needs to count as the start of a longer one
 MIN_ALIKE = 0.8  # share of letters two given names must share to be one name misspelt
+MIN_ALIKE_FAMILY = 0.85  # and two family names ('Doewoodsen', 'Doewodosen')
 BIO_RE = re.compile(r"\b(?:is|was|are|were|has|had)\b")  # the verb of a sentence about someone
 # The same verb with words after it; 'Do is, Jane' is a family name cut by a stray space.
 GOES_ON_RE = re.compile(r"\b(?:is|was|are|were|has|had)\s+\w")
@@ -189,6 +197,42 @@ def _after_sentence(part: str) -> list[Name]:
     return [name for name in names if name] if all(names) else []
 
 
+def _listed(part: str) -> list[Name]:
+    """Read a list of names, with or without an affiliation after it.
+
+    'Jane Doe, Richard Roe and Ann Poe' is three people. In 'Jane Doe and Richard Roe,
+    Example Staff' the tail is no name and is left out; that needs 'and' or '&' before the
+    last name, since 'Jane Doe, Springfield Heights, Ill.' is one person and her town.
+    """
+    pieces = [piece.strip() for piece in LIST_RE.split(part)]
+    names = [authors.given_first(piece) for piece in pieces]
+    run = list(itertools.takewhile(bool, names))
+    if len(run) < 2 or any(names[len(run) :]):  # noqa: PLR2004 (a list has two names)
+        return []
+    # 'and' stands before the last name of the list or right after it ('A, B and Example').
+    separators = [text.strip() for text in LIST_RE.findall(part)][len(run) - 2 : len(run)]
+    if len(run) < len(names) and all(text == "," for text in separators):
+        return []
+    # 'Jane Doe and Richard Roe Jane Doe and ...': the list written again starts in the
+    # last name of the run, which then ends in the first name of the list.
+    first, last = (f"{name.given} {name.family}" for name in (run[0], run[-1]))
+    again = last.endswith(f" {first}") and authors.given_first(last.removesuffix(first))
+    return [name for name in [*run[:-1], again or run[-1]] if name]
+
+
+def _board_members(part: str) -> list[Name]:
+    """Read the names around the note of an editorial-board item.
+
+    'Jane Doe. Richard Roe. Written by members of the editorial board.' lists the members
+    who wrote it, one sentence each, before or after the note.
+    """
+    if not BOARD_RE.search(part):
+        return []
+    pieces = re.split(r"(?<=[a-z])\.+\s*", BOARD_RE.sub(".", part))
+    names = [authors.given_first(piece.strip(". ")) for piece in pieces]
+    return [name for name in names if name]
+
+
 def recover_names(part: str) -> list[Name]:
     """Return the persons in a part that `authors.parse_name` cannot read as written.
 
@@ -196,9 +240,12 @@ def recover_names(part: str) -> list[Name]:
     end of a sentence about them, or co-authors scrambled by the export, or it starts with a
     full name followed by other text.
     """
-    listed = [authors.given_first(piece.strip()) for piece in LIST_RE.split(part)]
-    if len(listed) > 1 and all(listed):
-        return [name for name in listed if name]
+    board = _board_members(part)
+    if board:
+        return board
+    listed = _listed(part)
+    if listed:
+        return listed
     moved = _after_sentence(part)
     if moved:
         return moved
@@ -211,7 +258,8 @@ def recover_names(part: str) -> list[Name]:
 
 def read_part(part: str) -> tuple[list[Name], str]:
     """Return the persons a part names and how they were read: 'as_written' or 'recovered'."""
-    part = LEAD_RE.sub("", PERIOD_GLUED_RE.sub(" ", GLUED_RE.sub("", part)).strip())
+    part = SUFFIX_GLUED_RE.sub(r" \1", PERIOD_GLUED_RE.sub(" ", GLUED_RE.sub("", part)))
+    part = LEAD_RE.sub("", part.strip())
     if _is_note(part):
         return [], ""
     name = authors.parse_name(part)
@@ -251,7 +299,8 @@ def _repeats(name: Name, earlier: Name, part: str) -> str:
         # The same words: the earlier part had them the wrong way round ('Jane, Doe'), or
         # it is the same name, and then the earlier reading may hold a suffix.
         turned = authors.fold(name.given) != authors.fold(earlier.given)
-        return "replace" if turned else "drop"
+        fuller = bool(name.suffix) and not earlier.suffix  # only the note gives the suffix
+        return "replace" if turned or fuller else "drop"
     if set(new) < set(old):
         # The earlier part has a town where the family name goes ('Springfield, Jane Doe')
         # when its family name is no word of the note's name and the note is not cut at an
@@ -266,10 +315,10 @@ def _repeats(name: Name, earlier: Name, part: str) -> str:
     # another form of the given name ('Tim', 'Timothy'): the same family name, or one that
     # starts the other, after a given name that is alike.
     family, old_family = authors.fold(name.family), authors.fold(earlier.family)
-    alike = authors.one_edit(family, old_family) or (
-        min(len(family), len(old_family)) >= MIN_FAMILY
-        and (family.startswith(old_family) or old_family.startswith(family))
-    )
+    long_enough = min(len(family), len(old_family)) >= MIN_FAMILY
+    starts = family.startswith(old_family) or old_family.startswith(family)
+    near = difflib.SequenceMatcher(None, family, old_family).ratio() >= MIN_ALIKE_FAMILY
+    alike = authors.one_edit(family, old_family) or (long_enough and (starts or near))
     again = set(old) < set(new) or close or (alike and _same_given(name, earlier))
     return "drop" if again else ""
 

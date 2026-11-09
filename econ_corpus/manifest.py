@@ -18,6 +18,7 @@ import pyarrow.parquet as pq
 from econ_corpus import reasons, review
 
 FILE = "manifest.json"
+TABLES = ("articles", "authors", "author_names", "article_authors", "author_candidates")
 
 
 def current(
@@ -35,7 +36,7 @@ def current(
         "byline_parts": review.fingerprint(parts),
         "author_pairs": review.fingerprint(pairs),
     }
-    tables = {table.name: reasons.file_digest(table) for table in sorted(clean.glob("*.csv"))}
+    tables = {f"{name}.csv": reasons.file_digest(clean / f"{name}.csv") for name in TABLES}
     return inputs | tables
 
 
@@ -61,6 +62,8 @@ def check(clean: Path, records: Path, reasons_file: Path, review_dir: Path | Non
     built = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
     now = current(clean, records, reasons_file, review_dir)
     changed = sorted(name for name in now | built if now.get(name) != built.get(name))
+    # A table that the build does not write would be copied into a delivery with the others.
+    changed += sorted(f.name for f in clean.glob("*.csv") if f.stem not in TABLES)
     if changed:
         msg = (
             f"the cleaned tables in {clean} are not the ones built from these inputs "

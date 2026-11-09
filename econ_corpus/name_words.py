@@ -58,7 +58,9 @@ ORG_WORDS = {
     "coordinator", "reporter", "correspondent", "professor", "captain", "supreme", "army",
     "navy", "health", "federation", "comptroller", "initiative", "bank", "relations",
     "republicans", "democrats", "legal", "defense", "exception", "sketch", "myths", "topic",
-    "surgeon", "ceo", "enquirer", "publisher",
+    "surgeon", "ceo", "enquirer", "publisher", "associates", "program", "science",
+    "resolution", "promise", "forum", "trust", "equality", "week", "partner", "managing",
+    "attorney", "district",
 }  # fmt: skip
 # In 'Family, Given' form a one-word family name can be an ORG_WORD ('Press, Jane'), so only
 # these words rule a part out when they stand alone before the comma.
@@ -96,7 +98,8 @@ WATCH_WORDS = {
     "commack", "patchogue", "riverhead", "oceanside", "jericho", "amityville", "copiague",
     "lindenhurst", "farmingdale", "bethpage", "woodmere", "northport", "setauket", "greenlawn",
     "whitestone", "sunnyside", "albany", "evanston", "naperville", "woodbury", "westbury",
-    "roslyn", "holbrook", "astoria",
+    "roslyn", "holbrook", "astoria", "coram", "ronkonkoma", "baldwin", "jamaica", "medford",
+    "elmont", "cedarhurst", "brookhaven", "islandia", "ridge", "selden",
 }  # fmt: skip
 
 # Short forms of first names that are not simply their beginning ('Tim' for 'Timothy' needs

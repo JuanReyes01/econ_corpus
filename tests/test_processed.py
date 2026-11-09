@@ -328,3 +328,13 @@ def test_the_manifest_refuses_a_table_changed_without_changing_its_size(tmp_path
     authors.write_text(changed, encoding="utf-8")
     with pytest.raises(ValueError, match=r"authors\.csv"):
         manifest.check(clean, records, reasons, None)
+
+
+def test_the_manifest_refuses_a_table_that_the_build_did_not_write(tmp_path: Path) -> None:
+    records, reasons = write_inputs(tmp_path)
+    clean = tmp_path / "clean"
+    clean.mkdir()
+    (clean / "old_table.csv").write_text("a\n1\n", encoding="utf-8")
+    processed.build(records, reasons, clean)
+    with pytest.raises(ValueError, match=r"old_table\.csv"):
+        manifest.check(clean, records, reasons, None)

@@ -114,8 +114,8 @@ def given_first(text: str, suffix: str = "") -> Name | None:
     tokens = _drop_honorifics(text.split())
     while len(tokens) > 2 and lookup(tokens[-1]) in DEGREES:  # noqa: PLR2004 ('Jane Doe MD')
         tokens = tokens[:-1]
-    if tokens and not suffix and abbreviation(tokens[-1]) in SUFFIXES:
-        suffix, tokens = SUFFIXES[abbreviation(tokens[-1])], tokens[:-1]
+    while tokens and abbreviation(tokens[-1]) in SUFFIXES:  # 'Doe Jr. Jr.' gives it twice
+        suffix, tokens = suffix or SUFFIXES[abbreviation(tokens[-1])], tokens[:-1]
     if not 2 <= len(tokens) <= MAX_NATURAL or not _are_name_words(tokens):  # noqa: PLR2004
         return None
     capitals = tokens[0][0].isupper() and all(has_capital(t) for t in tokens if not is_particle(t))
@@ -144,10 +144,10 @@ def _family_first(family: str, given: str, suffix: str) -> Name | None:
     family_words, given_words = family.split(), _drop_honorifics(given.split())
     last_family = abbreviation(family_words[-1]) if family_words else ""
     one_family_name = all(is_particle(word) for word in family_words[:-2])
-    if last_family in SUFFIXES and not suffix and one_family_name:
+    if last_family in SUFFIXES and one_family_name:
         # 'Doe Jr., John', and 'III, John Q Doe' where the suffix alone was moved in front.
         # Not 'Jane Doe Jr., Richard Roe', which is two names.
-        suffix, family_words = SUFFIXES[abbreviation(family_words[-1])], family_words[:-1]
+        suffix, family_words = suffix or SUFFIXES[last_family], family_words[:-1]
         if not family_words:
             return given_first(given, suffix)
     # 'Doe, John Jr.': the suffix follows the given names. Not in 'Jane Doe, Richard Roe Jr.',
