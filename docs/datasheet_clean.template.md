@@ -1,5 +1,6 @@
-<!-- Prose template. `econ_corpus.datasheet_clean` fills the double-brace names with numbers
-from the data and writes docs/datasheet_clean.md. Edit the prose here, never the generated file. -->
+<!-- docs/datasheet_clean.md is generated from docs/datasheet_clean.template.md by
+`make datasheet-clean`, which fills the double-brace names with numbers from the data. Change
+the prose in the template, never in the generated file. -->
 
 # A cleaned dataset of signed opinion articles in U.S. newspapers, {{year_min}}–{{year_max}}
 
@@ -52,18 +53,21 @@ give the shared raw table; the others leave only the cleaned dataset (Figure 1).
   as news (`not_opinion`) or, when they have no section, as undecided (`unclear_opinion`).
 - **Newspapers:** the ten queried newspapers, print and online editions.
 - **Text and author:** an article needs body text and a byline that names at least one person.
-  ProQuest's "Anonymous" and missing bylines are unsigned (`no_author`); a byline that names
-  only an institution is `no_person_author`.
+  A body carried by twenty or more different articles is a placeholder ("text not available"),
+  not text (`no_text`). ProQuest's "Anonymous" and missing bylines are unsigned (`no_author`);
+  a byline that names only an institution is `no_person_author`.
 
 ### 2.2 Reading the bylines
 
 - `;` separates authors. A suffix standing alone joins the name before it, and a given name
   cut off from its family name is rejoined (`Lewis; , Flora`).
 - A part is a person if it reads as `Family, Given[, Suffix]` or `Given Family`: two to five
-  capitalised name words, no institution word, no digits. Titles (Dr., Sen.) are dropped. One
-  word is never taken as a name.
+  capitalised name words, no institution word, no digits. Titles and offices before the name
+  (Dr., Sen., State Rep) and degrees after it (MD, PhD) are dropped. One word is never taken as
+  a name.
 - If a part does not read as a name, a full name at its start is recovered
-  (`Jane Doe. Springfield`, `Jane Doe is a columnist`).
+  (`Jane Doe. Springfield`, `Jane Doe is a columnist`), and co-authors that the export
+  scrambled are put back (`Doe, Jane Roe and Ann` is Jane Roe and Ann Doe).
 - Of {{n_links}} links, {{n_links_as_written}} ({{links_as_written_pct}}) were read as
   written, {{n_links_recovered}} were recovered and {{n_links_manual}} come from the manual
   review (section 2.4). Each link records how it was read.
@@ -75,7 +79,7 @@ give the shared raw table; the others leave only the cleaned dataset (Figure 1).
   kept.
 - **Rule:** names with the same first and family name are one author when their middle names
   and suffixes do not contradict each other (one is missing, or one is the initial of the
-  other) and they share at least one newspaper. One contradiction among such names stops
+  other, compared name by name) and they share at least one newspaper. One contradiction among such names stops
   every merge among them.
 - **Result:** {{n_names}} name variants for {{n_authors}} authors; {{n_names_rule}} variants
   were merged by the rule and {{n_names_review}} by the manual review.
@@ -96,11 +100,15 @@ its newspapers, its years and two headlines.
 
 - **Models:** most cases were decided by Claude Sonnet run as subagents; the rest, and the
   checks, by Claude Fable 5.1. The reviewer of every decision is recorded in the review files.
-- **Checks:** random samples of the decisions were read again by a second model (85, then 90
-  decisions) and none was changed; the set was checked for contradictions.
+- **Checks:** random samples of the decisions of the first and third rounds (about 175) were
+  read again by a second model, which rewrote two suffixes and changed no decision; an
+  independent audit of the output then found credits of interviewers and illustrators taken as
+  authors, which were corrected. The set was checked for contradictions. The rounds are
+  described in the README of the review files.
 - **How decisions are applied:** they are data read by the pipeline, never edits to the
-  rules. A corrected byline and a merge by review are marked `manual_review`; a pair judged
-  different is never merged by the rule; a pair judged unsure stays apart and flagged.
+  rules. A corrected byline and a merge by review are marked `manual_review`. A pair judged
+  different is never merged by the rule. A pair judged unsure is left to the rule: it stays
+  apart, with its verdict in the list of look-alike pairs, unless the rule later merges it.
 - **Limit:** a language model can be wrong, above all for authors it knows nothing about.
   The decisions and their reasons are delivered with the dataset so they can be audited.
 
@@ -159,8 +167,8 @@ Pairs of authors that look alike and are not merged.
 |---|---|---|
 | `author_id_a`, `name_a`, `articles_a` | | First author of the pair |
 | `author_id_b`, `name_b`, `articles_b` | | Second author |
-| `kind` | string | `no_shared_newspaper` (compatible names never in the same newspaper), `conflicting_names` (middle names or suffixes contradict within the group), `one_letter_apart` (keys one letter apart in the same newspaper) or `apart_by_review` |
-| `review` | string | `different`, `unsure` or `not_reviewed` |
+| `kind` | string | `no_shared_newspaper` (compatible names never in the same newspaper), `conflicting_names` (middle names or suffixes contradict within the group), `one_letter_apart` (keys one letter apart in the same newspaper), `nickname` (first names that are short forms of each other, in the same newspaper), `swapped_names` (given and family name the other way round) or `apart_by_review` |
+| `review` | string | `different`, `unsure` or `not_reviewed`. A verdict on a pair that no rule lists any more is kept in the review files only |
 
 ## 4. Contents
 
@@ -195,7 +203,9 @@ Pairs of authors that look alike and are not merged.
 - **Reasons:** they are matched to the records by file and position in the file, and the
   counts per reason add up to the rows parsed.
 - **Review:** a review file with a repeated case, an unknown verdict or an unreadable
-  correction stops the build, and so does a pair judged different that ends up merged.
+  correction stops the build, and so does a pair judged different that ends up merged. The
+  reasons carry a fingerprint of the corrections they were computed with, and the tables and
+  this document refuse reasons computed with other corrections.
 - **Look-alike authors left apart** (kind / review):
 
 {{candidate_kinds}}
@@ -221,8 +231,8 @@ Pairs of authors that look alike and are not merged.
 The pipeline is in the private repository `econ_corpus` [1]: `exclusions` and `reasons`
 (selection), `authors` and `bylines` (reading names), `identity` (one author), `review` and
 `review_cases` (manual review), `processed` (tables) and `datasheet_clean` (this document).
-Every rule and its evidence are in `docs/decisions.md`. `make exclusions`, `make processed`
-and `make datasheet-clean` regenerate the dataset and this document.
+Every rule and its evidence are in `docs/decisions.md`. `README.md` lists the commands, from
+`make parse` on, that regenerate the dataset and this document.
 
 ## 8. References
 

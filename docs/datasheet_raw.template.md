@@ -1,5 +1,6 @@
-<!-- Prose template. `econ_corpus.datasheet` fills the double-brace names with numbers from the
-data and writes docs/datasheet_raw.md. Edit the prose here, never the generated file. -->
+<!-- docs/datasheet_raw.md is generated from docs/datasheet_raw.template.md by `make datasheet`,
+which fills the double-brace names with numbers from the data. Change the prose in the
+template, never in the generated file. -->
 
 # A raw table of U.S. newspaper opinion articles from ProQuest US Newsstream, {{year_min}}–{{year_max}}
 
@@ -88,7 +89,7 @@ kept raw so that other researchers can derive their own samples from it.
 | Hash, word count and character count of the text | columns added | Integrity checks |
 | File footers removed | {{n_footer_rows}} rows | Not records |
 | Repeated ProQuest ids removed; the copy with the longest body is kept, the earliest download on ties | {{n_repeats_removed}} rows | Overlapping downloads (section 5.2) |
-| Repeated text removed: same body, title, date and queried newspaper under another id; the copy kept is the earliest that is a signed opinion piece, or the earliest of all | {{n_text_repeats_removed}} rows | The same article downloaded under two ids (section 5.2) |
+| Repeated text removed: same body, title, date and queried newspaper under another id, titles compared without spaces or case; the copy kept is the earliest that is a signed opinion piece, or the earliest of all | {{n_text_repeats_removed}} rows | The same article downloaded under two ids (section 5.2) |
 | Nothing else removed or edited | news items, publications outside the query | Left for the cleaned dataset (section 3.2) |
 
 ## 3. Data records
@@ -265,8 +266,8 @@ the raw table.
 
 The pipeline is in the private repository `econ_corpus` [2]: `parse` (exports to table),
 `export` (table to CSV), `reasons` and `exclusions`, `tables`, `figures` and `datasheet` (this
-document). Every rule and its evidence are in `docs/decisions.md`. `make datasheet`
-regenerates this document from the table. The repository holds code and documentation only;
+document). Every rule and its evidence are in `docs/decisions.md`. `README.md` lists the
+commands, from `make parse` on, that regenerate the table and this document. The repository holds code and documentation only;
 the data are not in it.
 
 ## 8. References
