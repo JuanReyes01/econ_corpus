@@ -68,8 +68,9 @@ give the shared raw table; the others leave only the cleaned dataset (Figure 1).
   and offices before the name (Dr., Sen., State Rep) and degrees after it (MD, PhD) are
   dropped. One word is never taken as a name.
 - A list of names is read whole, with or without an affiliation after it (`Jane Doe and
-  Richard Roe, Example Staff`), and so are the names around the note of an editorial-board
-  item (`Jane Doe. Richard Roe. Written by members of the editorial board.`).
+  Richard Roe, Example Staff`; `Jane Doe, Richard Roe, and Ann Poe`), and so are the names
+  around the note of an editorial-board item, one sentence each or as a list (`Jane Doe.
+  Richard Roe. Written by members of the editorial board.`).
 - If a part does not read as a name, a full name at its start is recovered
   (`Jane Doe. Springfield`, `Jane Doe is a columnist`), and co-authors that the export
   scrambled are put back (`Doe, Jane Roe and Ann` is Jane Roe and Ann Doe).

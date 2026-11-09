@@ -11,7 +11,7 @@ Data descriptor, version 1.0 (2026-11-09). Derived from the raw table described 
 
 The dataset holds 406,300 opinion articles signed by at least one person, published
 1980–2024 in ten U.S. newspapers with the highest circulation, and the
-87,094 authors who signed them. Articles and authors are separate tables joined by a
+87,112 authors who signed them. Articles and authors are separate tables joined by a
 link table, since an article can have several authors and an author many articles. The
 dataset is derived from 1,377,766 rows parsed from ProQuest US Newsstream exports by a
 sequence of exclusions, each row leaving for exactly one reason. Authors were read from the
@@ -28,12 +28,12 @@ queried newspapers, with text, signed by a person.
 | | |
 |---|---|
 | Articles | 406,300 |
-| Authors | 87,094 |
-| Article–author links | 455,097 |
+| Authors | 87,112 |
+| Article–author links | 455,172 |
 | Newspapers | 10 |
 | Publication years | 1980–2024 |
 | Articles with one author | 93.2% |
-| Authors with one article | 51,587 (59.2%) |
+| Authors with one article | 51,598 (59.2%) |
 
 ## 2. Methods
 
@@ -80,8 +80,9 @@ give the shared raw table; the others leave only the cleaned dataset (Figure 1).
   and offices before the name (Dr., Sen., State Rep) and degrees after it (MD, PhD) are
   dropped. One word is never taken as a name.
 - A list of names is read whole, with or without an affiliation after it (`Jane Doe and
-  Richard Roe, Example Staff`), and so are the names around the note of an editorial-board
-  item (`Jane Doe. Richard Roe. Written by members of the editorial board.`).
+  Richard Roe, Example Staff`; `Jane Doe, Richard Roe, and Ann Poe`), and so are the names
+  around the note of an editorial-board item, one sentence each or as a list (`Jane Doe.
+  Richard Roe. Written by members of the editorial board.`).
 - If a part does not read as a name, a full name at its start is recovered
   (`Jane Doe. Springfield`, `Jane Doe is a columnist`), and co-authors that the export
   scrambled are put back (`Doe, Jane Roe and Ann` is Jane Roe and Ann Doe).
@@ -103,8 +104,8 @@ give the shared raw table; the others leave only the cleaned dataset (Figure 1).
   author is a piece of that sentence. A name followed by a small word that may be a piece
   of it cut off by a stray space (`Jane Do e Roe`, `Jane Do rgan`) is not read: it goes
   to the manual review.
-- Of 455,097 links, 432,953 (95.1%) were read as
-  written, 16,859 were recovered and 5,285 come from the manual
+- Of 455,172 links, 432,953 (95.1%) were read as
+  written, 16,934 were recovered and 5,285 come from the manual
   review (section 2.4). Each link records how it was read.
 
 ### 2.3 Deciding that two names are one author
@@ -120,7 +121,7 @@ give the shared raw table; the others leave only the cleaned dataset (Figure 1).
   initial of the other, compared name by name) and they are linked through shared newspapers
   (two variants can be joined by a third that shares a newspaper with each). One
   contradiction among such names stops every merge among them.
-- **Result:** 91,198 name variants for 87,094 authors; 3,214 variants
+- **Result:** 91,216 name variants for 87,112 authors; 3,214 variants
   were merged by the rule and 890 by the manual review.
 - **Not merged:** 7,188 pairs of look-alike authors are listed, not merged
   (section 3.5).
@@ -254,19 +255,19 @@ Pairs of authors that look alike and are not merged.
 
 | Authors | Articles | Share |
 |---|---|---|
-| 1 | 378,511 | 93.2% |
-| 2 | 19,866 | 4.9% |
-| 3 | 2,998 | 0.7% |
-| 4 | 1,728 | 0.4% |
-| 5 or more | 3,197 | 0.8% |
+| 1 | 378,484 | 93.2% |
+| 2 | 19,869 | 4.9% |
+| 3 | 3,013 | 0.7% |
+| 4 | 1,734 | 0.4% |
+| 5 or more | 3,200 | 0.8% |
 
 ### 4.4 Articles per author
 
 | Articles | Authors | Share |
 |---|---|---|
-| 1 | 51,587 | 59.2% |
-| 2 to 9 | 30,737 | 35.3% |
-| 10 to 99 | 4,360 | 5.0% |
+| 1 | 51,598 | 59.2% |
+| 2 to 9 | 30,743 | 35.3% |
+| 10 to 99 | 4,361 | 5.0% |
 | 100 or more | 410 | 0.5% |
 
 ### 4.5 Most frequent authors
@@ -294,7 +295,7 @@ Pairs of authors that look alike and are not merged.
 | Read | Count | Share |
 |---|---|---|
 | as_written | 432,953 | 95.1% |
-| recovered | 16,859 | 3.7% |
+| recovered | 16,934 | 3.7% |
 | manual_review | 5,285 | 1.2% |
 
 ## 5. Technical validation
