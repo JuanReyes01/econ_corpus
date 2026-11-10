@@ -133,7 +133,9 @@ delivery: check pdf
 	cp docs/datasheet_raw.pdf reports/tables/exclusion_counts.csv $(DELIVERY)/2_raw_csv/
 	cp --reflink=auto data/processed/clean/*.csv $(DELIVERY)/3_clean/
 	cp data/processed/clean/manifest.json docs/datasheet_clean.pdf $(DELIVERY)/3_clean/
-	cp -r data/review $(DELIVERY)/3_clean/review
+	mkdir -p $(DELIVERY)/3_clean/review
+	cp data/review/byline_parts.csv data/review/author_pairs.csv $(DELIVERY)/3_clean/review/
+	cp docs/review_readme.md $(DELIVERY)/3_clean/review/README.md
 	cp docs/delivery_readme.md $(DELIVERY)/README.md
 	cp docs/datasheet.pdf $(DELIVERY)/datasheet.pdf
 

@@ -15,8 +15,8 @@ U.S. newspaper opinion articles from ProQuest US Newsstream. Internal use only (
   `author_names.csv`, `article_authors.csv` (the link between articles and authors),
   `author_candidates.csv` (look-alike authors not merged), `datasheet_clean.pdf` and
   `manifest.json` (fingerprints of what the tables were built from and of the tables).
-  `review/` holds the manual review of authors, done by a language model: the decisions, the
-  cases as they were shown to the reviewers, and a README.
+  `review/` holds the two tables of decisions of the manual review of authors, each row with
+  its reason, and a README that explains them.
 
 This folder is written by `make delivery` in the repository, from the current outputs,
 after `make check` has found that they all belong to one state of the pipeline. To run the

@@ -117,7 +117,8 @@ make delivery
 
 `make delivery` runs step 7, renders the three datasheets as PDF and copies everything into
 the folder named by `DELIVERY`: the overview at the top, the exports, the raw CSV with its
-datasheet, and the cleaned tables with their datasheet and the review files. The folder holds copies, so running the pipeline again does
+datasheet, and the cleaned tables with their datasheet and the two tables of review
+decisions (the working folders of the review stay in `data/review/`). The folder holds copies, so running the pipeline again does
 not change a delivery; run `make delivery` again to replace it.
 
 ## Development
