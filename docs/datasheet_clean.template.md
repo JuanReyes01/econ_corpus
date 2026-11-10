@@ -21,10 +21,9 @@ documented here.
 
 ## 1. Background and summary
 
-The dataset supports the study of how economists communicate with the public through
-newspaper opinion pieces. It keeps only what that study needs: opinion pieces, from the
-queried newspapers, with at least 30 words of English text written by the author, signed
-by a person.
+The dataset is cleaned with the authors and the opinion columns in mind. It keeps only
+opinion pieces, from the queried newspapers, with at least 30 words of English text written
+by the author, signed by a person.
 
 | | |
 |---|---|

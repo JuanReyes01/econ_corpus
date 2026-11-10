@@ -5,7 +5,7 @@ build-backend = "flit_core.buildapi"
 [project]
 name = "econ_corpus"
 version = "0.0.1"
-description = "Build and audit a corpus of U.S. newspaper opinion articles to study how economists communicate."
+description = "Build and audit a dataset of U.S. newspaper opinion articles, cleaned with the authors and the opinion columns in mind."
 authors = [
   { name = "Juan Camilo Reyes" },
 ]

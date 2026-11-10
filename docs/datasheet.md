@@ -4,9 +4,9 @@ never in the generated file. -->
 
 # econ_corpus: from the ProQuest exports to a dataset of signed opinion articles
 
-Overview, version 1.0 (2026-11-09). This document tells where the data come from, what the
-package holds, what was done to the data and why, and what came out: a corpus built to study
-how economists communicate with the public through newspaper opinion pieces. The code that
+Overview, version 1.1 (2026-11-10). This document tells where the data come from, what the
+package holds, what was done to the data and why, and what came out: a dataset of newspaper
+opinion articles, cleaned with the authors and the opinion columns in mind. The code that
 did it and two detailed data descriptors are in the repository (section 8).
 
 | | |

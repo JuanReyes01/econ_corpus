@@ -1,8 +1,8 @@
 # econ_corpus
 
-Build and audit a corpus of U.S. newspaper opinion articles (ProQuest US Newsstream) to study
-how economists communicate. The repository holds code and documentation only; the data are
-ProQuest-licensed and never committed.
+Build and audit a dataset of U.S. newspaper opinion articles (ProQuest US Newsstream), cleaned
+with the authors and the opinion columns in mind. The repository holds code and documentation
+only; the data are ProQuest-licensed and never committed.
 
 Two datasets come out of it, each with a datasheet, and an overview of the whole
 (`docs/datasheet.md`): the pipeline as a map, where every record ends, the rules in force

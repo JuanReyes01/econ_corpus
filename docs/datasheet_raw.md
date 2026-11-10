@@ -20,9 +20,9 @@ the intended design.
 
 ## 1. Background and summary
 
-The table is the first stage of a corpus built to study how economists communicate with the
-public through newspaper opinion pieces. It is a faithful reorganisation of the ProQuest exports,
-kept raw so that other researchers can derive their own samples from it.
+The table is the first stage of a dataset of newspaper opinion articles. It is a faithful
+reorganisation of the ProQuest exports, kept raw so that other researchers can derive their own
+samples from it.
 
 | | |
 |---|---|
