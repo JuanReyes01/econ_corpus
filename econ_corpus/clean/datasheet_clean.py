@@ -2,8 +2,9 @@
 
 Input: the cleaned tables written by `processed`, the reasons written by `exclusions`, the
 manual-review files and a prose template with {{placeholders}}.
-Output: a markdown datasheet whose numbers all come from the data, the flow from the parsed
-rows to the cleaned dataset as a table and as a figure.
+Output: a markdown datasheet whose numbers all come from the data, the flow from the raw
+table to the cleaned dataset as a table and as a figure (the raw table has its own datasheet,
+which this one builds on).
 
 Lives here: the headline numbers, the template filling and the file writing. Does not live
 here: the tables (clean_tables), the figure (figures), the prose (the template, in docs/) or
@@ -34,7 +35,8 @@ ARTICLES_PER_AUTHOR = [
     ("100 or more", 100, None),
 ]
 TOP_AUTHORS = 15
-HEADING = "From the ProQuest exports to the cleaned dataset"
+HEADING = "From the raw table to the cleaned dataset"
+START = "Raw table"  # the first box of the flow; where the datasheet of the raw table ends
 
 
 @dataclass
@@ -65,7 +67,6 @@ def facts(inputs: Inputs) -> dict[str, str]:
     years = [y for y in inputs.years if y]
     n_articles, n_links, n_authors = len(inputs.newspapers), len(inputs.links), len(inputs.authors)
     counts = {
-        "n_parsed": len(inputs.reasons),
         "n_raw": sum(n for code, n in reasons.items() if code not in LEFT_OUT),
         "n_articles": n_articles,
         "n_authors": n_authors,
@@ -101,7 +102,7 @@ def described(inputs: Inputs) -> dict[str, tables.Table]:
     top = sorted(inputs.authors, key=lambda a: -int(a["articles"]))[:TOP_AUTHORS]
     kinds = [f"{c['kind']} / {c['review']}" for c in inputs.candidates]
     return {
-        "flow": clean_tables.flow_table(clean_tables.flow(inputs.reasons)),
+        "flow": clean_tables.flow_table(clean_tables.clean_steps(inputs.reasons), start=START),
         "newspapers": clean_tables.newspaper_table(inputs.newspapers, inputs.editions),
         "decades": clean_tables.decade_table(inputs.years),
         "authors_per_article": clean_tables.binned_table(
@@ -182,8 +183,8 @@ def build(  # noqa: PLR0913 (one argument per input or output file)
     )
     tables.write_csv(shown["flow"], tables_dir / "clean_flow.csv")
     figures_dir.mkdir(parents=True, exist_ok=True)
-    steps = clean_tables.flow(inputs.reasons)
-    chart = figures.flow_svg(steps, start=len(inputs.reasons), heading=HEADING)
+    steps = clean_tables.clean_steps(inputs.reasons)
+    chart = figures.flow_svg(steps, start_name=START, heading=HEADING)
     (figures_dir / "clean_flow.svg").write_text(chart, encoding="utf-8")
 
 

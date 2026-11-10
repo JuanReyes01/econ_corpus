@@ -17,7 +17,7 @@ review-cases`, `make datasheet-clean`).
 | 5 | `review_cases.py` | Lists the author cases that a rule cannot settle, with the evidence a reviewer needs | the cleaned tables, the records, the reasons, `data/review/` | `data/review/cases/*.csv` |
 | | `author_cases.py` | The cases about whole authors: look-alike pairs not yet reviewed, merges of a name with a suffix and one without, variants of one author years apart, and judged pairs that apply to nothing any more | | |
 | 6 | `datasheet_clean.py` | Fills `docs/datasheet_clean.template.md` with the numbers, tables and figure of the cleaned dataset | the cleaned tables, the records, the reasons, `data/review/` | `docs/datasheet_clean.md`, `reports/tables/clean_flow.csv`, `reports/figures/clean_flow.svg` |
-| | `clean_tables.py` | The tables of that datasheet: the exclusions from the rows parsed to the cleaned dataset, and the counts of articles and authors | | |
+| | `clean_tables.py` | The tables of that datasheet: the exclusions from the raw table to the cleaned dataset (the full flow from the rows parsed is their base), and the counts of articles and authors | | |
 
 After a round of manual review (new decisions in `data/review/`), run step 2 of pipeline 1
 and then this pipeline again, until step 5 lists no case: `make cleaned`.

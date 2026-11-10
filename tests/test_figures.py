@@ -76,16 +76,30 @@ STEPS = [
 
 
 def test_flow_chart_is_an_svg_with_a_box_for_the_start_and_each_step() -> None:
-    svg = figures.flow_svg(STEPS, start=10, heading="From the exports to the cleaned dataset")
+    svg = figures.flow_svg(
+        STEPS, start_name="Rows parsed", heading="From the exports to the cleaned dataset"
+    )
+    assert "10" in svg  # what the first step started from: 8 remaining + 2 removed
     assert svg.startswith("<svg")
     assert svg.rstrip().endswith("</svg>")
     assert svg.count('class="remaining"') == 4
     assert svg.count('class="removed"') == 3
 
 
+def test_flow_chart_names_the_total_it_starts_from() -> None:
+    svg = figures.flow_svg(STEPS[2:], start_name="Raw table", heading="From the raw table")
+    assert "Raw table" in svg
+    assert "Rows parsed" not in svg
+
+
 def test_flow_chart_shows_counts_reasons_and_table_names() -> None:
-    svg = figures.flow_svg(STEPS, start=1234567, heading="From the exports to the cleaned dataset")
-    assert "1,234,567" in svg
+    big = [
+        (c, d, removed * 100000, remaining * 100000, r) for c, d, removed, remaining, r in STEPS
+    ]
+    svg = figures.flow_svg(
+        big, start_name="Rows parsed", heading="From the exports to the cleaned dataset"
+    )
+    assert "1,000,000" in svg
     assert "Row is a file footer" in svg
     assert "Shared raw table" in svg
     assert "Cleaned dataset" in svg

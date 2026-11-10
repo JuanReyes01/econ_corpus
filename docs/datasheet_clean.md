@@ -13,8 +13,8 @@ The dataset holds 399,183 opinion articles signed by at least one person, publis
 1980–2024 in ten U.S. newspapers with the highest circulation, and the
 86,752 authors who signed them. Articles and authors are separate tables joined by a
 link table, since an article can have several authors and an author many articles. The
-dataset is derived from 1,377,766 rows parsed from ProQuest US Newsstream exports by a
-sequence of exclusions, each row leaving for exactly one reason. Authors were read from the
+dataset is derived from the 1,192,522 records of the raw table by a sequence of exclusions,
+each record leaving for exactly one reason. Authors were read from the
 bylines by explicit rules; name variants of one author were merged by a rule, and the doubtful
 cases were decided in a manual review carried out by a large language model, which is
 documented here.
@@ -40,19 +40,18 @@ by a person.
 
 ### 2.1 Selection of articles
 
-Every parsed row gets exactly one reason, so the counts add up. The first three exclusions
-give the shared raw table; the others leave only the cleaned dataset (Figure 1).
+The dataset starts from the raw table: the 1,192,522 records left once the file footers,
+the repeated ProQuest ids and the repeated texts of the exports were removed, as
+`docs/datasheet_raw.md` describes (its sections 2.4 and 5.2). Every record of that table gets
+exactly one reason, so the counts add up (Figure 1).
 
-![From the ProQuest exports to the cleaned dataset](../reports/figures/clean_flow.svg)
+![From the raw table to the cleaned dataset](../reports/figures/clean_flow.svg)
 
-*Figure 1.* Exclusions from the rows parsed to the cleaned dataset.
+*Figure 1.* Exclusions from the raw table to the cleaned dataset.
 
 | Step | Left out | Records | Remaining |
 |---|---|---|---|
-| Rows parsed |  |  | 1,377,766 |
-| file_footer | Row is the footer of an export file, not an article | 2,801 | 1,374,965 |
-| duplicate_id | Repeats a ProQuest id; the copy with the longest body is the one kept | 145,118 | 1,229,847 |
-| duplicate_text | Same text in the same newspaper as another record, which stays | 37,325 | 1,192,522 |
+| Raw table |  |  | 1,192,522 |
 | not_queried_newspaper | Publication is not one of the queried newspapers | 12,413 | 1,180,109 |
 | missing_metadata | No publication, no id, or no document type and section: unclassifiable | 885 | 1,179,224 |
 | not_opinion | A news section, and neither an opinion document type nor an opinion title | 117,445 | 1,061,779 |
@@ -69,10 +68,6 @@ give the shared raw table; the others leave only the cleaned dataset (Figure 1).
   ProQuest files as news. Records with no such mark are left out, either
   as news (`not_opinion`) or, when they have no section, as undecided (`unclear_opinion`).
 - **Newspapers:** the ten queried newspapers, print and online editions.
-- **One text, one article:** a text found under several ids in one newspaper (print and
-  online editions under another title or date, texts posted again) is kept once
-  (`duplicate_text`): the signed copy published first. A body under 100 words is a repeat
-  only under the same title and date.
 - **Text and author:** an article needs body text and a byline that names at least one person.
   A body under 100 words carried by five or more different articles (a title on a date) is a
   notice or a credit ("text not available", a cartoon caption), not text (`no_text`). ProQuest's "Anonymous" and missing bylines are unsigned (`no_author`);
@@ -345,7 +340,8 @@ Pairs of authors that look alike and are not merged.
   otherwise. Every link points to an article and an author that exist, by construction: the
   three tables are written from one reading of the bylines.
 - **Reasons:** they are matched to the records by file and position in the file, and the
-  counts per reason add up to the rows parsed. The reasons carry a fingerprint of the columns
+  counts per reason add up to the rows parsed (`docs/datasheet_raw.md`, section 5.1). The
+  reasons carry a fingerprint of the columns
   they were decided from and of the code, so reasons computed before a new parse or a change
   of the rules are refused.
 - **Review:** a review file with a repeated case, an unknown verdict or an unreadable
@@ -423,11 +419,8 @@ Pairs of authors that look alike and are not merged.
 - **One word is never a name:** pen names of one word and bylines cut to one word are lost.
 - **The name key ignores spaces**, because the export puts stray spaces inside names: `Jane
   C Hu` and `Jane Chu` are one author. An audit found four such pairs.
-- **Subtler duplicates** are not detected: edited versions of one article, whose text
-  differs, and the same text in two newspapers.
-- **One text, one article:** records of different articles that carry the same text are
-  one article. Known case: 32 instalments of a weekly poll column of the Chicago Tribune,
-  stored only as their fixed introduction.
+- **Repeats:** the raw table keeps one copy of a text per newspaper and does not detect
+  subtler duplicates (`docs/datasheet_raw.md`, section 6); the dataset inherits both.
 - **Language:** the rule reads only the start of a text and counts English words, so a
   text that mixes languages can fall on either side. A listing of the cases near the limit
   found three texts in Spanish with English passages that stay and two English captions

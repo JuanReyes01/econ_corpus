@@ -1,8 +1,5 @@
 Step,Left out,Records,Remaining
-Rows parsed,,,"1,377,766"
-file_footer,"Row is the footer of an export file, not an article","2,801","1,374,965"
-duplicate_id,Repeats a ProQuest id; the copy with the longest body is the one kept,"145,118","1,229,847"
-duplicate_text,"Same text in the same newspaper as another record, which stays","37,325","1,192,522"
+Raw table,,,"1,192,522"
 not_queried_newspaper,Publication is not one of the queried newspapers,"12,413","1,180,109"
 missing_metadata,"No publication, no id, or no document type and section: unclassifiable",885,"1,179,224"
 not_opinion,"A news section, and neither an opinion document type nor an opinion title","117,445","1,061,779"

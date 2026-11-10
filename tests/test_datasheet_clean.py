@@ -48,7 +48,7 @@ def test_facts_count_the_tables_and_the_years() -> None:
 
 def test_facts_give_a_count_for_every_reason_and_for_the_raw_table() -> None:
     facts = datasheet_clean.facts(make_inputs())
-    assert facts["n_parsed"] == "4"
+    assert "n_parsed" not in facts  # the rows parsed belong to the datasheet of the raw table
     assert facts["n_file_footer"] == "1"
     assert facts["n_no_author"] == "1"
     assert facts["n_duplicate_id"] == "0"
@@ -112,10 +112,15 @@ def test_build_writes_the_datasheet_the_flow_figure_and_the_flow_table(tmp_path:
     )
     text = out.read_text(encoding="utf-8")
     assert text.startswith("Articles: 2\nAuthors: 2\nNo person: 1\n")
-    assert "| Rows parsed |  |  | 4 |" in text
+    # The flow starts from the raw table (the footer is gone), as the raw datasheet ends there.
+    assert "| Raw table |  |  | 3 |" in text
+    assert "file_footer" not in text
     assert "| New York Times | 2 |" in text
     assert "| Jane Doe | 2 |" in text
-    assert (tmp_path / "figures" / "clean_flow.svg").read_text().startswith("<svg")
+    svg = (tmp_path / "figures" / "clean_flow.svg").read_text()
+    assert svg.startswith("<svg")
+    assert "Raw table" in svg
+    assert "file_footer" not in svg
     assert (tmp_path / "tables" / "clean_flow.csv").exists()
 
 

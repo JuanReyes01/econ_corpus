@@ -104,10 +104,15 @@ def _total_box(y: float, count: int, label: str) -> list[str]:
     ]
 
 
-def flow_svg(steps: Flow, *, start: int, heading: str) -> str:
-    """Draw the exclusions as a column of totals with what each step leaves out beside it."""
+def flow_svg(steps: Flow, *, start_name: str, heading: str) -> str:
+    """Draw the exclusions as a column of totals with what each step leaves out beside it.
+
+    The first box holds what the first step started from, under the name `start_name`
+    ('Rows parsed', 'Raw table').
+    """
     height = TOP + ROW * (len(steps) + 1)
     middle = BOX_X + BOX_W / 2
+    start = steps[0][3] + steps[0][2]  # remaining + removed of the first step
     parts = [
         (
             f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {FLOW_WIDTH} {height}" '
@@ -116,7 +121,7 @@ def flow_svg(steps: Flow, *, start: int, heading: str) -> str:
         f"<title>{heading}</title>",
         f'<rect width="{FLOW_WIDTH}" height="{height}" fill="#ffffff"/>',
         f'<text x="{BOX_X}" y="22" font-size="14">{heading}</text>',
-        *_total_box(TOP, start, "Rows parsed"),
+        *_total_box(TOP, start, start_name),
     ]
     for i, (code, description, removed, remaining, reached) in enumerate(steps, start=1):
         y = TOP + ROW * i

@@ -31,13 +31,29 @@ def test_flow_names_the_two_tables_it_passes_through() -> None:
     assert steps["not_opinion"].reached == ""
 
 
-def test_flow_table_lists_every_step_under_the_parsed_total() -> None:
-    table = clean_tables.flow_table(clean_tables.flow(REASONS))
+def test_the_clean_steps_start_from_the_raw_table() -> None:
+    # The raw table is described in its own datasheet; the cleaned one starts where it ends.
+    steps = clean_tables.clean_steps(REASONS)
+    assert steps[0].code == "not_queried_newspaper"
+    assert steps[-1].code == "not_english"
+    assert not {"file_footer", "duplicate_id", "duplicate_text"} & {s.code for s in steps}
+    assert steps[0].remaining + steps[0].removed == 5  # the rows of the raw table
+    by_code = {s.code: s for s in steps}
+    assert (by_code["not_opinion"].removed, by_code["not_opinion"].remaining) == (1, 4)
+    assert by_code["not_english"].reached == "Cleaned dataset"
+
+
+def test_flow_table_lists_every_step_under_the_total_it_starts_from() -> None:
+    table = clean_tables.flow_table(clean_tables.flow(REASONS), start="Rows parsed")
     assert table[0] == ["Step", "Left out", "Records", "Remaining"]
     assert table[1] == ["Rows parsed", "", "", "7"]
     assert table[2][0] == "file_footer"
     assert table[2][2:] == ["1", "6"]
     assert table[-1][2:] == ["0", "3"]
+    from_raw = clean_tables.flow_table(clean_tables.clean_steps(REASONS), start="Raw table")
+    assert from_raw[1] == ["Raw table", "", "", "5"]
+    assert from_raw[2][0] == "not_queried_newspaper"
+    assert from_raw[-1] == table[-1]
 
 
 def test_counts_table_orders_by_count_and_gives_shares() -> None:

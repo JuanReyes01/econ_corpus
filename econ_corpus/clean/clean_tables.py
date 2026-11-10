@@ -3,16 +3,17 @@
 Input: columns of the cleaned tables written by `processed`, and the reasons of every row.
 Output: tables for the datasheet of the cleaned dataset.
 
-Lives here: the flow from the parsed rows to the cleaned dataset, and counts by newspaper,
-decade and other values. Does not live here: the prose, the template filling or the figure
-(datasheet_clean, figures), or which records are kept (exclusions).
+Lives here: the flow from the parsed rows to the cleaned dataset, and its part after the raw
+table, and counts by newspaper, decade and other values. Does not live here: the prose, the
+template filling or the figure (datasheet_clean, figures), or which records are kept
+(exclusions).
 """
 
 from collections import Counter
 from collections.abc import Iterable
 from typing import NamedTuple
 
-from econ_corpus.raw.reasons import REASONS
+from econ_corpus.raw.reasons import LEFT_OUT, REASONS
 from econ_corpus.shared import summaries
 from econ_corpus.shared.tables import Table
 
@@ -57,15 +58,23 @@ def flow(reasons: Iterable[str]) -> list[Step]:
     return steps
 
 
-def flow_table(steps: list[Step]) -> Table:
-    """Render the flow as a table that starts with the number of rows parsed."""
-    start = steps[0].remaining + steps[0].removed
+def clean_steps(reasons: Iterable[str]) -> list[Step]:
+    """Return the exclusions that leave the cleaned dataset only, from the raw table on.
+
+    The raw table has its own datasheet, so the cleaned one starts where that table ends.
+    """
+    return [s for s in flow(reasons) if s.code not in LEFT_OUT]
+
+
+def flow_table(steps: list[Step], *, start: str) -> Table:
+    """Render the flow as a table whose first row names the total it starts from."""
+    total = steps[0].remaining + steps[0].removed
     body = [
         [s.code, s.description, summaries.num(s.removed), summaries.num(s.remaining)]
         for s in steps
     ]
     header = ["Step", "Left out", "Records", "Remaining"]
-    return [header, ["Rows parsed", "", "", summaries.num(start)], *body]
+    return [header, [start, "", "", summaries.num(total)], *body]
 
 
 def counts_table(values: Iterable[str], first: str) -> Table:
