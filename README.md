@@ -4,7 +4,9 @@ Build and audit a corpus of U.S. newspaper opinion articles (ProQuest US Newsstr
 how economists communicate. The repository holds code and documentation only; the data are
 ProQuest-licensed and never committed.
 
-Two datasets come out of it, each with a datasheet:
+Two datasets come out of it, each with a datasheet, and an overview of the whole
+(`docs/datasheet.md`): the pipeline as a map, where every record ends, the rules in force
+with their reasons and the main counts, figures first.
 
 - **Raw table** (`docs/datasheet_raw.md`): every exported record with all its metadata and
   text, repeats removed.
@@ -30,9 +32,10 @@ econ_corpus/
 ├── raw/      pipeline 1: from the ProQuest exports to the raw table      (steps 1 to 3b)
 ├── clean/    pipeline 2: from the records to the cleaned dataset         (steps 4 to 6)
 ├── names/    reading bylines and deciding which names are one author     (used by both)
-├── shared/   counts, tables, figures and PDF of the two datasheets
+├── shared/   counts, tables, figures and PDF of the datasheets
+├── overview.py  the overview datasheet of both pipelines                   (step 6b)
 └── check.py  the last step: every output belongs to the current data     (step 7)
-docs/         the two datasheets, their templates and the log of decisions
+docs/         the three datasheets, their templates and the log of decisions
 reports/      tables and figures of the datasheets, written by the pipeline
 tests/        the tests, on synthetic records only (never ProQuest text)
 data/         not in the repository (ProQuest licence): records, tables, review files
@@ -61,6 +64,7 @@ inputs that do not belong together; `make <step>` runs one alone.
 | 4 | `make processed` | steps 1 and 2, `data/review/` | `data/processed/clean/*.csv` and `manifest.json` |
 | 5 | `make review-cases` | steps 1, 2 and 4, `data/review/` | `data/review/cases/*.csv` |
 | 6 | `make datasheet-clean` | steps 1, 2 and 4, `data/review/` | `docs/datasheet_clean.md`, `clean_flow` table and figure |
+| 6b | `make overview` | steps 1, 2 and 4, `data/review/` | `docs/datasheet.md`, `pipeline_flow` and `clean_by_year` tables, `pipeline`, `pipeline_flow`, `clean_by_year` and `clean_by_newspaper` figures |
 | 7 | `make check` | every output above | nothing: it builds the datasheets, their tables and figures and the case lists again, and stops if any differs or the raw CSV or a cleaned table is stale |
 
 After any change to the code in `econ_corpus/`, run the steps again from step 2: the
@@ -111,9 +115,9 @@ parsed.
 make delivery
 ```
 
-`make delivery` runs step 7, renders the two datasheets as PDF and copies everything into
-the folder named by `DELIVERY`: the exports, the raw CSV with its datasheet, and the cleaned tables with their
-datasheet and the review files. The folder holds copies, so running the pipeline again does
+`make delivery` runs step 7, renders the three datasheets as PDF and copies everything into
+the folder named by `DELIVERY`: the overview at the top, the exports, the raw CSV with its
+datasheet, and the cleaned tables with their datasheet and the review files. The folder holds copies, so running the pipeline again does
 not change a delivery; run `make delivery` again to replace it.
 
 ## Development

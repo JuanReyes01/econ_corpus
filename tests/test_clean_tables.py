@@ -90,3 +90,9 @@ def test_decade_table_counts_articles_per_decade() -> None:
         ["2000s", "1", "25.0%"],
         ["Unknown year", "1", "25.0%"],
     ]
+
+
+def test_year_table_counts_articles_per_year_in_order() -> None:
+    table = clean_tables.year_table([2001, 1999, 2001, None])
+    assert table[0] == ["Year", "Articles"]
+    assert table[1:] == [["1999", "1"], ["2001", "2"], ["Unknown year", "1"]]

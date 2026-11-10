@@ -138,3 +138,39 @@ def flow_svg(steps: Flow, *, start_name: str, heading: str) -> str:
             *_total_box(y, remaining, reached),
         ]
     return "\n".join([*parts, "</svg>"]) + "\n"
+
+
+BAR_H, BAR_GAP, LABEL_W = 22, 8, 150  # a horizontal bar, the gap below it, room for its name
+
+
+def bar_chart_svg(rows: Table, *, heading: str) -> str:
+    """Draw one horizontal bar per row, the longest filling the width, the count at its end.
+
+    Each row gives a name and a count (columns 0 and 1); a 'Total' row is skipped.
+    """
+    data = [(r[0], _to_int(r[1])) for r in rows[1:] if r[0] != "Total"]
+    top = max((count for _, count in data), default=0) or 1  # no bars, or all empty
+    plot_w = WIDTH - LEFT - LABEL_W - RIGHT - 60  # 60: room for the count after the bar
+    total_h = TOP + len(data) * (BAR_H + BAR_GAP)
+    parts = [
+        (
+            f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {WIDTH} {total_h}" '
+            f'font-family="sans-serif" font-size="12" fill="{TEXT}">'
+        ),
+        f"<title>{heading}</title>",
+        f'<rect width="{WIDTH}" height="{total_h}" fill="#ffffff"/>',
+        f'<text x="{LEFT}" y="22" font-size="14">{heading}</text>',
+    ]
+    x0 = LEFT + LABEL_W
+    for i, (name, count) in enumerate(data):
+        y = TOP + i * (BAR_H + BAR_GAP)
+        w = plot_w * count / top
+        parts += [
+            f'<text x="{x0 - 8}" y="{y + 15}" text-anchor="end">{name}</text>',
+            (
+                f'<rect class="bar" x="{x0}" y="{y}" width="{w:.1f}" height="{BAR_H}" '
+                f'fill="{COLOURS[0]}"/>'
+            ),
+            f'<text x="{x0 + w + 6:.1f}" y="{y + 15}">{count:,}</text>',
+        ]
+    return "\n".join([*parts, "</svg>"]) + "\n"

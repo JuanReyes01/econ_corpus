@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 350" font-family="sans-serif" font-size="12" fill="#333333">
+<title>Articles per newspaper in the cleaned dataset</title>
+<rect width="900" height="350" fill="#ffffff"/>
+<text x="70" y="22" font-size="14">Articles per newspaper in the cleaned dataset</text>
+<text x="212" y="65" text-anchor="end">Washington Post</text>
+<rect class="bar" x="220" y="50" width="600.0" height="22" fill="#4c78a8"/>
+<text x="826.0" y="65">105,355</text>
+<text x="212" y="95" text-anchor="end">New York Times</text>
+<rect class="bar" x="220" y="80" width="548.4" height="22" fill="#4c78a8"/>
+<text x="774.4" y="95">96,287</text>
+<text x="212" y="125" text-anchor="end">Los Angeles Times</text>
+<rect class="bar" x="220" y="110" width="332.1" height="22" fill="#4c78a8"/>
+<text x="558.1" y="125">58,308</text>
+<text x="212" y="155" text-anchor="end">Boston Globe</text>
+<rect class="bar" x="220" y="140" width="234.5" height="22" fill="#4c78a8"/>
+<text x="460.5" y="155">41,180</text>
+<text x="212" y="185" text-anchor="end">Wall Street Journal</text>
+<rect class="bar" x="220" y="170" width="213.0" height="22" fill="#4c78a8"/>
+<text x="439.0" y="185">37,399</text>
+<text x="212" y="215" text-anchor="end">Newsday</text>
+<rect class="bar" x="220" y="200" width="116.7" height="22" fill="#4c78a8"/>
+<text x="342.7" y="215">20,484</text>
+<text x="212" y="245" text-anchor="end">Chicago Tribune</text>
+<rect class="bar" x="220" y="230" width="111.5" height="22" fill="#4c78a8"/>
+<text x="337.5" y="245">19,573</text>
+<text x="212" y="275" text-anchor="end">USA Today</text>
+<rect class="bar" x="220" y="260" width="105.9" height="22" fill="#4c78a8"/>
+<text x="331.9" y="275">18,596</text>
+<text x="212" y="305" text-anchor="end">Tampa Bay Times</text>
+<rect class="bar" x="220" y="290" width="8.7" height="22" fill="#4c78a8"/>
+<text x="234.7" y="305">1,525</text>
+<text x="212" y="335" text-anchor="end">Star Tribune</text>
+<rect class="bar" x="220" y="320" width="2.7" height="22" fill="#4c78a8"/>
+<text x="228.7" y="335">476</text>
+</svg>

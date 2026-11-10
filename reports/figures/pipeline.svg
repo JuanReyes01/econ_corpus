@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 966 528" font-family="sans-serif" font-size="15" fill="#333333">
+<title>The two pipelines, their steps and what passes between them</title>
+<rect width="966" height="528" fill="#ffffff"/>
+<text x="20" y="26" font-size="17">The two pipelines, their steps and what passes between them</text>
+<text x="20" y="72" font-weight="bold">Pipeline 1: from the ProQuest exports to the raw table</text>
+<rect class="box data" x="20.0" y="116" width="150" height="66" rx="4" fill="#4c78a8" stroke="#4c78a8"/>
+<text x="95.0" y="146.0" text-anchor="middle" fill="#ffffff" font-weight="bold" font-family="sans-serif"><tspan x="95.0" dy="0">ProQuest exports</tspan></text>
+<text x="95.0" y="164.0" text-anchor="middle" fill="#ffffff" font-size="12.5"><tspan x="95.0" dy="0">2,801 files</tspan></text>
+<line class="arrow" x1="170.0" x2="208.0" y1="149.0" y2="149.0" stroke="#333333"/>
+<path d="M207.0,145.0 L214.0,149.0 L207.0,153.0 Z" fill="#333333"/>
+<rect class="box step" x="214.0" y="116" width="150" height="66" rx="4" fill="#ffffff" stroke="#4c78a8"/>
+<text x="289.0" y="140.0" text-anchor="middle" fill="#333333" font-weight="bold" font-family="monospace"><tspan x="289.0" dy="0">parse</tspan></text>
+<text x="289.0" y="158.0" text-anchor="middle" fill="#333333" font-size="12.5"><tspan x="289.0" dy="0">one row per record,</tspan><tspan x="289.0" dy="16">every field</tspan></text>
+<line class="arrow" x1="364.0" x2="402.0" y1="149.0" y2="149.0" stroke="#333333"/>
+<path d="M401.0,145.0 L408.0,149.0 L401.0,153.0 Z" fill="#333333"/>
+<text x="386.0" y="108.0" text-anchor="middle" font-size="12.5"><tspan x="386.0" dy="0">1,377,766 rows</tspan></text>
+<rect class="box step" x="408.0" y="116" width="150" height="66" rx="4" fill="#ffffff" stroke="#4c78a8"/>
+<text x="483.0" y="140.0" text-anchor="middle" fill="#333333" font-weight="bold" font-family="monospace"><tspan x="483.0" dy="0">exclusions</tspan></text>
+<text x="483.0" y="158.0" text-anchor="middle" fill="#333333" font-size="12.5"><tspan x="483.0" dy="0">one reason</tspan><tspan x="483.0" dy="16">per row</tspan></text>
+<line class="arrow" x1="558.0" x2="596.0" y1="149.0" y2="149.0" stroke="#333333"/>
+<path d="M595.0,145.0 L602.0,149.0 L595.0,153.0 Z" fill="#333333"/>
+<text x="580.0" y="92.0" text-anchor="middle" font-size="12.5"><tspan x="580.0" dy="0">− 185,244</tspan><tspan x="580.0" dy="16">footers and repeats</tspan></text>
+<rect class="box step" x="602.0" y="116" width="150" height="66" rx="4" fill="#ffffff" stroke="#4c78a8"/>
+<text x="677.0" y="140.0" text-anchor="middle" fill="#333333" font-weight="bold" font-family="monospace"><tspan x="677.0" dy="0">export</tspan></text>
+<text x="677.0" y="158.0" text-anchor="middle" fill="#333333" font-size="12.5"><tspan x="677.0" dy="0">the raw table</tspan><tspan x="677.0" dy="16">as CSV</tspan></text>
+<line class="arrow" x1="752.0" x2="790.0" y1="149.0" y2="149.0" stroke="#333333"/>
+<path d="M789.0,145.0 L796.0,149.0 L789.0,153.0 Z" fill="#333333"/>
+<rect class="box data" x="796.0" y="116" width="150" height="66" rx="4" fill="#4c78a8" stroke="#4c78a8"/>
+<text x="871.0" y="146.0" text-anchor="middle" fill="#ffffff" font-weight="bold" font-family="sans-serif"><tspan x="871.0" dy="0">Raw table</tspan></text>
+<text x="871.0" y="164.0" text-anchor="middle" fill="#ffffff" font-size="12.5"><tspan x="871.0" dy="0">1,192,522 records</tspan></text>
+<text x="20" y="234" font-weight="bold">Pipeline 2: from the raw table to the cleaned dataset</text>
+<rect class="box data" x="20.0" y="278" width="150" height="66" rx="4" fill="#4c78a8" stroke="#4c78a8"/>
+<text x="95.0" y="308.0" text-anchor="middle" fill="#ffffff" font-weight="bold" font-family="sans-serif"><tspan x="95.0" dy="0">Raw table</tspan></text>
+<text x="95.0" y="326.0" text-anchor="middle" fill="#ffffff" font-size="12.5"><tspan x="95.0" dy="0">1,192,522 records</tspan></text>
+<line class="arrow" x1="170.0" x2="208.0" y1="311.0" y2="311.0" stroke="#333333"/>
+<path d="M207.0,307.0 L214.0,311.0 L207.0,315.0 Z" fill="#333333"/>
+<rect class="box step" x="214.0" y="278" width="150" height="66" rx="4" fill="#ffffff" stroke="#4c78a8"/>
+<text x="289.0" y="302.0" text-anchor="middle" fill="#333333" font-weight="bold" font-family="monospace"><tspan x="289.0" dy="0">exclusions</tspan></text>
+<text x="289.0" y="320.0" text-anchor="middle" fill="#333333" font-size="12.5"><tspan x="289.0" dy="0">opinion, text,</tspan><tspan x="289.0" dy="16">a person as author</tspan></text>
+<line class="arrow" x1="364.0" x2="402.0" y1="311.0" y2="311.0" stroke="#333333"/>
+<path d="M401.0,307.0 L408.0,311.0 L401.0,315.0 Z" fill="#333333"/>
+<text x="386.0" y="254.0" text-anchor="middle" font-size="12.5"><tspan x="386.0" dy="0">− 793,339</tspan><tspan x="386.0" dy="16">Figure 2</tspan></text>
+<rect class="box step" x="408.0" y="278" width="150" height="66" rx="4" fill="#ffffff" stroke="#4c78a8"/>
+<text x="483.0" y="302.0" text-anchor="middle" fill="#333333" font-weight="bold" font-family="monospace"><tspan x="483.0" dy="0">processed</tspan></text>
+<text x="483.0" y="320.0" text-anchor="middle" fill="#333333" font-size="12.5"><tspan x="483.0" dy="0">bylines to authors</tspan><tspan x="483.0" dy="16">(names); five tables</tspan></text>
+<line class="arrow" x1="558.0" x2="596.0" y1="311.0" y2="311.0" stroke="#333333"/>
+<path d="M595.0,307.0 L602.0,311.0 L595.0,315.0 Z" fill="#333333"/>
+<rect class="box data" x="602.0" y="278" width="150" height="66" rx="4" fill="#4c78a8" stroke="#4c78a8"/>
+<text x="677.0" y="302.0" text-anchor="middle" fill="#ffffff" font-weight="bold" font-family="sans-serif"><tspan x="677.0" dy="0">Cleaned dataset</tspan></text>
+<text x="677.0" y="320.0" text-anchor="middle" fill="#ffffff" font-size="12.5"><tspan x="677.0" dy="0">399,183 articles</tspan><tspan x="677.0" dy="16">86,752 authors</tspan></text>
+<text x="20" y="396" font-weight="bold">Manual review: the decisions feed the next run of both pipelines</text>
+<rect class="box data" x="20.0" y="440" width="150" height="66" rx="4" fill="#4c78a8" stroke="#4c78a8"/>
+<text x="95.0" y="464.0" text-anchor="middle" fill="#ffffff" font-weight="bold" font-family="sans-serif"><tspan x="95.0" dy="0">Cleaned dataset</tspan></text>
+<text x="95.0" y="482.0" text-anchor="middle" fill="#ffffff" font-size="12.5"><tspan x="95.0" dy="0">399,183 articles</tspan><tspan x="95.0" dy="16">86,752 authors</tspan></text>
+<line class="arrow" x1="170.0" x2="208.0" y1="473.0" y2="473.0" stroke="#333333"/>
+<path d="M207.0,469.0 L214.0,473.0 L207.0,477.0 Z" fill="#333333"/>
+<text x="192.0" y="432.0" text-anchor="middle" font-size="12.5"><tspan x="192.0" dy="0">lists</tspan></text>
+<rect class="box step" x="214.0" y="440" width="150" height="66" rx="4" fill="#ffffff" stroke="#4c78a8"/>
+<text x="289.0" y="464.0" text-anchor="middle" fill="#333333" font-weight="bold" font-family="monospace"><tspan x="289.0" dy="0">review_cases</tspan></text>
+<text x="289.0" y="482.0" text-anchor="middle" fill="#333333" font-size="12.5"><tspan x="289.0" dy="0">doubtful bylines,</tspan><tspan x="289.0" dy="16">look-alike pairs</tspan></text>
+<line class="arrow" x1="364.0" x2="402.0" y1="473.0" y2="473.0" stroke="#333333"/>
+<path d="M401.0,469.0 L408.0,473.0 L401.0,477.0 Z" fill="#333333"/>
+<text x="386.0" y="416.0" text-anchor="middle" font-size="12.5"><tspan x="386.0" dy="0">decided by</tspan><tspan x="386.0" dy="16">a language model</tspan></text>
+<rect class="box data" x="408.0" y="440" width="150" height="66" rx="4" fill="#4c78a8" stroke="#4c78a8"/>
+<text x="483.0" y="464.0" text-anchor="middle" fill="#ffffff" font-weight="bold" font-family="sans-serif"><tspan x="483.0" dy="0">data/review</tspan></text>
+<text x="483.0" y="482.0" text-anchor="middle" fill="#ffffff" font-size="12.5"><tspan x="483.0" dy="0">7,235 parts</tspan><tspan x="483.0" dy="16">3,119 pairs</tspan></text>
+<line class="arrow" x1="558.0" x2="596.0" y1="473.0" y2="473.0" stroke="#333333"/>
+<path d="M595.0,469.0 L602.0,473.0 L595.0,477.0 Z" fill="#333333"/>
+<rect class="box step" x="602.0" y="440" width="150" height="66" rx="4" fill="#ffffff" stroke="#4c78a8"/>
+<text x="677.0" y="464.0" text-anchor="middle" fill="#333333" font-weight="bold" font-family="monospace"><tspan x="677.0" dy="0">names/review</tspan></text>
+<text x="677.0" y="482.0" text-anchor="middle" fill="#333333" font-size="12.5"><tspan x="677.0" dy="0">applies the decisions</tspan><tspan x="677.0" dy="16">in both pipelines</tspan></text>
+</svg>

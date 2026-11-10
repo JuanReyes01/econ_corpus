@@ -113,6 +113,13 @@ def newspaper_table(newspapers: list[str], editions: list[str]) -> Table:
     return [header, *(row(name, c) for name, c in ranked), row("Total", everything)]
 
 
+def year_table(years: Iterable[int | None]) -> Table:
+    """Count articles per publication year, in order, unknown years last."""
+    counts = Counter(str(y) if y else "Unknown year" for y in years)
+    ordered = sorted(counts, key=lambda y: (y == "Unknown year", y))
+    return [["Year", "Articles"], *([y, summaries.num(counts[y])] for y in ordered)]
+
+
 def decade_table(years: Iterable[int | None]) -> Table:
     """Count articles per decade of publication year."""
     counts = Counter(f"{y // 10 * 10}s" if y else "Unknown year" for y in years)

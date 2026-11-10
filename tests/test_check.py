@@ -25,10 +25,11 @@ def make_paths(tmp_path: Path) -> check.Paths:
     (tmp_path / "tables" / "counts.csv").write_text(TABLE, encoding="utf-8")
     (tmp_path / "tables" / "exclusion_counts.csv").write_text(COUNTS, encoding="utf-8")
     (tmp_path / "raw_reasons.csv").write_text(REASONS, encoding="utf-8")
-    for name in ("raw.template.md", "clean.template.md"):
+    for name in ("raw.template.md", "clean.template.md", "overview.template.md"):
         (docs / name).write_text("template\n", encoding="utf-8")
     (docs / "raw.md").write_text("raw datasheet\n", encoding="utf-8")
     (docs / "clean.md").write_text("clean datasheet\n", encoding="utf-8")
+    (docs / "overview.md").write_text("overview\n", encoding="utf-8")
     return check.Paths(
         records=tmp_path / "records.parquet",
         reasons=tmp_path / "exclusions.parquet",
@@ -39,6 +40,8 @@ def make_paths(tmp_path: Path) -> check.Paths:
         raw_md=docs / "raw.md",
         clean_template=docs / "clean.template.md",
         clean_md=docs / "clean.md",
+        overview_template=docs / "overview.template.md",
+        overview_md=docs / "overview.md",
         tables=tmp_path / "tables",
         figures=tmp_path / "figures",
         raw_reasons=tmp_path / "raw_reasons.csv",
@@ -49,7 +52,7 @@ def make_paths(tmp_path: Path) -> check.Paths:
 def stand_ins(monkeypatch: pytest.MonkeyPatch) -> dict[str, object]:
     """Replace every builder and guard by one that succeeds; a test then breaks one of them."""
     state: dict[str, object] = {"current": True, "raw": "raw datasheet\n"}
-    state |= {"clean": "clean datasheet\n", "table": TABLE}
+    state |= {"clean": "clean datasheet\n", "overview": "overview\n", "table": TABLE}
     state |= {"counts": COUNTS, "reasons": REASONS}
     monkeypatch.setattr(check.reasons, "load", lambda *_: pa.chunked_array([["kept"]]))
     monkeypatch.setattr(check.exclusions, "reason_counts", lambda _: state["counts"])
@@ -72,7 +75,12 @@ def stand_ins(monkeypatch: pytest.MonkeyPatch) -> dict[str, object]:
         out_md.write_text(str(state["clean"]), encoding="utf-8")
 
     monkeypatch.setattr(check.datasheet, "build", raw)
+
+    def overview(*_: Path, out_md: Path, **__: Path) -> None:
+        out_md.write_text(str(state["overview"]), encoding="utf-8")
+
     monkeypatch.setattr(check.datasheet_clean, "build", clean)
+    monkeypatch.setattr(check.overview, "build", overview)
     return state
 
 
@@ -83,8 +91,14 @@ def test_outputs_that_belong_together_pass(tmp_path: Path, stand_ins: dict[str, 
 
 def test_each_stale_output_is_named(tmp_path: Path, stand_ins: dict[str, object]) -> None:
     stand_ins |= {"current": False, "clean": "another clean datasheet\n", "table": "a,b\n9,9\n"}
+    stand_ins |= {"overview": "another overview\n"}
     problems = check.stale(make_paths(tmp_path))
-    assert [problem.split()[0] for problem in problems] == ["raw.csv", "clean.md", "counts.csv"]
+    assert [problem.split()[0] for problem in problems] == [
+        "raw.csv",
+        "clean.md",
+        "overview.md",
+        "counts.csv",
+    ]
 
 
 def test_stale_reasons_stop_the_check_at_once(

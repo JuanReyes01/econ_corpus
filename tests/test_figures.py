@@ -104,3 +104,43 @@ def test_flow_chart_shows_counts_reasons_and_table_names() -> None:
     assert "Shared raw table" in svg
     assert "Cleaned dataset" in svg
     assert "<title>From the exports to the cleaned dataset</title>" in svg
+
+
+NEWSPAPERS = [
+    ["Newspaper", "Articles", "Print", "Online", "Pre-1997", "Share"],
+    ["New York Times", "1,000", "600", "400", "0", "66.7%"],
+    ["Boston Globe", "500", "500", "0", "0", "33.3%"],
+    ["Total", "1,500", "1,100", "400", "0", "100.0%"],
+]
+
+
+def test_bar_chart_draws_one_bar_per_row_and_skips_the_total() -> None:
+    svg = figures.bar_chart_svg(NEWSPAPERS, heading="Articles per newspaper")
+    assert svg.startswith("<svg")
+    assert svg.count('class="bar"') == 2
+    assert "Total" not in svg
+    assert "<title>Articles per newspaper</title>" in svg
+
+
+def test_bar_chart_labels_each_bar_with_its_name_and_count() -> None:
+    svg = figures.bar_chart_svg(NEWSPAPERS, heading="Articles per newspaper")
+    assert "New York Times" in svg
+    assert "1,000" in svg
+    assert "Boston Globe" in svg
+    assert "500" in svg
+
+
+def test_bar_chart_with_no_bars_or_empty_bars_is_still_drawn() -> None:
+    assert figures.bar_chart_svg(NEWSPAPERS[:1], heading="Nothing").startswith("<svg")
+    empty = [NEWSPAPERS[0], ["New York Times", "0", "0", "0", "0", "0.0%"]]
+    assert 'class="bar" x="220" y="50" width="0.0"' in figures.bar_chart_svg(
+        empty, heading="Empty"
+    )
+
+
+def test_bar_chart_widths_follow_the_counts() -> None:
+    svg = figures.bar_chart_svg(NEWSPAPERS, heading="Articles per newspaper")
+    widths = [
+        float(w) for w in __import__("re").findall(r'class="bar" [^>]*width="([\d.]+)"', svg)
+    ]
+    assert widths[0] == 2 * widths[1]

@@ -1,10 +1,10 @@
 """Step 7 of the pipeline: check that the outputs on disk belong to one state, before delivery.
 
-Input: the records, the reasons, the review folder, the raw CSV, the cleaned tables, the two
-datasheet templates and the two datasheets.
+Input: the records, the reasons, the review folder, the raw CSV, the cleaned tables, the
+three datasheet templates and the three datasheets (raw, cleaned, overview).
 Output: the list of outputs that are stale, empty when everything belongs together.
 
-Lives here: running the guards of the other steps in one place, and building again both
+Lives here: running the guards of the other steps in one place, and building again the
 datasheets with their tables and figures and the lists of review cases, to compare them with
 the ones on disk. Does not live here: the guards themselves
 (reasons, manifest, export) or the copying (the Makefile).
@@ -20,6 +20,7 @@ import shutil
 import sys
 import tempfile
 
+from econ_corpus import overview
 from econ_corpus.clean import datasheet_clean, manifest, review_cases
 from econ_corpus.names import review
 from econ_corpus.raw import datasheet, exclusions, export, reasons
@@ -39,6 +40,8 @@ class Paths:
     raw_md: Path
     clean_template: Path
     clean_md: Path
+    overview_template: Path
+    overview_md: Path
     tables: Path
     figures: Path
     raw_reasons: Path
@@ -57,6 +60,7 @@ def stale(paths: Paths) -> list[str]:
     with tempfile.TemporaryDirectory() as scratch:
         work = Path(scratch)
         raw, clean = work / paths.raw_md.name, work / paths.clean_md.name
+        over = work / paths.overview_md.name
         side = {"tables_dir": work / "tables", "figures_dir": work / "figures"}
         datasheet.build(paths.records, paths.reasons, paths.raw_template, raw, **side)
         datasheet_clean.build(
@@ -68,6 +72,8 @@ def stale(paths: Paths) -> list[str]:
             out_md=clean,
             **side,
         )
+        inputs = (paths.clean, paths.records, paths.reasons, paths.review)
+        overview.build(*inputs, template=paths.overview_template, out_md=over, **side)
         # The case lists are built from a copy of the review files, never into the folder.
         (work / "review").mkdir()
         for name in (review.PARTS_FILE, review.PAIRS_FILE):
@@ -78,7 +84,7 @@ def stale(paths: Paths) -> list[str]:
         counts = exclusions.reason_counts(codes.to_pylist())
         tables.write_csv(counts, work / "tables" / "exclusion_counts.csv")
         export.write_reasons(paths.records, paths.reasons, work / paths.raw_reasons.name)
-        built = [(raw, paths.raw_md), (clean, paths.clean_md)]
+        built = [(raw, paths.raw_md), (clean, paths.clean_md), (over, paths.overview_md)]
         built.append((work / paths.raw_reasons.name, paths.raw_reasons))
         for folder, on_disk in (
             (work / "tables", paths.tables),
@@ -111,6 +117,8 @@ def main() -> None:
             raw_md=Path("docs/datasheet_raw.md"),
             clean_template=Path("docs/datasheet_clean.template.md"),
             clean_md=Path("docs/datasheet_clean.md"),
+            overview_template=Path("docs/datasheet.template.md"),
+            overview_md=Path("docs/datasheet.md"),
             tables=Path("reports/tables"),
             figures=Path("reports/figures"),
             raw_reasons=Path("data/processed/econ_corpus_raw_reasons.csv"),

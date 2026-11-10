@@ -2,6 +2,9 @@
 
 U.S. newspaper opinion articles from ProQuest US Newsstream. Internal use only (ProQuest license).
 
+- `datasheet.pdf`: the overview, to read first. The two pipelines as a map, where every
+  record ends and why, the rules in force with their reasons, and the main counts. The two
+  datasheets below hold the detail.
 - `1_raw_txt/`: the 2,801 ProQuest `.txt` exports, untouched.
 - `2_raw_csv/`: `econ_corpus_raw.csv` (one row per record, article text and every metadata
   field, repeats removed); `econ_corpus_raw_reasons.csv` (for each row of that table, keyed

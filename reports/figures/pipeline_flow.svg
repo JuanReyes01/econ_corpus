@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 856" font-family="sans-serif" font-size="12" fill="#333333">
+<title>Where every parsed row ends: one reason each</title>
+<rect width="860" height="856" fill="#ffffff"/>
+<text x="30" y="22" font-size="14">Where every parsed row ends: one reason each</text>
+<rect class="remaining" x="30" y="50" width="230" height="40" fill="#4c78a8" stroke="#4c78a8"/>
+<text x="145.0" y="75" text-anchor="middle" fill="#ffffff">Rows parsed: 1,377,766</text>
+<line x1="145.0" x2="145.0" y1="90" y2="112" stroke="#333333"/>
+<line x1="145.0" x2="322" y1="101" y2="101" stroke="#333333"/>
+<text class="removed" x="330" y="105"><tspan fill="#f58518" font-weight="bold">− 2,801</tspan>  file_footer: Row is the footer of an export file, not an article</text>
+<rect class="remaining" x="30" y="112" width="230" height="40" fill="#ffffff" stroke="#4c78a8"/>
+<text x="145.0" y="137" text-anchor="middle" fill="#333333">1,374,965</text>
+<line x1="145.0" x2="145.0" y1="152" y2="174" stroke="#333333"/>
+<line x1="145.0" x2="322" y1="163" y2="163" stroke="#333333"/>
+<text class="removed" x="330" y="167"><tspan fill="#f58518" font-weight="bold">− 145,118</tspan>  duplicate_id: Repeats a ProQuest id; the copy with the longest body is the one kept</text>
+<rect class="remaining" x="30" y="174" width="230" height="40" fill="#ffffff" stroke="#4c78a8"/>
+<text x="145.0" y="199" text-anchor="middle" fill="#333333">1,229,847</text>
+<line x1="145.0" x2="145.0" y1="214" y2="236" stroke="#333333"/>
+<line x1="145.0" x2="322" y1="225" y2="225" stroke="#333333"/>
+<text class="removed" x="330" y="229"><tspan fill="#f58518" font-weight="bold">− 37,325</tspan>  duplicate_text: Same text in the same newspaper as another record, which stays</text>
+<rect class="remaining" x="30" y="236" width="230" height="40" fill="#4c78a8" stroke="#4c78a8"/>
+<text x="145.0" y="261" text-anchor="middle" fill="#ffffff">Shared raw table: 1,192,522</text>
+<line x1="145.0" x2="145.0" y1="276" y2="298" stroke="#333333"/>
+<line x1="145.0" x2="322" y1="287" y2="287" stroke="#333333"/>
+<text class="removed" x="330" y="291"><tspan fill="#f58518" font-weight="bold">− 12,413</tspan>  not_queried_newspaper: Publication is not one of the queried newspapers</text>
+<rect class="remaining" x="30" y="298" width="230" height="40" fill="#ffffff" stroke="#4c78a8"/>
+<text x="145.0" y="323" text-anchor="middle" fill="#333333">1,180,109</text>
+<line x1="145.0" x2="145.0" y1="338" y2="360" stroke="#333333"/>
+<line x1="145.0" x2="322" y1="349" y2="349" stroke="#333333"/>
+<text class="removed" x="330" y="353"><tspan fill="#f58518" font-weight="bold">− 885</tspan>  missing_metadata: No publication, no id, or no document type and section: unclassifiable</text>
+<rect class="remaining" x="30" y="360" width="230" height="40" fill="#ffffff" stroke="#4c78a8"/>
+<text x="145.0" y="385" text-anchor="middle" fill="#333333">1,179,224</text>
+<line x1="145.0" x2="145.0" y1="400" y2="422" stroke="#333333"/>
+<line x1="145.0" x2="322" y1="411" y2="411" stroke="#333333"/>
+<text class="removed" x="330" y="415"><tspan fill="#f58518" font-weight="bold">− 117,445</tspan>  not_opinion: A news section, and neither an opinion document type nor an opinion title</text>
+<rect class="remaining" x="30" y="422" width="230" height="40" fill="#ffffff" stroke="#4c78a8"/>
+<text x="145.0" y="447" text-anchor="middle" fill="#333333">1,061,779</text>
+<line x1="145.0" x2="145.0" y1="462" y2="484" stroke="#333333"/>
+<line x1="145.0" x2="322" y1="473" y2="473" stroke="#333333"/>
+<text class="removed" x="330" y="477"><tspan fill="#f58518" font-weight="bold">− 11,079</tspan>  unclear_opinion: Generic document type, no section and no opinion title: may be opinion</text>
+<rect class="remaining" x="30" y="484" width="230" height="40" fill="#ffffff" stroke="#4c78a8"/>
+<text x="145.0" y="509" text-anchor="middle" fill="#333333">1,050,700</text>
+<line x1="145.0" x2="145.0" y1="524" y2="546" stroke="#333333"/>
+<line x1="145.0" x2="322" y1="535" y2="535" stroke="#333333"/>
+<text class="removed" x="330" y="539"><tspan fill="#f58518" font-weight="bold">− 4,426</tspan>  no_text: Opinion piece with no text, or only a notice shared by several articles</text>
+<rect class="remaining" x="30" y="546" width="230" height="40" fill="#ffffff" stroke="#4c78a8"/>
+<text x="145.0" y="571" text-anchor="middle" fill="#333333">1,046,274</text>
+<line x1="145.0" x2="145.0" y1="586" y2="608" stroke="#333333"/>
+<line x1="145.0" x2="322" y1="597" y2="597" stroke="#333333"/>
+<text class="removed" x="330" y="601"><tspan fill="#f58518" font-weight="bold">− 632,425</tspan>  no_author: Opinion piece that is unsigned or marked Anonymous</text>
+<rect class="remaining" x="30" y="608" width="230" height="40" fill="#ffffff" stroke="#4c78a8"/>
+<text x="145.0" y="633" text-anchor="middle" fill="#333333">413,849</text>
+<line x1="145.0" x2="145.0" y1="648" y2="670" stroke="#333333"/>
+<line x1="145.0" x2="322" y1="659" y2="659" stroke="#333333"/>
+<text class="removed" x="330" y="663"><tspan fill="#f58518" font-weight="bold">− 11,678</tspan>  no_person_author: No person as author: an institution, no full name, or a compiled page</text>
+<rect class="remaining" x="30" y="670" width="230" height="40" fill="#ffffff" stroke="#4c78a8"/>
+<text x="145.0" y="695" text-anchor="middle" fill="#333333">402,171</text>
+<line x1="145.0" x2="145.0" y1="710" y2="732" stroke="#333333"/>
+<line x1="145.0" x2="322" y1="721" y2="721" stroke="#333333"/>
+<text class="removed" x="330" y="725"><tspan fill="#f58518" font-weight="bold">− 1,471</tspan>  short_or_cartoon: Signed opinion piece with under 30 words written by its author</text>
+<rect class="remaining" x="30" y="732" width="230" height="40" fill="#ffffff" stroke="#4c78a8"/>
+<text x="145.0" y="757" text-anchor="middle" fill="#333333">400,700</text>
+<line x1="145.0" x2="145.0" y1="772" y2="794" stroke="#333333"/>
+<line x1="145.0" x2="322" y1="783" y2="783" stroke="#333333"/>
+<text class="removed" x="330" y="787"><tspan fill="#f58518" font-weight="bold">− 1,517</tspan>  not_english: Signed opinion piece whose text is not in English (mostly Spanish)</text>
+<rect class="remaining" x="30" y="794" width="230" height="40" fill="#4c78a8" stroke="#4c78a8"/>
+<text x="145.0" y="819" text-anchor="middle" fill="#ffffff">Cleaned dataset: 399,183</text>
+</svg>

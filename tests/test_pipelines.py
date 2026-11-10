@@ -31,7 +31,7 @@ def test_the_raw_pipeline_parses_only_when_given_the_exports(
 def test_the_clean_pipeline_runs_its_steps_in_order(monkeypatch: pytest.MonkeyPatch) -> None:
     ran = record(monkeypatch, clean_pipeline)
     clean_pipeline.main()
-    assert ran == ["processed", "review_cases", "datasheet_clean"]
+    assert ran == ["processed", "review_cases", "datasheet_clean", "overview"]
 
 
 def test_a_step_that_fails_stops_the_pipeline(monkeypatch: pytest.MonkeyPatch) -> None:

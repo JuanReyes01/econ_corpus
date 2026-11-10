@@ -92,20 +92,26 @@ datasheet-clean:
 	uv run python -m econ_corpus.clean.datasheet_clean
 
 
+## 6b. Build the overview datasheet of both pipelines, figures first (needs steps 2 and 4)
+.PHONY: overview
+overview:
+	uv run python -m econ_corpus.overview
+
+
 ## Pipeline 1 from the records already parsed: steps 2 to 3b (same as `python -m econ_corpus.raw`)
 .PHONY: raw
 raw: exclusions export datasheet
 
 
-## Step 2 and then pipeline 2: steps 4 to 6 (same as `python -m econ_corpus.clean` after step 2)
+## Step 2 and then pipeline 2: steps 4 to 6b (same as `python -m econ_corpus.clean` after step 2)
 .PHONY: cleaned
-cleaned: exclusions processed review-cases datasheet-clean
+cleaned: exclusions processed review-cases datasheet-clean overview
 
 
-## Render the two datasheets as PDF (needs google-chrome)
+## Render the three datasheets as PDF (needs google-chrome)
 .PHONY: pdf
 pdf:
-	uv run python -m econ_corpus.shared.pdf docs/datasheet_raw.md docs/datasheet_clean.md
+	uv run python -m econ_corpus.shared.pdf docs/datasheet.md docs/datasheet_raw.md docs/datasheet_clean.md
 
 
 ## 7. Check that every output on disk belongs to the current records, reasons and review
@@ -129,6 +135,7 @@ delivery: check pdf
 	cp data/processed/clean/manifest.json docs/datasheet_clean.pdf $(DELIVERY)/3_clean/
 	cp -r data/review $(DELIVERY)/3_clean/review
 	cp docs/delivery_readme.md $(DELIVERY)/README.md
+	cp docs/datasheet.pdf $(DELIVERY)/datasheet.pdf
 
 
 ## Run tests
