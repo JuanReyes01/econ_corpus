@@ -115,10 +115,11 @@ parsed.
 make delivery
 ```
 
-`make delivery` runs step 7, renders the three datasheets as PDF and copies everything into
-the folder named by `DELIVERY`: the overview at the top, the exports, the raw CSV with its
-datasheet, and the cleaned tables with their datasheet and the two tables of review
-decisions (the working folders of the review stay in `data/review/`). The folder holds copies, so running the pipeline again does
+`make delivery` runs step 7, renders the datasheets as PDF and copies the minimum a
+colleague needs into the folder named by `DELIVERY`: the overview datasheet, the exports,
+the raw CSV and the three tables of the cleaned dataset (articles, authors, links). The
+overview says what each file is; everything else (reasons, review decisions, manifest,
+the two detailed datasheets) stays in the repository workspace. The folder holds copies, so running the pipeline again does
 not change a delivery; run `make delivery` again to replace it.
 
 ## Development

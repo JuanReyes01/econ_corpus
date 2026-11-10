@@ -120,24 +120,20 @@ check:
 	uv run python -m econ_corpus.check
 
 
-## Copy the current outputs into the delivery folder DELIVERY (checks them and renders the PDFs)
+## Copy the minimum a colleague needs into the delivery folder DELIVERY (checks it, renders the PDF)
+# The overview datasheet and the data, nothing else: the datasheet says what each file is.
 # Everything is a copy, never a link: a later run of the pipeline must not change what was
-# delivered. The three folders are written anew each time, so nothing old stays in them. `check` stops the delivery when an output is stale, so the files of one delivery
-# belong to one state of the pipeline.
+# delivered. The folder is written anew each time, so nothing old stays in it. `check` stops
+# the delivery when an output is stale, so the files of one delivery belong to one state of
+# the pipeline.
 .PHONY: delivery
 delivery: check pdf
-	rm -rf $(DELIVERY)/1_raw_txt $(DELIVERY)/2_raw_csv $(DELIVERY)/3_clean
+	rm -rf $(DELIVERY)
 	mkdir -p $(DELIVERY)/2_raw_csv $(DELIVERY)/3_clean
-	cp -r --reflink=auto $(RAW_DIR) $(DELIVERY)/1_raw_txt
-	cp --reflink=auto data/processed/econ_corpus_raw.csv data/processed/econ_corpus_raw_reasons.csv $(DELIVERY)/2_raw_csv/
-	cp docs/datasheet_raw.pdf reports/tables/exclusion_counts.csv $(DELIVERY)/2_raw_csv/
-	cp --reflink=auto data/processed/clean/*.csv $(DELIVERY)/3_clean/
-	cp data/processed/clean/manifest.json docs/datasheet_clean.pdf $(DELIVERY)/3_clean/
-	mkdir -p $(DELIVERY)/3_clean/review
-	cp data/review/byline_parts.csv data/review/author_pairs.csv $(DELIVERY)/3_clean/review/
-	cp docs/review_readme.md $(DELIVERY)/3_clean/review/README.md
-	cp docs/delivery_readme.md $(DELIVERY)/README.md
 	cp docs/datasheet.pdf $(DELIVERY)/datasheet.pdf
+	cp -r --reflink=auto $(RAW_DIR) $(DELIVERY)/1_raw_txt
+	cp --reflink=auto data/processed/econ_corpus_raw.csv $(DELIVERY)/2_raw_csv/
+	cp --reflink=auto data/processed/clean/articles.csv data/processed/clean/authors.csv data/processed/clean/article_authors.csv $(DELIVERY)/3_clean/
 
 
 ## Run tests

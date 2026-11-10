@@ -4,10 +4,10 @@ never in the generated file. -->
 
 # econ_corpus: from the ProQuest exports to a dataset of signed opinion articles
 
-Overview, version 1.0 (2026-11-09). This document maps the pipeline, follows every record to
-the dataset it ends in, states the rules in force with their reasons and shows the main counts.
-The detail is in two data descriptors: `docs/datasheet_raw.md` for the raw table and
-`docs/datasheet_clean.md` for the cleaned dataset.
+Overview, version 1.0 (2026-11-09). This document tells where the data come from, what the
+package holds, what was done to the data and why, and what came out: a corpus built to study
+how economists communicate with the public through newspaper opinion pieces. The code that
+did it and two detailed data descriptors are in the repository (section 8).
 
 | | |
 |---|---|
@@ -19,7 +19,38 @@ The detail is in two data descriptors: `docs/datasheet_raw.md` for the raw table
 | Publication years | {{year_min}}–{{year_max}} |
 | Manual review | {{n_review_parts}} byline parts and {{n_review_pairs}} pairs of names, decided by a language model |
 
-## 1. The pipeline
+## 1. Where the data come from
+
+- **Source:** ProQuest US Newsstream, through the library proxy of the Universidad de los
+  Andes. The text is ProQuest-licensed: internal use among the project's researchers only.
+- **Newspapers:** the ten U.S. daily newspapers with the highest print circulation in 2023
+  [1] that the subscription provides: New York Times, Washington Post, Wall Street Journal,
+  Los Angeles Times, Boston Globe, Chicago Tribune, USA Today, Newsday, Tampa Bay Times and
+  Star Tribune, print and online editions (New York Post is not provided).
+- **Query:** the exact publication name AND `noft(opinion OR op-ed OR editorial)`, a search
+  for those words in the full text; document type Commentary, Editorial or News; English.
+  The query matches words, not genre, so news items that mention an editorial are returned
+  too: that is why the pipeline below decides what is opinion.
+- **Export:** 100 results per page, 500 records per `.txt` file, {{n_files}} files dated
+  2024-11-22 to 2025-01-26, {{n_parsed}} records in all. The export inserts stray spaces
+  inside metadata values (`En glish`, `Aug 29, 202 2`) and repeats records across files
+  when download rounds overlap; the pipeline undoes both.
+
+## 2. What is in the package
+
+| File | What it is | Rows | Key columns |
+|---|---|---|---|
+| `datasheet.pdf` | This document | | |
+| `1_raw_txt/` | The {{n_files}} ProQuest export files, untouched | | |
+| `2_raw_csv/econ_corpus_raw.csv` | The raw table: one row per record, every metadata field as exported plus parsed copies (`doc_id`, `pub_year`, `pub_date`, `publication_key`), the text and its word count; footers and repeats removed, nothing else | {{n_raw}} | `doc_id` (the ProQuest id), `source_file` + `record_index` (where the record came from) |
+| `3_clean/articles.csv` | The signed opinion articles: the rows of the raw table that passed every criterion of section 5.4, with `newspaper` and `edition` added | {{n_articles}} | `doc_id`, `newspaper`, `edition`, `pub_year`, `title`, `text` |
+| `3_clean/authors.csv` | One row per author, as read from the bylines | {{n_authors}} | `author_id`, `name`, `articles`, `name_variants` |
+| `3_clean/article_authors.csv` | Which author signed which article, in byline order | {{n_links}} | `doc_id`, `author_id`, `position`, `read` (as written, recovered or by the manual review) |
+
+Cells hold article text with line breaks: read the CSVs with a data-analysis library, not a
+spreadsheet (cells above 32,767 characters are cut by spreadsheet programs).
+
+## 3. The pipeline
 
 ![The two pipelines](../reports/figures/pipeline.svg)
 
@@ -41,7 +72,7 @@ cases that no rule can, and its decisions are data that both pipelines read on t
 
 <div style="break-before: page"></div>
 
-## 2. Where every record ends
+## 4. Where every record ends
 
 ![Where every parsed row ends](../reports/figures/pipeline_flow.svg)
 
@@ -53,12 +84,12 @@ leave the cleaned dataset are the inclusion criteria: an opinion piece, from one
 queried newspapers, with at least 30 words of English text written by its author, signed by
 at least one person.
 
-## 3. The rules in force, step by step
+## 5. The rules in force, step by step
 
 Each table gives a rule, why it was taken and the evidence that supports it. The dates and the
 evidence of every rule are in `docs/decisions.md`.
 
-### 3.1 Reading the exports (`raw/parse`)
+### 5.1 Reading the exports (`raw/parse`)
 
 | Rule | Why | Evidence |
 |---|---|---|
@@ -68,7 +99,7 @@ evidence of every rule are in `docs/decisions.md`.
 | Dates, years and ids are parsed with an explicit status (`ok`, `missing`, `unparseable`, `year_only`) | Nothing is dropped silently | Datasheet of the raw table, section 2.2 |
 | The table is replaced only if every file passes its check (one footer, no text before the first record, no near-separator) | A failed parse must not overwrite a good table | All {{n_files}} files pass |
 
-### 3.2 One reason per row (`raw/exclusions`, `raw/reasons`)
+### 5.2 One reason per row (`raw/exclusions`, `raw/reasons`)
 
 | Rule | Why | Evidence |
 |---|---|---|
@@ -78,7 +109,7 @@ evidence of every rule are in `docs/decisions.md`.
 | `duplicate_text`: the same body in the same queried newspaper under another id, whatever the title and date; a body under 100 words is a repeat only under the same title and date | Print and online editions of one article, texts posted again; a short body can be a caption shared by different articles | {{n_duplicate_text}} rows |
 | The copy of a repeated text that stays is a signed opinion piece with text, then the first published, then the earliest download | The raw table depends on facts of the export only, never on the name rules or the review | No row of the raw table depends on the review |
 
-### 3.3 The raw table (`raw/export`)
+### 5.3 The raw table (`raw/export`)
 
 | Rule | Why | Evidence |
 |---|---|---|
@@ -86,7 +117,7 @@ evidence of every rule are in `docs/decisions.md`.
 | The CSV carries a stamp of the records and the reasons it was made from; a CSV made from other inputs is refused | A change in any column must make the CSV stale | `export.is_current` |
 | Text and CSV are never in the repository; the table is for internal use among the project's researchers | ProQuest licence | Datasheet of the raw table, section 6 |
 
-### 3.4 The inclusion criteria (`raw/exclusions`, cleaned stage)
+### 5.4 The inclusion criteria (`raw/exclusions`, cleaned stage)
 
 The reasons below apply to the rows of the raw table, in the order the datasets are built; a row with none is `kept`.
 
@@ -104,7 +135,7 @@ The reasons below apply to the rows of the raw table, in the order the datasets 
 | `not_english`: fewer than 5% of the words in the first 2,000 characters are among 39 common English words | ProQuest labels every article English, but some online editions carry translations; in English prose those words are a fifth to a third | {{n_not_english}} rows, mostly Spanish |
 | `kept`: everything else | The inclusion criteria | {{n_articles}} articles |
 
-### 3.5 From bylines to authors (`names/`)
+### 5.5 From bylines to authors (`names/`)
 
 | Rule | Why | Evidence |
 |---|---|---|
@@ -115,7 +146,7 @@ The reasons below apply to the rows of the raw table, in the order the datasets 
 | Two variants of a name (same first and family name, middle names and suffixes that do not contradict) are one author when linked through shared newspapers; one contradiction stops every merge in the group | Typos and different people cannot be told apart by rule alone | {{n_names_rule}} variants merged by the rule, {{n_names_review}} by the review |
 | Look-alike pairs (one letter apart, nicknames, swapped names, conflicting middle names, no shared newspaper) are listed, never merged by rule | Left for the review | {{n_candidates}} pairs listed |
 
-### 3.6 The manual review (`names/review`, `clean/review_cases`)
+### 5.6 The manual review (`names/review`, `clean/review_cases`)
 
 | Rule | Why | Evidence |
 |---|---|---|
@@ -124,7 +155,7 @@ The reasons below apply to the rows of the raw table, in the order the datasets 
 | Reviewed: look-alikes where both authors have two or more articles or one has twenty; variants of one author five or more years apart; names read as nobody | The riskiest merges and splits | {{n_candidates_not_reviewed}} look-alike pairs below the threshold were not reviewed |
 | After a round, step 2 and pipeline 2 run again, until no case is listed | Every case is decided | Every case list is empty |
 
-### 3.7 The tables and the guards (`clean/processed`, `clean/manifest`, `check`)
+### 5.7 The tables and the guards (`clean/processed`, `clean/manifest`, `check`)
 
 | Rule | Why | Evidence |
 |---|---|---|
@@ -135,7 +166,7 @@ The reasons below apply to the rows of the raw table, in the order the datasets 
 
 <div style="break-before: page"></div>
 
-## 4. The cleaned dataset in numbers
+## 6. The cleaned dataset in numbers
 
 ![Articles per publication year](../reports/figures/clean_by_year.svg)
 
@@ -156,7 +187,7 @@ The reasons below apply to the rows of the raw table, in the order the datasets 
 {{n_authors_one_article}} authors ({{authors_one_article_pct}}) have one article: letters to the
 editor count as opinion, so many of them are readers.
 
-## 5. Known limits
+## 7. Known limits
 
 | Limit | Size | Where |
 |---|---|---|
@@ -171,12 +202,18 @@ editor count as opinion, so many of them are readers.
 | Credits of the opinion videos of the New York Times are read as authors | — | Cleaned dataset, section 6 |
 | The reviewer is a language model and can be wrong | Audits of its decisions in `datasheet_clean.md`, section 2.4 | Cleaned dataset, section 2.4 |
 
-## 6. Documents and code
+## 8. Code and detailed documents
 
-- `docs/datasheet_raw.md`: the raw table, the changes applied to the export and its contents.
-- `docs/datasheet_clean.md`: the cleaned dataset, how the bylines were read and the review.
+Everything above was done by the code of the private repository `econ_corpus`
+(https://github.com/JuanReyes01/econ_corpus; access on request). It holds code and
+documentation only, never the data. There:
+
+- `README.md`: the commands that regenerate everything from the exports, from `make parse` on.
+- `docs/datasheet_raw.md`: the raw table in detail, every change applied to the export, its contents.
+- `docs/datasheet_clean.md`: the cleaned dataset in detail, how the bylines were read, the manual review and its audits.
 - `docs/decisions.md`: every rule, its reason and its evidence, dated.
-- `README.md`: the commands that regenerate everything, from `make parse` on.
-- Code: private repository `econ_corpus` (https://github.com/JuanReyes01/econ_corpus). The
-  text is ProQuest-licensed and is not in it; the tables are for internal use among the
-  project's researchers.
+- `data/review/` (kept with the data, not in the repository): the decisions of the manual review, each with its reason.
+
+[1] Statista, "Largest daily newspapers in the United States in the six months to September
+2023, by average print circulation," Feb. 19, 2024.
+https://www.statista.com/statistics/272790/circulation-of-the-biggest-daily-newspapers-in-the-us/
